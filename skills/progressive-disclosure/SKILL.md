@@ -16,7 +16,7 @@ Use this skill to decide how a capability should be split across trigger metadat
 
 ## Task Router
 
-- Decide what belongs in frontmatter, `SKILL.md`, `references/`, `scripts/`, `assets/`, or a future harness:
+- Decide what belongs in frontmatter, the core skill file, reference files, scripts, assets, or a future harness:
   Read [references/loading-splits.md](./references/loading-splits.md).
 - Improve `Task Router` wording, reference topology, or long-file navigation:
   Read [references/routing-patterns.md](./references/routing-patterns.md).

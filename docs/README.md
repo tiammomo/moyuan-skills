@@ -41,6 +41,12 @@
   对未来 skills 演进路径的阶段性判断
 - [release-note-writer.md](./release-note-writer.md)
   第一份真实示范型业务 skill 的仓库级说明
+- [issue-triage-report.md](./issue-triage-report.md)
+  轻量业务案例，展示 CSV 输入到 triage 报告的完整链路
+- [incident-postmortem-writer.md](./incident-postmortem-writer.md)
+  更偏安全敏感的业务案例，展示 postmortem 生成与审阅边界
+- [harness-prototypes.md](./harness-prototypes.md)
+  tool contract、safety gate、automation 三类原型说明
 
 ## Teaching 目录
 
@@ -58,5 +64,9 @@
   从 skill 过渡到 harness engineering 的学习路线
 - [teaching/06-exercises-and-capstone.md](./teaching/06-exercises-and-capstone.md)
   把教学目录进一步落到练习题和 capstone 项目
+- [teaching/07-case-gradient.md](./teaching/07-case-gradient.md)
+  讲解三个真实业务案例应该如何按梯度学习
+- [teaching/08-evals-and-prototypes.md](./teaching/08-evals-and-prototypes.md)
+  讲解 eval harness 与 harness prototypes 的学习路径
 
 如果你的目标是 onboarding 新成员或把仓库变成课程内容，建议优先从 `teaching/` 开始。

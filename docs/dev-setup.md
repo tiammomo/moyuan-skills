@@ -57,7 +57,9 @@ python skills/build-skills/scripts/check_build_skills.py
 python skills/progressive-disclosure/scripts/check_progressive_disclosure.py
 python skills/harness-engineering/scripts/check_harness_engineering.py
 python skills/release-note-writer/scripts/check_release_note_writer.py
-python scripts/run_minimal_eval_harness.py
+python skills/issue-triage-report/scripts/check_issue_triage_report.py
+python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py
+python scripts/run_eval_harness.py
 ```
 
 这样可以同时确认：
@@ -66,6 +68,7 @@ python scripts/run_minimal_eval_harness.py
 - 教学型 skill 资源没丢
 - 业务 skill 主链路可用
 - eval 示例可运行
+- harness 原型资产可继续被接到更大的系统设计里
 
 ## 常见问题
 

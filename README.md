@@ -46,14 +46,16 @@
 
 ## 当前 Skills
 
-截至 2026-03-24，这个仓库包含三份教学型 skill 和一份示范型业务 skill：
+截至 2026-03-24，这个仓库包含三份教学型 skill 和三份示范型业务 skill：
 
 | Skill | 类型 | 主题 | 当前状态 | 入口 |
 | --- | --- | --- | --- | --- |
 | `build-skills` | 教学型 | 如何设计、搭建、校验一个 skill | 已完成首版 | [docs/skill-authoring.md](./docs/skill-authoring.md) |
 | `progressive-disclosure` | 教学型 | 如何把知识切到 frontmatter / `SKILL.md` / `references/` / `scripts/` / `assets/` | 已完成首版 | [docs/progressive-disclosure.md](./docs/progressive-disclosure.md) |
 | `harness-engineering` | 教学型 | 如何从 skill 继续演进到工具编排、评测闭环和 agent operating system | 已完成首版 | [docs/harness-engineering.md](./docs/harness-engineering.md) |
+| `issue-triage-report` | 示范型业务 | 如何从 CSV issue 导出生成 triage 摘要 | 已完成首版 | [docs/issue-triage-report.md](./docs/issue-triage-report.md) |
 | `release-note-writer` | 示范型业务 | 如何从结构化变更输入生成并校验发布说明 | 已完成首版 | [docs/release-note-writer.md](./docs/release-note-writer.md) |
+| `incident-postmortem-writer` | 示范型业务 | 如何从 incident record 生成并校验 postmortem | 已完成首版 | [docs/incident-postmortem-writer.md](./docs/incident-postmortem-writer.md) |
 
 ## 推荐学习路径
 
@@ -73,7 +75,9 @@
 - [skills/build-skills/SKILL.md](./skills/build-skills/SKILL.md)
 - [skills/progressive-disclosure/SKILL.md](./skills/progressive-disclosure/SKILL.md)
 - [skills/harness-engineering/SKILL.md](./skills/harness-engineering/SKILL.md)
+- [skills/issue-triage-report/SKILL.md](./skills/issue-triage-report/SKILL.md)
 - [skills/release-note-writer/SKILL.md](./skills/release-note-writer/SKILL.md)
+- [skills/incident-postmortem-writer/SKILL.md](./skills/incident-postmortem-writer/SKILL.md)
 
 如果你想走一条更课程化的路径，直接进入：
 
@@ -81,6 +85,8 @@
 - [docs/teaching/01-learning-map.md](./docs/teaching/01-learning-map.md)
 - [docs/teaching/03-build-your-first-skill.md](./docs/teaching/03-build-your-first-skill.md)
 - [docs/teaching/05-harness-roadmap.md](./docs/teaching/05-harness-roadmap.md)
+- [docs/teaching/07-case-gradient.md](./docs/teaching/07-case-gradient.md)
+- [docs/teaching/08-evals-and-prototypes.md](./docs/teaching/08-evals-and-prototypes.md)
 
 ## 仓库结构
 
@@ -89,28 +95,33 @@
 |- docs/
 |  `- teaching/
 |- examples/
-|  `- eval-harness/
+|  |- eval-harness/
+|  `- harness-prototypes/
 |- scripts/
 |- skills/
 |  |- build-skills/
 |  |- progressive-disclosure/
 |  |- harness-engineering/
-|  `- release-note-writer/
+|  |- issue-triage-report/
+|  |- release-note-writer/
+|  `- incident-postmortem-writer/
 `- .github/workflows/
 ```
 
 ## 校验命令
 
-仓库当前提供四类本地检查入口：
+仓库当前提供多类本地检查入口：
 
 - `python scripts/check_progressive_skills.py`
 - `python skills/build-skills/scripts/check_build_skills.py`
 - `python skills/progressive-disclosure/scripts/check_progressive_disclosure.py`
 - `python skills/harness-engineering/scripts/check_harness_engineering.py`
+- `python skills/issue-triage-report/scripts/check_issue_triage_report.py`
 - `python skills/release-note-writer/scripts/check_release_note_writer.py`
-- `python scripts/run_minimal_eval_harness.py`
+- `python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py`
+- `python scripts/run_eval_harness.py`
 
-其中第一条检查整个仓库的渐进式结构和 `openai.yaml` 一致性，四条 skill-local checker 检查各自技能包的关键资源与样例链路，最后一条命令演示最小 eval harness。
+其中第一条检查整个仓库的渐进式结构、router 质量、teaching 完整性和 `openai.yaml` 一致性，六条 skill-local checker 检查各自技能包的关键资源与样例链路，最后一条命令运行带 grader 和 report 的 eval harness。
 
 ## 这个仓库对未来 skills 的判断
 
@@ -150,3 +161,12 @@
 其中教学体系这一条线，已经进一步落到：
 
 - [docs/teaching/06-exercises-and-capstone.md](./docs/teaching/06-exercises-and-capstone.md)
+
+当前已经补上的下一阶段资产包括：
+
+- 两份新示范型业务 skill：
+  [docs/issue-triage-report.md](./docs/issue-triage-report.md) 和 [docs/incident-postmortem-writer.md](./docs/incident-postmortem-writer.md)
+- 一套升级后的 eval harness：
+  [scripts/run_eval_harness.py](./scripts/run_eval_harness.py)
+- 三类 harness 原型：
+  [docs/harness-prototypes.md](./docs/harness-prototypes.md)

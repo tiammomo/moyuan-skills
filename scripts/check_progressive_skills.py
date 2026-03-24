@@ -10,6 +10,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
+DOCS_DIR = ROOT / "docs"
+TEACHING_DIR = DOCS_DIR / "teaching"
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 SECONDARY_HEADING_RE = re.compile(r"^## (.+?)\s*$")
 CONTENTS_LINK_RE = re.compile(r"\[[^\]]+\]\(#([^)]+)\)")
@@ -19,6 +21,7 @@ INTERFACE_FIELD_RE = re.compile(r"^  ([A-Za-z_][\w-]*):\s*(.+?)\s*$")
 QUOTED_STRING_RE = re.compile(r'^"(.*)"$')
 HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 REQUIRED_HEADINGS = (
+    "## Safety First",
     "## Task Router",
     "## Progressive Loading",
     "## Default Workflow",
@@ -30,6 +33,24 @@ REQUIRED_INTERFACE_FIELDS = (
 )
 REFERENCE_TOC_LINE_THRESHOLD = 100
 MAX_REFERENCE_HOPS = 2
+DISALLOWED_HEADINGS = (
+    "## When to Use",
+    "## When to Use This Skill",
+    "## Installation",
+    "## Setup",
+)
+ROUTER_ACTION_HINTS = ("Read ", "Use ", "Run ", "Open ", "Copy ")
+REQUIRED_TEACHING_FILES = (
+    "README.md",
+    "01-learning-map.md",
+    "02-read-the-repo.md",
+    "03-build-your-first-skill.md",
+    "04-progressive-disclosure-workshop.md",
+    "05-harness-roadmap.md",
+    "06-exercises-and-capstone.md",
+    "07-case-gradient.md",
+    "08-evals-and-prototypes.md",
+)
 
 
 def parse_frontmatter(text: str) -> dict[str, str] | None:
@@ -205,6 +226,69 @@ def validate_reference_file(skill_dir: Path, reference_file: Path) -> list[str]:
     return errors
 
 
+def extract_section(text: str, heading: str) -> str:
+    lines = text.splitlines()
+    section_lines: list[str] = []
+    capture = False
+    for line in lines:
+        if line == heading:
+            capture = True
+            continue
+        if capture and line.startswith("## "):
+            break
+        if capture:
+            section_lines.append(line)
+    return "\n".join(section_lines).strip()
+
+
+def split_router_blocks(section_text: str) -> list[list[str]]:
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in section_text.splitlines():
+        if line.startswith("- "):
+            if current:
+                blocks.append(current)
+            current = [line]
+        elif current and (line.startswith("  ") or not line.strip()):
+            current.append(line)
+        elif current:
+            current.append(line)
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def validate_task_router(skill_dir: Path, text: str) -> list[str]:
+    errors: list[str] = []
+    router_section = extract_section(text, "## Task Router")
+    if not router_section:
+        return errors
+
+    router_blocks = split_router_blocks(router_section)
+    if not router_blocks:
+        errors.append(f"{skill_dir.name}: '## Task Router' should contain at least one routed bullet")
+        return errors
+
+    for index, block in enumerate(router_blocks, start=1):
+        first_line = block[0]
+        if ":" not in first_line:
+            errors.append(
+                f"{skill_dir.name}: router bullet #{index} should describe a scenario and end with a colon"
+            )
+        block_text = "\n".join(block)
+        if not any(hint in block_text for hint in ROUTER_ACTION_HINTS):
+            errors.append(
+                f"{skill_dir.name}: router bullet #{index} should tell the reader to Read, Use, Run, Open, or Copy a resource"
+            )
+        reference_count = block_text.count("references/")
+        if reference_count > 2:
+            errors.append(
+                f"{skill_dir.name}: router bullet #{index} routes to too many references ({reference_count}); keep each route narrow"
+            )
+
+    return errors
+
+
 def extract_skill_title(text: str) -> str | None:
     for line in text.splitlines():
         if line.startswith("# "):
@@ -313,6 +397,72 @@ def validate_openai_yaml(skill_dir: Path, skill_text: str) -> list[str]:
     return errors
 
 
+def validate_skill_antipatterns(skill_dir: Path, text: str) -> list[str]:
+    errors: list[str] = []
+
+    if "[TODO" in text or "TODO:" in text:
+        errors.append(f"{skill_dir.name}: SKILL.md still contains TODO placeholders")
+
+    for heading in DISALLOWED_HEADINGS:
+        if heading in text:
+            errors.append(
+                f"{skill_dir.name}: avoid a '{heading}' section; trigger guidance belongs in frontmatter, not the body"
+            )
+
+    extra_markdown = [
+        path.name
+        for path in skill_dir.glob("*.md")
+        if path.name != "SKILL.md"
+    ]
+    if extra_markdown:
+        errors.append(
+            f"{skill_dir.name}: do not keep extra top-level markdown files in the skill dir ({', '.join(sorted(extra_markdown))})"
+        )
+
+    return errors
+
+
+def validate_teaching_docs() -> list[str]:
+    errors: list[str] = []
+    if not TEACHING_DIR.is_dir():
+        return ["docs: missing docs/teaching directory"]
+
+    for filename in REQUIRED_TEACHING_FILES:
+        path = TEACHING_DIR / filename
+        if not path.is_file():
+            errors.append(f"docs: missing teaching file '{filename}'")
+
+    teaching_readme = TEACHING_DIR / "README.md"
+    docs_readme = DOCS_DIR / "README.md"
+
+    if teaching_readme.is_file():
+        teaching_text = teaching_readme.read_text(encoding="utf-8")
+        for filename in REQUIRED_TEACHING_FILES:
+            if filename == "README.md":
+                continue
+            if f"./{filename}" not in teaching_text:
+                errors.append(f"docs: teaching README should link to '{filename}'")
+
+    if docs_readme.is_file():
+        docs_text = docs_readme.read_text(encoding="utf-8")
+        if "teaching/" not in docs_text:
+            errors.append("docs: docs/README.md should expose the teaching directory")
+        for filename in REQUIRED_TEACHING_FILES:
+            if filename == "README.md":
+                continue
+            if f"./teaching/{filename}" not in docs_text:
+                errors.append(f"docs: docs/README.md should link to teaching file '{filename}'")
+
+    for path in TEACHING_DIR.glob("*.md"):
+        text = path.read_text(encoding="utf-8")
+        if "[TODO" in text or "TODO:" in text:
+            errors.append(f"docs: teaching file '{path.name}' still contains TODO placeholders")
+        if not any(line.startswith("# ") for line in text.splitlines()):
+            errors.append(f"docs: teaching file '{path.name}' should start with a top-level title")
+
+    return errors
+
+
 def validate_skill(skill_dir: Path) -> list[str]:
     errors: list[str] = []
     skill_md = skill_dir / "SKILL.md"
@@ -373,6 +523,8 @@ def validate_skill(skill_dir: Path) -> list[str]:
     if not any(hint in text for hint in progressive_hints):
         errors.append(f"{skill_dir.name}: '## Progressive Loading' should explain how to load references on demand")
 
+    errors.extend(validate_task_router(skill_dir, text))
+    errors.extend(validate_skill_antipatterns(skill_dir, text))
     errors.extend(validate_openai_yaml(skill_dir, text))
 
     return errors
@@ -387,6 +539,7 @@ def main() -> int:
     all_errors: list[str] = []
     for skill_dir in skill_dirs:
         all_errors.extend(validate_skill(skill_dir))
+    all_errors.extend(validate_teaching_docs())
 
     if all_errors:
         for error in all_errors:

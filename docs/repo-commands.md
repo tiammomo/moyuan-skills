@@ -22,6 +22,8 @@ python skills/harness-engineering/scripts/check_harness_engineering.py
 
 ```text
 python skills/release-note-writer/scripts/check_release_note_writer.py
+python skills/issue-triage-report/scripts/check_issue_triage_report.py
+python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py
 ```
 
 ## 生成发布说明
@@ -36,10 +38,10 @@ python skills/release-note-writer/scripts/release_note_writer.py draft skills/re
 python skills/release-note-writer/scripts/release_note_writer.py lint out/release-notes.md
 ```
 
-## 运行最小 Eval Harness 示例
+## 运行 Eval Harness
 
 ```text
-python scripts/run_minimal_eval_harness.py
+python scripts/run_eval_harness.py
 ```
 
 ## 常见维护动作
@@ -69,6 +71,8 @@ Get-ChildItem -Recurse skills
 ```text
 python scripts/check_progressive_skills.py
 python skills/release-note-writer/scripts/check_release_note_writer.py
-python scripts/run_minimal_eval_harness.py
+python skills/issue-triage-report/scripts/check_issue_triage_report.py
+python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py
+python scripts/run_eval_harness.py
 ```
 

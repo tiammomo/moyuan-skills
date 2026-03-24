@@ -46,7 +46,9 @@
    学怎么把内容拆到合适的层级
 6. 接着看 [harness-engineering.md](./harness-engineering.md)
    学怎么把 skill 放进更大的 agent system
-7. 最后看 [skill-future-roadmap.md](./skill-future-roadmap.md)
+7. 再看 [teaching/07-case-gradient.md](./teaching/07-case-gradient.md)
+   对比真实业务案例的梯度和边界
+8. 最后看 [skill-future-roadmap.md](./skill-future-roadmap.md)
    把静态 skill、动态 harness、eval 和 automation 放到一条演进线上看
 
 ## 三个教学型 skill 分别学什么

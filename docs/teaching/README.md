@@ -16,6 +16,8 @@
 4. [04-progressive-disclosure-workshop.md](./04-progressive-disclosure-workshop.md)
 5. [05-harness-roadmap.md](./05-harness-roadmap.md)
 6. [06-exercises-and-capstone.md](./06-exercises-and-capstone.md)
+7. [07-case-gradient.md](./07-case-gradient.md)
+8. [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
 
 ## 这个目录解决什么问题
 
@@ -52,3 +54,5 @@
 - 判断内容该放在 `SKILL.md`、`references/`、`scripts/` 还是 `assets/`
 - 理解 skill 为什么会继续走向 harness engineering
 - 按练习与 capstone 路径完成一次从 skill 到 harness 的完整设计演练
+- 理解真实业务案例怎样形成案例梯度
+- 看懂 eval harness、tool contract、safety gate、automation 原型之间的关系

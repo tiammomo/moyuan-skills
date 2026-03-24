@@ -18,12 +18,12 @@ Use this skill to turn a fuzzy requirement into a reusable skill with narrow tri
 
 - Design a brand-new skill from scratch:
   Read [references/design-flow.md](./references/design-flow.md) and copy the template in `assets/skill-design-canvas.md`.
-- Decide what belongs in `SKILL.md`, `references/`, `scripts/`, or `assets/`:
+- Decide what belongs in the core skill file, reference files, scripts, or assets:
   Read [references/resource-planning.md](./references/resource-planning.md).
 - Add skill-local checks, smoke tests, and iteration loops:
   Read [references/validation-loop.md](./references/validation-loop.md), then run `python scripts/check_build_skills.py` if you want to verify this teaching bundle.
 - Review an existing skill for trigger quality, routing clarity, or bloat:
-  Read [references/design-flow.md](./references/design-flow.md) first, then [references/resource-planning.md](./references/resource-planning.md).
+  Read [references/design-flow.md](./references/design-flow.md), then switch to the file-placement route above if the problem turns into a packaging question.
 
 ## Progressive Loading
 
