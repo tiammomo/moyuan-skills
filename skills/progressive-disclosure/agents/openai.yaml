@@ -1,0 +1,5 @@
+interface:
+  display_name: "Progressive Disclosure"
+  short_description: "Split skill context into layered, on-demand resources."
+  default_prompt: "Use $progressive-disclosure to redesign a skill's loading layers."
+

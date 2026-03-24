@@ -1,0 +1,5 @@
+interface:
+  display_name: "Build Skills"
+  short_description: "Teach skill design, routing, and validation."
+  default_prompt: "Use $build-skills to design or refactor a reusable skill."
+

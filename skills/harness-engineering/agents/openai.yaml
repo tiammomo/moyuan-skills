@@ -1,0 +1,5 @@
+interface:
+  display_name: "Harness Engineering"
+  short_description: "Design eval loops and skill operating harnesses."
+  default_prompt: "Use $harness-engineering to design a harness around one or more skills."
+
