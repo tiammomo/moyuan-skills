@@ -1,0 +1,5 @@
+interface:
+  display_name: "Release Note Writer"
+  short_description: "Draft and lint structured release announcements."
+  default_prompt: "Use $release-note-writer to draft release notes from a structured change feed."
+

@@ -1,0 +1,32 @@
+{
+  "product_name": "Moyuan Skills",
+  "version": "v0.2.0",
+  "release_date": "2026-03-24",
+  "summary": "This release adds a real example business skill, stronger metadata linting, and a minimal eval harness example.",
+  "changes": [
+    {
+      "type": "feature",
+      "title": "Release note writer skill",
+      "description": "Added a reusable skill that drafts release notes from a structured JSON change feed.",
+      "ticket": "SKILL-101",
+      "highlight": true
+    },
+    {
+      "type": "improvement",
+      "title": "Progressive metadata lint",
+      "description": "The repository lint now validates openai.yaml metadata consistency.",
+      "ticket": "SKILL-102"
+    },
+    {
+      "type": "fix",
+      "title": "Developer onboarding docs",
+      "description": "Added setup and command references for contributors.",
+      "ticket": "DOCS-201"
+    }
+  ],
+  "breaking_changes": [],
+  "known_issues": [
+    "A final human review is still recommended before publishing public release notes."
+  ]
+}
+

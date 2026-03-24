@@ -1,0 +1,33 @@
+{
+  "cases": [
+    {
+      "name": "feature-release",
+      "input": "feature-release.json",
+      "required_substrings": [
+        "# Moyuan Skills v0.2.0",
+        "## Highlights",
+        "Release note writer skill",
+        "Progressive metadata lint",
+        "## Known Issues"
+      ],
+      "forbidden_substrings": [
+        "{product_name}",
+        "{summary}"
+      ]
+    },
+    {
+      "name": "hotfix-release",
+      "input": "hotfix-release.json",
+      "required_substrings": [
+        "# Moyuan API v1.8.3",
+        "## Breaking Changes",
+        "_None._",
+        "Patched the token refresh race condition"
+      ],
+      "forbidden_substrings": [
+        "{release_date}"
+      ]
+    }
+  ]
+}
+

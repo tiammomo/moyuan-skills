@@ -1,0 +1,24 @@
+{
+  "product_name": "Moyuan API",
+  "version": "v1.8.3",
+  "release_date": "2026-03-24",
+  "summary": "This hotfix stabilizes background token refresh and removes duplicate retry loops in the API gateway.",
+  "changes": [
+    {
+      "type": "fix",
+      "title": "Token refresh race condition",
+      "description": "Patched the token refresh race condition that could create duplicate refresh attempts.",
+      "ticket": "API-881",
+      "highlight": true
+    },
+    {
+      "type": "improvement",
+      "title": "Retry log cleanup",
+      "description": "Reduced noisy retry logs during transient upstream failures.",
+      "ticket": "API-882"
+    }
+  ],
+  "breaking_changes": [],
+  "known_issues": []
+}
+
