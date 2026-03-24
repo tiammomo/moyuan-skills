@@ -131,3 +131,15 @@
 
 因此，做 skill 时就开始思考 harness，不是过度设计，而是提前建立正确边界。
 
+## 当前仓库里的原型落点
+
+当前仓库已经补了三类最小原型：
+
+- tool contract
+- safety gate
+- automation
+
+对应说明见：
+
+- [harness-prototypes.md](./harness-prototypes.md)
+

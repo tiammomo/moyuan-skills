@@ -1,0 +1,28 @@
+tool_contract:
+  id: "release-note-writer.draft"
+  skill: "release-note-writer"
+  command: "python skills/release-note-writer/scripts/release_note_writer.py draft <input.json> <output.md>"
+  input:
+    format: "json"
+    required_fields:
+      - "product_name"
+      - "version"
+      - "release_date"
+      - "summary"
+      - "changes"
+  output:
+    format: "markdown"
+    required_headings:
+      - "## Summary"
+      - "## Highlights"
+      - "## Features"
+      - "## Improvements"
+      - "## Fixes"
+  failure_modes:
+    - "missing required input keys"
+    - "unsupported change type"
+    - "lint failure before publication"
+  safety:
+    - "run the bundled linter before public release"
+    - "human review required for public-facing output"
+

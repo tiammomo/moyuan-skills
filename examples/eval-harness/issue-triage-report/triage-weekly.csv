@@ -1,0 +1,6 @@
+id,title,severity,status,owner,action,customer_impact,highlight
+API-901,Token refresh retries keep looping,critical,blocked,Alice,decision: choose one retry strategy,Some users see repeated login prompts,true
+WEB-224,Dashboard filter layout breaks on narrow screens,high,in-progress,Bob,ship responsive fix,Users on smaller laptops cannot use all filters,false
+OPS-331,Alert routing cleanup,medium,backlog,,review next sprint,No direct customer impact,false
+API-877,Retry logs are noisy during transient failures,low,open,Carol,reduce duplicate log lines,Creates on-call noise,false
+

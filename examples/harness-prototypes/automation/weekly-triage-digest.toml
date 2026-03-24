@@ -1,0 +1,14 @@
+name = "weekly-triage-digest"
+skill = "issue-triage-report"
+command = "python skills/issue-triage-report/scripts/issue_triage_report.py draft data/issues.csv out/weekly-triage.md"
+schedule = "WEEKLY Fri 09:00 Asia/Shanghai"
+review_required = true
+
+prechecks = [
+  "python scripts/check_progressive_skills.py",
+  "python scripts/run_eval_harness.py --skills issue-triage-report",
+]
+
+postchecks = [
+  "python skills/issue-triage-report/scripts/issue_triage_report.py lint out/weekly-triage.md",
+]

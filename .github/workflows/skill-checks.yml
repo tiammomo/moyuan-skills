@@ -22,6 +22,10 @@ jobs:
             command: python skills/harness-engineering/scripts/check_harness_engineering.py
           - name: release-note-writer
             command: python skills/release-note-writer/scripts/check_release_note_writer.py
+          - name: issue-triage-report
+            command: python skills/issue-triage-report/scripts/check_issue_triage_report.py
+          - name: incident-postmortem-writer
+            command: python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -49,5 +53,5 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Run minimal eval harness example
-        run: python scripts/run_minimal_eval_harness.py
+      - name: Run eval harness example
+        run: python scripts/run_eval_harness.py

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Issue Triage Report"
+  short_description: "Draft and lint structured issue triage reports."
+  default_prompt: "Use $issue-triage-report to turn a CSV issue export into a triage summary."
+

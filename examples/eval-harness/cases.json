@@ -1,0 +1,117 @@
+{
+  "report_name": "Moyuan Skills Eval Harness",
+  "cases": [
+    {
+      "name": "release-note-feature",
+      "skill": "release-note-writer",
+      "input": "release-note-writer/feature-release.json",
+      "graders": [
+        {
+          "type": "contains_all",
+          "label": "core content",
+          "values": [
+            "# Moyuan Skills v0.2.0",
+            "## Highlights",
+            "Release note writer skill",
+            "Progressive metadata lint"
+          ]
+        },
+        {
+          "type": "forbids_all",
+          "label": "no template placeholders",
+          "values": [
+            "{product_name}",
+            "{summary}"
+          ]
+        },
+        {
+          "type": "requires_headings",
+          "label": "required headings",
+          "values": [
+            "## Summary",
+            "## Highlights",
+            "## Features",
+            "## Improvements",
+            "## Fixes",
+            "## Breaking Changes",
+            "## Known Issues"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "release-note-hotfix",
+      "skill": "release-note-writer",
+      "input": "release-note-writer/hotfix-release.json",
+      "graders": [
+        {
+          "type": "contains_all",
+          "label": "hotfix content",
+          "values": [
+            "# Moyuan API v1.8.3",
+            "Patched the token refresh race condition"
+          ]
+        },
+        {
+          "type": "contains_all",
+          "label": "none marker present",
+          "values": [
+            "_None._"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "issue-triage-weekly",
+      "skill": "issue-triage-report",
+      "input": "issue-triage-report/triage-weekly.csv",
+      "graders": [
+        {
+          "type": "contains_all",
+          "label": "triage groups",
+          "values": [
+            "# Issue Triage Report",
+            "## Hot Issues",
+            "## Needs Decision",
+            "API-901 Token refresh retries keep looping"
+          ]
+        },
+        {
+          "type": "requires_headings",
+          "label": "required headings",
+          "values": [
+            "## Summary",
+            "## Hot Issues",
+            "## Needs Decision",
+            "## Assigned Follow-ups",
+            "## Backlog Watch"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "incident-postmortem-sev2",
+      "skill": "incident-postmortem-writer",
+      "input": "incident-postmortem-writer/incident-sev2.json",
+      "graders": [
+        {
+          "type": "contains_all",
+          "label": "incident content",
+          "values": [
+            "# Incident INC-2048",
+            "## Customer Impact",
+            "Authentication API",
+            "## Action Items"
+          ]
+        },
+        {
+          "type": "forbids_all",
+          "label": "no blame wording",
+          "values": [
+            "blame"
+          ]
+        }
+      ]
+    }
+  ]
+}

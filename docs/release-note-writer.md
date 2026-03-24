@@ -64,7 +64,7 @@ python skills/release-note-writer/scripts/check_release_note_writer.py
 运行最小 eval harness：
 
 ```text
-python scripts/run_minimal_eval_harness.py
+python scripts/run_eval_harness.py --skills release-note-writer
 ```
 
 ## 这个案例在仓库里的意义

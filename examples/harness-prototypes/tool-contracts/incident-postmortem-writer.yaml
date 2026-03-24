@@ -1,0 +1,28 @@
+tool_contract:
+  id: "incident-postmortem-writer.draft"
+  skill: "incident-postmortem-writer"
+  command: "python skills/incident-postmortem-writer/scripts/incident_postmortem_writer.py draft <input.json> <output.md>"
+  input:
+    format: "json"
+    required_fields:
+      - "incident_id"
+      - "service"
+      - "severity"
+      - "timeline"
+      - "action_items"
+  output:
+    format: "markdown"
+    required_headings:
+      - "## Summary"
+      - "## Customer Impact"
+      - "## Timeline"
+      - "## Root Cause"
+      - "## Action Items"
+  failure_modes:
+    - "missing required incident keys"
+    - "unsupported severity"
+    - "blame-oriented or incomplete postmortem draft"
+  safety:
+    - "approval required before broad circulation"
+    - "sensitive incident detail must be scrubbed before publication"
+

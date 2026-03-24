@@ -1,0 +1,17 @@
+gate:
+  id: "publication-review"
+  applies_to:
+    skills:
+      - "skill-name"
+    actions:
+      - "publish"
+  required_checks:
+    - "script lint passes"
+    - "human review complete"
+  blockers:
+    - "unresolved placeholders"
+    - "missing approval"
+  audit_artifacts:
+    - "draft output"
+    - "review note"
+

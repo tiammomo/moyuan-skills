@@ -11,8 +11,14 @@ SKILL_MD = ROOT / "SKILL.md"
 REQUIRED_FILES = (
     ROOT / "references" / "harness-primitives.md",
     ROOT / "references" / "evals-and-feedback.md",
+    ROOT / "references" / "tool-contracts.md",
+    ROOT / "references" / "safety-gates.md",
+    ROOT / "references" / "automation-patterns.md",
     ROOT / "references" / "future-roadmap.md",
     ROOT / "assets" / "harness-blueprint.md",
+    ROOT / "assets" / "tool-contract-template.yaml",
+    ROOT / "assets" / "safety-gate-template.yaml",
+    ROOT / "assets" / "automation-spec-template.toml",
 )
 REQUIRED_SKILL_SECTIONS = (
     "## Task Router",
@@ -24,6 +30,10 @@ REQUIRED_TEMPLATE_SECTIONS = (
     "## 1. Routing Surface",
     "## 4. Eval and Feedback",
     "## 6. Rollout Plan",
+)
+REQUIRED_TOOL_TEMPLATE_STRINGS = (
+    'id: "skill-name.command"',
+    'skill: "skill-name"',
 )
 
 
@@ -46,6 +56,11 @@ def main() -> int:
     for section in REQUIRED_TEMPLATE_SECTIONS:
         if section not in asset_text:
             errors.append(f"harness-blueprint.md missing section: {section}")
+
+    tool_template = (ROOT / "assets" / "tool-contract-template.yaml").read_text(encoding="utf-8")
+    for snippet in REQUIRED_TOOL_TEMPLATE_STRINGS:
+        if snippet not in tool_template:
+            errors.append(f"tool-contract-template.yaml missing expected snippet: {snippet}")
 
     if errors:
         for error in errors:

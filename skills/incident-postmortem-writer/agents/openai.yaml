@@ -1,0 +1,5 @@
+interface:
+  display_name: "Incident Postmortem Writer"
+  short_description: "Draft and lint structured incident postmortems."
+  default_prompt: "Use $incident-postmortem-writer to draft a postmortem from structured incident data."
+

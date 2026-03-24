@@ -1,0 +1,14 @@
+name = "weekly-skill-run"
+skill = "skill-name"
+command = "python skills/skill-name/scripts/tool.py draft input output"
+schedule = "WEEKLY Fri 09:00 Asia/Shanghai"
+review_required = true
+
+prechecks = [
+  "python scripts/check_progressive_skills.py",
+]
+
+postchecks = [
+  "python scripts/run_eval_harness.py",
+]
+

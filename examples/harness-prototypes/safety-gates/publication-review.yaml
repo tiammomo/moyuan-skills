@@ -1,0 +1,22 @@
+gate:
+  id: "public-document-review"
+  applies_to:
+    skills:
+      - "release-note-writer"
+      - "incident-postmortem-writer"
+    actions:
+      - "publish"
+      - "share-broadly"
+  required_checks:
+    - "script lint passes"
+    - "sensitive terms review complete"
+    - "human reviewer approved the draft"
+  blockers:
+    - "unresolved placeholders"
+    - "missing reviewer approval"
+    - "high-severity incident draft without explicit approval"
+  audit_artifacts:
+    - "generated draft"
+    - "review note"
+    - "approval record"
+

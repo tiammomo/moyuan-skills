@@ -1,0 +1,44 @@
+{
+  "incident_id": "INC-2048",
+  "service": "Authentication API",
+  "severity": "sev2",
+  "start_time": "2026-03-24 09:14 UTC",
+  "end_time": "2026-03-24 10:02 UTC",
+  "summary": "A token refresh race condition triggered repeated retry loops in the authentication API, causing elevated login failures until the retry path was disabled.",
+  "customer_impact": "A subset of users experienced repeated login prompts and intermittent sign-in failures during the incident window.",
+  "root_cause": "The retry path allowed concurrent refresh attempts against the same session token, and the system lacked a guard to collapse duplicate refresh work under load.",
+  "timeline": [
+    {
+      "time": "2026-03-24 09:14 UTC",
+      "event": "On-call alerts fired for elevated authentication error rates.",
+      "owner": "On-call engineer"
+    },
+    {
+      "time": "2026-03-24 09:27 UTC",
+      "event": "The team linked the spike to repeated token refresh retries during session renewal.",
+      "owner": "Incident commander"
+    },
+    {
+      "time": "2026-03-24 09:46 UTC",
+      "event": "A mitigation disabled the duplicate retry path and error rates began to recover.",
+      "owner": "API team"
+    }
+  ],
+  "action_items": [
+    {
+      "title": "Add single-flight protection to token refresh handling.",
+      "owner": "Alice",
+      "status": "open",
+      "due_date": "2026-03-31"
+    },
+    {
+      "title": "Add dashboard panels for refresh retry amplification.",
+      "owner": "Bob",
+      "status": "in progress",
+      "due_date": "2026-04-02"
+    }
+  ],
+  "follow_up_risks": [
+    "Retry amplification may still appear in adjacent session paths until the broader refresh flow is hardened."
+  ]
+}
