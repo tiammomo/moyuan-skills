@@ -2,6 +2,18 @@
 
 `docs/` 面向人的学习与维护，而 `skills/` 面向 agent 的实际触发与执行。
 
+## 新人先看这几篇
+
+如果你是第一次进这个仓库，不要先从最长的文档开始。
+
+建议先按这个顺序看：
+
+1. [teaching/14-first-hour-onboarding.md](./teaching/14-first-hour-onboarding.md)
+2. [teaching/README.md](./teaching/README.md)
+3. [skill-quickstart.md](./skill-quickstart.md)
+4. [skill-learning-guide.md](./skill-learning-guide.md)
+5. [repo-commands.md](./repo-commands.md)
+
 如果你希望快速知道这个仓库该怎么读，按下面顺序就够了：
 
 1. [teaching/README.md](./teaching/README.md)
@@ -83,5 +95,7 @@
   面向维护者的仓库演进与校验路径
 - [teaching/13-harness-builder-path.md](./teaching/13-harness-builder-path.md)
   面向 harness 设计者的系统层学习路径
+- [teaching/14-first-hour-onboarding.md](./teaching/14-first-hour-onboarding.md)
+  面向新成员的第一小时 onboarding 路径，帮助先建立正确心智模型再深入阅读
 
-如果你的目标是 onboarding 新成员、把仓库变成课程内容，或者快速理解整个项目现在该怎么继续学，建议优先从 `teaching/` 开始，尤其先看 [teaching/09-project-learning-roadmap.md](./teaching/09-project-learning-roadmap.md)。
+如果你的目标是 onboarding 新成员、把仓库变成课程内容，或者快速理解整个项目现在该怎么继续学，建议优先从 `teaching/` 开始。带新人时，建议先给 [teaching/14-first-hour-onboarding.md](./teaching/14-first-hour-onboarding.md)，再继续到 [teaching/09-project-learning-roadmap.md](./teaching/09-project-learning-roadmap.md)。

@@ -56,6 +56,7 @@ description: Teach how to design, scaffold, validate, and evolve reusable Codex 
 一个最小可用版本通常只需要：
 
 - 一句目标说明
+- `## Safety First`
 - `## Task Router`
 - `## Progressive Loading`
 - `## Default Workflow`

@@ -26,10 +26,11 @@
 
 建议顺序：
 
-1. [README.md](../../README.md)
-2. [01-learning-map.md](./01-learning-map.md)
-3. [02-read-the-repo.md](./02-read-the-repo.md)
-4. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
+1. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
+2. [README.md](../../README.md)
+3. [01-learning-map.md](./01-learning-map.md)
+4. [02-read-the-repo.md](./02-read-the-repo.md)
+5. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
 
 你的目标不是一口气看全，而是先理解：
 
@@ -134,6 +135,7 @@
 如果你刚看完这篇，接下来最推荐走的分支是：
 
 - 想系统学完整个仓库：回到 [../../README.md](../../README.md)
+- 想先完成新人 onboarding：进入 [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
 - 想开始实操写 skill：进入 [03-build-your-first-skill.md](./03-build-your-first-skill.md)
 - 想理解案例梯度：进入 [07-case-gradient.md](./07-case-gradient.md)
 - 想理解系统层：进入 [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)

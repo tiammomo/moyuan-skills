@@ -1,8 +1,37 @@
-# Learning Map
+# 学习地图
 
 这份学习地图用来回答一个问题：
 
 - 如果我要系统学完这个仓库，最合理的路径是什么？
+
+## 如果时间很少，先走哪条路
+
+### 30 分钟路径
+
+- [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
+- [02-read-the-repo.md](./02-read-the-repo.md)
+- [03-build-your-first-skill.md](./03-build-your-first-skill.md)
+
+目标：
+
+- 先知道仓库在教什么
+- 先知道一个最小 skill 长什么样
+
+### 半天路径
+
+- [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
+- [../skill-learning-guide.md](../skill-learning-guide.md)
+- [../skill-quickstart.md](../skill-quickstart.md)
+- [04-progressive-disclosure-workshop.md](./04-progressive-disclosure-workshop.md)
+
+目标：
+
+- 能自己起一个 skill 名称和 `description`
+- 能判断内容该放在哪一层
+
+### 完整路径
+
+继续按下面五阶段走完整个仓库。
 
 ## 第一阶段：先理解项目为什么存在
 

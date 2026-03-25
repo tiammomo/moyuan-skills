@@ -13,8 +13,8 @@
 1. [05-harness-roadmap.md](./05-harness-roadmap.md)
 2. [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
 3. [09-project-learning-roadmap.md](./09-project-learning-roadmap.md)
-4. [../../docs/harness-engineering.md](../harness-engineering.md)
-5. [../../docs/harness-prototypes.md](../harness-prototypes.md)
+4. [harness-engineering.md](../harness-engineering.md)
+5. [harness-prototypes.md](../harness-prototypes.md)
 
 ## 学习重点
 

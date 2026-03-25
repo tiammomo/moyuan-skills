@@ -12,9 +12,9 @@
 
 1. [09-project-learning-roadmap.md](./09-project-learning-roadmap.md)
 2. [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
-3. [../../CONTRIBUTING.md](../../CONTRIBUTING.md)
-4. [../../docs/dev-setup.md](../dev-setup.md)
-5. [../../docs/repo-commands.md](../repo-commands.md)
+3. [CONTRIBUTING.md](../../CONTRIBUTING.md)
+4. [dev-setup.md](../dev-setup.md)
+5. [repo-commands.md](../repo-commands.md)
 
 ## 维护时优先关注
 

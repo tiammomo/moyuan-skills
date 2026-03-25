@@ -8,6 +8,28 @@
 - 如何设计渐进式披露策略，让上下文按需加载而不是一次性塞满
 - 如何把 skill 放进更大的 harness engineering 体系里，思考它未来会怎样演进
 
+## 如果你是第一次来
+
+不用一上来把整个仓库读完。
+
+对新人最友好的进入方式是：
+
+1. 先看 [docs/teaching/14-first-hour-onboarding.md](./docs/teaching/14-first-hour-onboarding.md)
+2. 再看 [docs/skill-quickstart.md](./docs/skill-quickstart.md)
+3. 然后只跑 1 到 2 条最小验证命令
+
+第一次建议先跑：
+
+- `python scripts/check_progressive_skills.py`
+- `python skills/release-note-writer/scripts/check_release_note_writer.py`
+- `python scripts/run_eval_harness.py --skills release-note-writer`
+
+这样做的目标不是马上学完整个仓库，而是先确认三件事：
+
+- 你知道这个仓库在教什么
+- 你知道一个最小 skill 长什么样
+- 你知道仓库里的检查是真能跑起来的
+
 ## 仓库定位
 
 在这个版本里，`moyuan-skills` 不再把重点放在某个具体 SaaS 平台接入，而是把重点放在“方法论 + 示例 + 校验”三层：
@@ -60,17 +82,30 @@
 
 ## 推荐学习路径
 
-如果你第一次进入这个仓库，推荐按下面顺序阅读：
+如果你想完整学一遍，推荐按下面顺序阅读：
 
 1. [docs/teaching/README.md](./docs/teaching/README.md)
-2. [docs/teaching/09-project-learning-roadmap.md](./docs/teaching/09-project-learning-roadmap.md)
+2. [docs/teaching/01-learning-map.md](./docs/teaching/01-learning-map.md)
 3. [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
 4. [docs/skill-quickstart.md](./docs/skill-quickstart.md)
 5. [docs/skill-spec.md](./docs/skill-spec.md)
 6. [docs/skill-authoring.md](./docs/skill-authoring.md)
 7. [docs/progressive-disclosure.md](./docs/progressive-disclosure.md)
 8. [docs/harness-engineering.md](./docs/harness-engineering.md)
-9. [docs/skill-future-roadmap.md](./docs/skill-future-roadmap.md)
+9. [docs/teaching/09-project-learning-roadmap.md](./docs/teaching/09-project-learning-roadmap.md)
+
+如果你已经知道自己的目标，直接按角色进入更快：
+
+- 新人 / onboarding：
+  [docs/teaching/14-first-hour-onboarding.md](./docs/teaching/14-first-hour-onboarding.md)
+- 第一次写 skill：
+  [docs/teaching/10-learner-path.md](./docs/teaching/10-learner-path.md)
+- 准备重构或新增 skill：
+  [docs/teaching/11-skill-author-path.md](./docs/teaching/11-skill-author-path.md)
+- 维护仓库和校验链路：
+  [docs/teaching/12-maintainer-path.md](./docs/teaching/12-maintainer-path.md)
+- 继续做 harness：
+  [docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
 
 如果你想直接看可触发 skill，再进入：
 
@@ -95,6 +130,7 @@
 - [docs/teaching/11-skill-author-path.md](./docs/teaching/11-skill-author-path.md)
 - [docs/teaching/12-maintainer-path.md](./docs/teaching/12-maintainer-path.md)
 - [docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
+- [docs/teaching/14-first-hour-onboarding.md](./docs/teaching/14-first-hour-onboarding.md)
 
 ## 仓库结构
 

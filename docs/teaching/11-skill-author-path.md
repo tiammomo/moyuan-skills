@@ -13,7 +13,7 @@
 1. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
 2. [04-progressive-disclosure-workshop.md](./04-progressive-disclosure-workshop.md)
 3. [07-case-gradient.md](./07-case-gradient.md)
-4. [../../docs/template-library.md](../template-library.md)
+4. [template-library.md](../template-library.md)
 
 ## 写 skill 时重点看什么
 

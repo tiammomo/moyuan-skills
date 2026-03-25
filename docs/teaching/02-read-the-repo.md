@@ -4,6 +4,12 @@
 
 - 第一次进仓库时，应该先看哪里，后看哪里
 
+## 第一次不要做的三件事
+
+- 不要一上来就顺着目录把所有文档读完
+- 不要第一天就试图理解所有 harness 细节
+- 不要只看 `skills/` 或只看 `docs/`
+
 ## 先看三层结构
 
 这个仓库可以先粗分成三层：
@@ -55,6 +61,13 @@
 - 再知道规则
 - 再看实例
 - 最后理解未来方向
+
+如果你只给自己 1 小时，先缩成这条：
+
+1. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
+2. [../../README.md](../../README.md)
+3. [../skill-quickstart.md](../skill-quickstart.md)
+4. [../../skills/build-skills/SKILL.md](../../skills/build-skills/SKILL.md)
 
 ## 阅读时最容易忽略的点
 
