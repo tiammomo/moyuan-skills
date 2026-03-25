@@ -1,0 +1,28 @@
+{
+  "org_id": "moyuan-internal",
+  "display_name": "Moyuan Internal Skills Market",
+  "include_channels": ["stable", "beta"],
+  "allowed_publishers": ["moyuan"],
+  "allowed_review_statuses": ["reviewed"],
+  "allowed_lifecycle_statuses": ["active", "deprecated"],
+  "allowed_skills": [
+    "moyuan.release-note-writer",
+    "moyuan.issue-triage-report",
+    "moyuan.api-change-risk-review",
+    "moyuan.incident-postmortem-writer"
+  ],
+  "blocked_skills": [
+    "moyuan.build-skills",
+    "moyuan.harness-engineering",
+    "moyuan.progressive-disclosure"
+  ],
+  "preferred_skills": [
+    "moyuan.release-note-writer",
+    "moyuan.issue-triage-report"
+  ],
+  "featured_bundles": [
+    "release-engineering-starter",
+    "incident-ops-starter"
+  ],
+  "require_verified_publishers": true
+}

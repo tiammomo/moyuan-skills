@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/publisher-profile.schema.json",
+  "title": "Publisher Profile",
+  "type": "object",
+  "required": [
+    "id",
+    "display_name",
+    "verified",
+    "trust_level",
+    "contact_email",
+    "homepage",
+    "namespaces",
+    "verification"
+  ],
+  "properties": {
+    "id": { "type": "string", "minLength": 2 },
+    "display_name": { "type": "string", "minLength": 3 },
+    "verified": { "type": "boolean" },
+    "trust_level": { "type": "string", "enum": ["community", "verified", "official"] },
+    "contact_email": { "type": "string", "minLength": 6 },
+    "homepage": { "type": "string", "minLength": 8 },
+    "namespaces": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 2 }
+    },
+    "verification": {
+      "type": "object",
+      "required": ["issued_by", "issued_at", "policy_url", "method"],
+      "properties": {
+        "issued_by": { "type": "string", "minLength": 3 },
+        "issued_at": { "type": "string", "minLength": 10 },
+        "policy_url": { "type": "string", "minLength": 8 },
+        "method": { "type": "string", "minLength": 5 }
+      }
+    }
+  }
+}

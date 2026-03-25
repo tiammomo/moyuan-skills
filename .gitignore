@@ -4,5 +4,6 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+dist/
 examples/harness-prototypes/runtime-output/
 

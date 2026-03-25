@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/skill-install.schema.json",
+  "title": "Skill Install Spec",
+  "type": "object",
+  "required": [
+    "skill_id",
+    "skill_name",
+    "publisher",
+    "version",
+    "channel",
+    "package_type",
+    "package_path",
+    "checksum_sha256",
+    "entrypoint",
+    "install_target",
+    "review_status",
+    "lifecycle_status",
+    "provenance_path",
+    "provenance_sha256"
+  ],
+  "properties": {
+    "skill_id": { "type": "string", "minLength": 3 },
+    "skill_name": { "type": "string", "minLength": 2 },
+    "publisher": { "type": "string", "minLength": 2 },
+    "version": { "type": "string", "minLength": 3 },
+    "channel": { "type": "string", "enum": ["stable", "beta", "internal"] },
+    "package_type": { "type": "string", "enum": ["zip"] },
+    "package_path": { "type": "string", "minLength": 5 },
+    "checksum_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "entrypoint": { "type": "string", "minLength": 5 },
+    "install_target": { "type": "string", "minLength": 2 },
+    "review_status": { "type": "string", "enum": ["draft", "reviewed", "deprecated"] },
+    "lifecycle_status": { "type": "string", "enum": ["active", "deprecated", "blocked", "archived"] },
+    "provenance_path": { "type": "string", "minLength": 5 },
+    "provenance_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

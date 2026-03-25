@@ -35,6 +35,8 @@
 13. [13-harness-builder-path.md](./13-harness-builder-path.md)
 14. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
 15. [15-newcomer-faq.md](./15-newcomer-faq.md)
+16. [16-skills-market-evolution.md](./16-skills-market-evolution.md)
+17. [17-market-registry-and-federation.md](./17-market-registry-and-federation.md)
 
 ## 这个目录解决什么问题
 
@@ -80,6 +82,7 @@
 - Harness 设计者：从 [13-harness-builder-path.md](./13-harness-builder-path.md) 开始
 - 带新人 onboarding：从 [14-first-hour-onboarding.md](./14-first-hour-onboarding.md) 开始
 - 想先补术语和常见问题：从 [15-newcomer-faq.md](./15-newcomer-faq.md) 开始
+- 想理解项目为什么会继续走向 skills market：从 [16-skills-market-evolution.md](./16-skills-market-evolution.md) 开始
 
 ## 学习完成后的预期能力
 

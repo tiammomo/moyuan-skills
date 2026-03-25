@@ -95,6 +95,189 @@ python scripts/run_harness_stub.py automation examples/harness-prototypes/automa
 python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml
 ```
 
+## Skills Market 草案脚本
+
+验证所有 `skills/*/market/skill.json`：
+
+```text
+python scripts/skills_market.py validate
+python scripts/skills_market.py governance-check
+python scripts/skills_market.py index
+python scripts/skills_market.py org-index governance/orgs/moyuan-internal.json
+python scripts/skills_market.py catalog
+python scripts/skills_market.py catalog --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py recommend
+python scripts/skills_market.py recommend --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py federation-feed
+python scripts/skills_market.py federation-feed --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py search --query release
+python scripts/skills_market.py package --all
+python scripts/skills_market.py provenance-check dist/market/install/release-note-writer-0.1.0.json
+python scripts/skills_market.py registry
+python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --dry-run
+python scripts/skills_market.py smoke
+```
+
+```text
+python scripts/validate_market_manifest.py
+```
+
+```text
+python scripts/check_market_governance.py
+```
+
+构建 market index：
+
+```text
+python scripts/build_market_index.py
+```
+
+```text
+python scripts/build_org_market_index.py governance/orgs/moyuan-internal.json
+```
+
+```text
+python scripts/build_market_catalog.py
+python scripts/build_market_catalog.py --org-policy governance/orgs/moyuan-internal.json
+```
+
+```text
+python scripts/build_market_recommendations.py
+python scripts/build_market_recommendations.py --org-policy governance/orgs/moyuan-internal.json
+```
+
+```text
+python scripts/build_federation_feed.py
+python scripts/build_federation_feed.py --org-policy governance/orgs/moyuan-internal.json
+```
+
+搜索 market 中的 skill：
+
+```text
+python scripts/search_skills.py --query release
+python scripts/search_skills.py --category release-engineering --channel stable
+```
+
+为某个 skill 打包并生成 install spec：
+
+```text
+python scripts/package_skill.py release-note-writer
+python scripts/package_skill.py --all
+```
+
+根据 install spec 做 dry-run 安装：
+
+```text
+python scripts/install_skill.py dist/market/install/release-note-writer-0.1.0.json --dry-run
+```
+
+```text
+python scripts/verify_market_provenance.py dist/market/install/release-note-writer-0.1.0.json
+```
+
+```text
+python scripts/build_market_registry.py
+```
+
+```text
+python scripts/check_market_pipeline.py
+```
+
+## Skills Market Client Lifecycle
+
+如果你要验证“安装后的客户端动作”而不只是打包与索引，补跑下面这组命令：
+
+```text
+python scripts/skills_market.py package release-note-writer
+python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --target-root dist/installed-skills
+python scripts/skills_market.py list-installed --target-root dist/installed-skills
+python scripts/skills_market.py update moyuan.release-note-writer --index dist/market/channels/stable.json --target-root dist/installed-skills --dry-run
+python scripts/skills_market.py remove moyuan.release-note-writer --target-root dist/installed-skills
+```
+
+如果你只想让 smoke 一次性把这条链路也覆盖进去，直接跑：
+
+```text
+python scripts/check_market_pipeline.py
+```
+
+## Skills Market Starter Bundles
+
+如果你要验证 bundle 级消费链路，补跑下面这组命令：
+
+```text
+python scripts/skills_market.py list-bundles
+python scripts/skills_market.py list-bundles --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py install-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles
+python scripts/skills_market.py install-bundle skill-authoring-starter --market-dir dist/market --target-root dist/installed-bundles --dry-run
+```
+
+它们分别在验证：
+
+- bundle 是否能被发现
+- org/private scope 是否会正确过滤 bundle
+- bundle 是否能跨 stable / beta channel 一次性安装
+- archived skill 是否会在 bundle 安装里被跳过而不是直接中断
+
+## Skills Market Bundle State
+
+如果你要验证 bundle 安装后的查看和回收动作，补跑下面这组命令：
+
+```text
+python scripts/skills_market.py list-installed --target-root dist/installed-bundles
+python scripts/skills_market.py list-installed-bundles --target-root dist/installed-bundles
+python scripts/skills_market.py remove-bundle release-engineering-starter --target-root dist/installed-bundles --dry-run
+python scripts/skills_market.py remove-bundle release-engineering-starter --target-root dist/installed-bundles
+```
+
+它们分别在验证：
+
+- `skills.lock.json` 是否记录了来源信息
+- bundle report 和当前安装状态能否对应起来
+- bundle 移除是否会先给出安全预览
+- shared ownership 是否会保留 direct install 或其他 bundle 仍然需要的 skill
+
+## Skills Market Bundle Update
+
+如果你要验证已安装 bundle 的刷新和对齐动作，补跑下面这组命令：
+
+```text
+python scripts/skills_market.py update-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles --dry-run
+python scripts/skills_market.py update-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles
+```
+
+它们分别在验证：
+
+- bundle 当前定义能否重新解析成 install plan
+- 已安装的 bundle members 能否按最新 market 重新刷新
+- 不再属于 bundle 的旧成员能否在 reconcile 阶段安全移除 ownership
+
+## Skills Market Installed-State Doctor
+
+如果你要验证本地安装态有没有漂移，补跑下面这组命令：
+
+```text
+python scripts/skills_market.py doctor-installed --target-root dist/installed-skills
+python scripts/skills_market.py doctor-installed --target-root dist/installed-skills --strict
+python scripts/skills_market.py repair-installed --target-root dist/installed-skills --dry-run
+python scripts/skills_market.py repair-installed --target-root dist/installed-skills
+python scripts/skills_market.py snapshot-installed --target-root dist/installed-skills --output-path dist/installed-skills/snapshots/latest.json --markdown-path dist/installed-skills/snapshots/latest.md
+python scripts/skills_market.py diff-installed dist/installed-skills/snapshots/before.json dist/installed-skills/snapshots/after.json --output-path dist/installed-skills/snapshots/diff.json --markdown-path dist/installed-skills/snapshots/diff.md
+python scripts/skills_market.py verify-installed dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --output-dir dist/installed-skills/verification --strict
+python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md
+```
+
+它们分别在验证：
+
+- `skills.lock.json`、bundle report 和安装目录是否对得上
+- `install_spec`、`provenance_path` 和 installed entrypoint 是否仍然有效
+- orphan 安装目录或失联 bundle ownership 能否被及时发现
+- 低风险漂移能否被 `repair-installed` 保守修掉，而不是要求手工清理全部现场
+- 当前安装态能否被导出成 snapshot，供维护者后续 review 和 diff
+- 两次 snapshot 之间的 skill / bundle 变化能否被稳定总结出来
+- 当前 live state 能否直接对比基线 snapshot，并在 drift 出现时作为门禁失败
+- drift 被接受之后，当前 live state 能否被顺手提升成新 baseline，并留下 transition diff
+
 ## 常见维护动作
 
 ### 看某个文档是否还有占位符
@@ -129,5 +312,8 @@ python skills/incident-postmortem-writer/scripts/check_incident_postmortem_write
 python skills/api-change-risk-review/scripts/check_api_change_risk_review.py
 python scripts/run_eval_harness.py --baseline examples/eval-harness/baseline.json
 python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml
+python scripts/skills_market.py smoke
+python scripts/skills_market.py catalog
+python scripts/skills_market.py governance-check
 ```
 

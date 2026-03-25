@@ -1,0 +1,24 @@
+{
+  "id": "incident-ops-starter",
+  "title": "Incident Operations Starter",
+  "summary": "A starter bundle for teams that need intake, postmortems, and outward communication during incident-heavy operations.",
+  "description": "This bundle groups issue triage, incident postmortem writing, and release-note communication to cover the operational loop from detection to retrospective and customer-facing updates.",
+  "status": "published",
+  "channels": ["stable", "beta"],
+  "skills": [
+    "moyuan.issue-triage-report",
+    "moyuan.incident-postmortem-writer",
+    "moyuan.release-note-writer"
+  ],
+  "use_cases": [
+    "incident response",
+    "ops reporting",
+    "customer update drafting"
+  ],
+  "keywords": [
+    "incident",
+    "ops",
+    "triage",
+    "postmortem"
+  ]
+}

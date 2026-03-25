@@ -65,6 +65,16 @@
   tool contract、safety gate、automation 三类原型说明
 - [harness-runtime.md](./harness-runtime.md)
   讲解 runtime blueprint 和最小可执行 harness runtime 的设计与运行方式
+- [market-spec.md](./market-spec.md)
+  定义 market manifest、install spec、channel index 与质量信号
+- [market-governance.md](./market-governance.md)
+  讲解 verified publisher、org allowlist 和 private market policy 这一层治理资产
+- [market-registry.md](./market-registry.md)
+  讲解 provenance、bundles、recommendations、federation feed 和 hosted registry 输出
+- [publisher-guide.md](./publisher-guide.md)
+  skill 作者如何补齐 market manifest、打包、校验并发布
+- [consumer-guide.md](./consumer-guide.md)
+  使用者如何搜索、安装、更新、回滚 skill，以及如何判断可信度
 
 ## Teaching 目录
 
@@ -100,5 +110,9 @@
   面向新成员的第一小时 onboarding 路径，帮助先建立正确心智模型再深入阅读
 - [teaching/15-newcomer-faq.md](./teaching/15-newcomer-faq.md)
   面向新成员的术语解释与常见问题，帮助先跨过第一轮理解门槛
+- [teaching/16-skills-market-evolution.md](./teaching/16-skills-market-evolution.md)
+  把项目从 skills 仓库继续走向 skills market 的学习与执行路线讲清楚
+- [teaching/17-market-registry-and-federation.md](./teaching/17-market-registry-and-federation.md)
+  专门讲 provenance、bundles、registry 和 federation 在当前仓库里是怎么落地的
 
 如果你的目标是 onboarding 新成员、把仓库变成课程内容，或者快速理解整个项目现在该怎么继续学，建议优先从 `teaching/` 开始。带新人时，建议先给 [teaching/14-first-hour-onboarding.md](./teaching/14-first-hour-onboarding.md)，再继续到 [teaching/09-project-learning-roadmap.md](./teaching/09-project-learning-roadmap.md)。

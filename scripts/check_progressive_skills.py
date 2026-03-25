@@ -58,6 +58,8 @@ REQUIRED_TEACHING_FILES = (
     "13-harness-builder-path.md",
     "14-first-hour-onboarding.md",
     "15-newcomer-faq.md",
+    "16-skills-market-evolution.md",
+    "17-market-registry-and-federation.md",
 )
 REQUIRED_LINT_FIXTURES = (
     "README.md",

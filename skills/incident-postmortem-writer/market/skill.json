@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.incident-postmortem-writer",
+  "publisher": "moyuan",
+  "name": "incident-postmortem-writer",
+  "title": "Incident Postmortem Writer",
+  "version": "0.1.0",
+  "channel": "beta",
+  "summary": "Draft and lint structured incident postmortems from JSON incident records with publication guardrails.",
+  "description": "A safety-sensitive business skill that turns structured incident records into postmortem drafts with explicit review boundaries, making it a strong fit for governed market channels.",
+  "categories": ["incident-response", "operations"],
+  "tags": ["incident", "postmortem", "safety", "report"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": "python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py",
+    "eval": "python scripts/run_eval_harness.py --skills incident-postmortem-writer",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Active incident-analysis skill used in the starter incident operations bundle."
+  },
+  "artifacts": {
+    "source_dir": "skills/incident-postmortem-writer",
+    "entrypoint": "skills/incident-postmortem-writer/SKILL.md",
+    "docs": "docs/incident-postmortem-writer.md"
+  },
+  "search": {
+    "keywords": ["incident report", "postmortem", "safety review", "ops writeup"],
+    "related_skills": ["issue-triage-report", "api-change-risk-review"]
+  },
+  "distribution": {
+    "capabilities": ["incident-retrospective", "timeline-writing", "follow-up-tracking"],
+    "starter_bundle_ids": ["incident-ops-starter"]
+  }
+}

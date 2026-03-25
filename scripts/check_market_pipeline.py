@@ -1,0 +1,851 @@
+#!/usr/bin/env python3
+"""Smoke-test the local skills market workflow end to end."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from market_utils import ROOT, load_json, repo_relative_path
+
+
+DEFAULT_OUTPUT_ROOT = ROOT / "dist" / "market-smoke"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Run a smoke test for the local skills market pipeline.")
+    parser.add_argument(
+        "--output-root",
+        type=Path,
+        default=DEFAULT_OUTPUT_ROOT,
+        help="Workspace for generated smoke-test artifacts.",
+    )
+    return parser
+
+
+def run_python(command: list[str]) -> subprocess.CompletedProcess[str]:
+    result = subprocess.run(
+        [sys.executable, *command],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return result
+
+
+def require_success(step: str, command: list[str]) -> str:
+    result = run_python(command)
+    if result.returncode != 0:
+        print(f"ERROR: {step} failed")
+        if result.stdout.strip():
+            print(result.stdout.strip())
+        if result.stderr.strip():
+            print(result.stderr.strip())
+        raise SystemExit(1)
+    return result.stdout.strip()
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    output_root = (args.output_root if args.output_root.is_absolute() else (ROOT / args.output_root)).resolve()
+    market_root = output_root / "market"
+    install_root = output_root / "installed"
+    bundle_install_root = output_root / "bundle-installed"
+    doctor_bad_root = output_root / "doctor-bad"
+
+    if output_root.exists():
+        shutil.rmtree(output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
+
+    require_success("validate manifests", ["scripts/validate_market_manifest.py"])
+    require_success("validate governance", ["scripts/check_market_governance.py"])
+    require_success(
+        "package all skills",
+        ["scripts/package_skill.py", "--all", "--output-dir", repo_relative_path(market_root)],
+    )
+    require_success(
+        "build market index",
+        ["scripts/build_market_index.py", "--output-dir", repo_relative_path(market_root)],
+    )
+    require_success(
+        "build static market catalog",
+        ["scripts/build_market_catalog.py", "--output-dir", repo_relative_path(market_root)],
+    )
+    require_success(
+        "build market recommendations",
+        ["scripts/build_market_recommendations.py", "--output-dir", repo_relative_path(market_root)],
+    )
+    require_success(
+        "build federation feed",
+        ["scripts/build_federation_feed.py", "--output-dir", repo_relative_path(market_root)],
+    )
+    require_success(
+        "build org market index",
+        ["scripts/build_org_market_index.py", "governance/orgs/moyuan-internal.json", "--output-dir", repo_relative_path(market_root)],
+    )
+    require_success(
+        "build org market catalog",
+        [
+            "scripts/build_market_catalog.py",
+            "--output-dir",
+            repo_relative_path(market_root),
+            "--org-policy",
+            "governance/orgs/moyuan-internal.json",
+        ],
+    )
+    require_success(
+        "build org recommendations",
+        [
+            "scripts/build_market_recommendations.py",
+            "--output-dir",
+            repo_relative_path(market_root),
+            "--org-policy",
+            "governance/orgs/moyuan-internal.json",
+        ],
+    )
+    require_success(
+        "build org federation feed",
+        [
+            "scripts/build_federation_feed.py",
+            "--output-dir",
+            repo_relative_path(market_root),
+            "--org-policy",
+            "governance/orgs/moyuan-internal.json",
+        ],
+    )
+    require_success(
+        "build hosted registry",
+        ["scripts/build_market_registry.py", "--output-dir", repo_relative_path(output_root / "registry")],
+    )
+
+    stable_index = market_root / "channels" / "stable.json"
+    search_output = require_success(
+        "search stable index",
+        [
+            "scripts/search_skills.py",
+            "--query",
+            "release",
+            "--index",
+            repo_relative_path(stable_index),
+        ],
+    )
+    if "moyuan.release-note-writer" not in search_output:
+        print("ERROR: search smoke test did not return moyuan.release-note-writer")
+        return 1
+
+    catalog_home = market_root / "site" / "index.html"
+    if not catalog_home.is_file():
+        print(f"ERROR: expected static catalog home {catalog_home} to exist")
+        return 1
+    catalog_text = catalog_home.read_text(encoding="utf-8")
+    if "Moyuan Skills Market" not in catalog_text or "channels/stable.html" not in catalog_text:
+        print("ERROR: static catalog home page is missing expected market content")
+        return 1
+    if "Starter bundles" not in catalog_text:
+        print("ERROR: static catalog home page should surface starter bundles")
+        return 1
+    channel_page = market_root / "site" / "channels" / "stable.html"
+    detail_page = market_root / "site" / "skills" / "release-note-writer.html"
+    if not channel_page.is_file() or not detail_page.is_file():
+        print("ERROR: static catalog should include channel and skill detail pages")
+        return 1
+    if "../skills/release-note-writer.html" not in channel_page.read_text(encoding="utf-8"):
+        print("ERROR: stable channel page should link to the release-note-writer detail page")
+        return 1
+    if "../channels/stable.html" not in detail_page.read_text(encoding="utf-8"):
+        print("ERROR: release-note-writer detail page should link back to its channel page")
+        return 1
+    if "Verified Publisher" not in catalog_text:
+        print("ERROR: static catalog should expose verified publisher badges")
+        return 1
+    if "<dt>Lifecycle</dt>" not in detail_page.read_text(encoding="utf-8"):
+        print("ERROR: skill detail page should include lifecycle metadata")
+        return 1
+
+    recommendations_index = load_json(market_root / "recommendations" / "index.json")
+    recommendation_paths = recommendations_index.get("skills", {})
+    release_recommendation_path = ROOT / recommendation_paths.get("moyuan.release-note-writer", "")
+    if not release_recommendation_path.is_file():
+        print("ERROR: release-note-writer recommendations should be generated")
+        return 1
+    release_recommendations = load_json(release_recommendation_path)
+    recommended_ids = {item["id"] for item in release_recommendations.get("recommendations", [])}
+    if "moyuan.issue-triage-report" not in recommended_ids:
+        print("ERROR: release-note-writer recommendations should include issue-triage-report")
+        return 1
+    bundle_list_output = require_success(
+        "list starter bundles",
+        ["scripts/list_skill_bundles.py"],
+    )
+    if "release-engineering-starter" not in bundle_list_output:
+        print("ERROR: starter bundle listing should include release-engineering-starter")
+        return 1
+    org_bundle_list_output = require_success(
+        "list org starter bundles",
+        ["scripts/list_skill_bundles.py", "--org-policy", "governance/orgs/moyuan-internal.json"],
+    )
+    if "skill-authoring-starter" in org_bundle_list_output:
+        print("ERROR: org bundle listing should respect featured bundle filtering")
+        return 1
+
+    federation_feed = load_json(market_root / "federation" / "public-feed.json")
+    if not federation_feed.get("bundles"):
+        print("ERROR: federation feed should include starter bundles")
+        return 1
+
+    org_index = market_root / "orgs" / "moyuan-internal" / "index.json"
+    org_catalog = market_root / "orgs" / "moyuan-internal" / "site" / "index.html"
+    if not org_index.is_file() or not org_catalog.is_file():
+        print("ERROR: org market artifacts should be generated for moyuan-internal")
+        return 1
+    org_index_payload = load_json(org_index)
+    if org_index_payload.get("org", {}).get("org_id") != "moyuan-internal":
+        print("ERROR: org market index should expose org metadata")
+        return 1
+    stable_org_path = market_root / "orgs" / "moyuan-internal" / "channels" / "stable.json"
+    beta_org_path = market_root / "orgs" / "moyuan-internal" / "channels" / "beta.json"
+    stable_org_payload = load_json(stable_org_path)
+    beta_org_payload = load_json(beta_org_path)
+    stable_skill_ids = {entry["id"] for entry in stable_org_payload.get("skills", [])}
+    beta_skill_ids = {entry["id"] for entry in beta_org_payload.get("skills", [])}
+    if "moyuan.release-note-writer" not in stable_skill_ids:
+        print("ERROR: org market stable index should include moyuan.release-note-writer")
+        return 1
+    if "moyuan.harness-engineering" in beta_skill_ids:
+        print("ERROR: blocked skill moyuan.harness-engineering should not appear in org beta index")
+        return 1
+    org_catalog_text = org_catalog.read_text(encoding="utf-8")
+    if "Moyuan Internal Skills Market" not in org_catalog_text:
+        print("ERROR: org catalog should surface the org display name")
+        return 1
+    org_feed = load_json(market_root / "orgs" / "moyuan-internal" / "federation" / "feed.json")
+    org_feed_ids = {entry["id"] for entry in org_feed.get("skills", [])}
+    if org_feed_ids != {
+        "moyuan.release-note-writer",
+        "moyuan.issue-triage-report",
+        "moyuan.api-change-risk-review",
+        "moyuan.incident-postmortem-writer",
+    }:
+        print("ERROR: org federation feed should only expose allowlisted business skills")
+        return 1
+
+    release_spec = market_root / "install" / "release-note-writer-0.1.0.json"
+    require_success(
+        "verify release-note provenance",
+        ["scripts/verify_market_provenance.py", repo_relative_path(release_spec)],
+    )
+    require_success(
+        "dry-run install",
+        [
+            "scripts/install_skill.py",
+            repo_relative_path(release_spec),
+            "--target-root",
+            repo_relative_path(install_root),
+            "--dry-run",
+        ],
+    )
+    require_success(
+        "install release-note-writer",
+        [
+            "scripts/install_skill.py",
+            repo_relative_path(release_spec),
+            "--target-root",
+            repo_relative_path(install_root),
+        ],
+    )
+    list_output = require_success(
+        "list installed skills",
+        [
+            "scripts/list_installed_skills.py",
+            "--target-root",
+            repo_relative_path(install_root),
+        ],
+    )
+    if "moyuan.release-note-writer" not in list_output:
+        print("ERROR: list-installed should show moyuan.release-note-writer after install")
+        return 1
+    require_success(
+        "doctor installed direct state",
+        [
+            "scripts/check_installed_market_state.py",
+            "--target-root",
+            repo_relative_path(install_root),
+            "--strict",
+        ],
+    )
+    require_success(
+        "dry-run update release-note-writer",
+        [
+            "scripts/update_installed_skill.py",
+            "moyuan.release-note-writer",
+            "--index",
+            repo_relative_path(stable_index),
+            "--target-root",
+            repo_relative_path(install_root),
+            "--dry-run",
+        ],
+    )
+
+    installed_entrypoint = install_root / "release-note-writer" / "SKILL.md"
+    if not installed_entrypoint.is_file():
+        print(f"ERROR: expected installed entrypoint {installed_entrypoint} to exist")
+        return 1
+
+    lock_payload = load_json(install_root / "skills.lock.json")
+    installed_skill_ids = {entry.get("skill_id") for entry in lock_payload.get("installed", [])}
+    if "moyuan.release-note-writer" not in installed_skill_ids:
+        print("ERROR: release-note-writer is missing from skills.lock.json after install")
+        return 1
+
+    tampered_spec = load_json(release_spec)
+    tampered_spec["checksum_sha256"] = "0" * 64
+    tampered_path = output_root / "tampered-release-note-writer.json"
+    tampered_path.write_text(json.dumps(tampered_spec, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    tampered_result = run_python(
+        [
+            "scripts/install_skill.py",
+            repo_relative_path(tampered_path),
+            "--target-root",
+            repo_relative_path(install_root),
+            "--dry-run",
+        ]
+    )
+    if tampered_result.returncode == 0 or "checksum mismatch" not in tampered_result.stdout:
+        print("ERROR: tampered install spec should fail checksum validation")
+        if tampered_result.stdout.strip():
+            print(tampered_result.stdout.strip())
+        if tampered_result.stderr.strip():
+            print(tampered_result.stderr.strip())
+        return 1
+
+    archived_spec = market_root / "install" / "harness-engineering-0.1.0.json"
+    archived_result = run_python(
+        [
+            "scripts/install_skill.py",
+            repo_relative_path(archived_spec),
+            "--target-root",
+            repo_relative_path(install_root),
+            "--dry-run",
+        ]
+    )
+    if archived_result.returncode == 0 or "marked as 'archived'" not in archived_result.stdout:
+        print("ERROR: archived skills should be blocked from install")
+        if archived_result.stdout.strip():
+            print(archived_result.stdout.strip())
+        if archived_result.stderr.strip():
+            print(archived_result.stderr.strip())
+        return 1
+
+    deprecated_spec = market_root / "install" / "progressive-disclosure-0.1.0.json"
+    deprecated_result = run_python(
+        [
+            "scripts/install_skill.py",
+            repo_relative_path(deprecated_spec),
+            "--target-root",
+            repo_relative_path(install_root),
+            "--dry-run",
+        ]
+    )
+    if deprecated_result.returncode != 0 or "WARNING: installing a deprecated skill" not in deprecated_result.stdout:
+        print("ERROR: deprecated skills should warn but remain installable")
+        if deprecated_result.stdout.strip():
+            print(deprecated_result.stdout.strip())
+        if deprecated_result.stderr.strip():
+            print(deprecated_result.stderr.strip())
+        return 1
+
+    require_success(
+        "remove release-note-writer",
+        [
+            "scripts/remove_skill.py",
+            "moyuan.release-note-writer",
+            "--target-root",
+            repo_relative_path(install_root),
+        ],
+    )
+    if installed_entrypoint.exists():
+        print("ERROR: remove should delete the installed skill directory")
+        return 1
+    lock_after_remove = load_json(install_root / "skills.lock.json")
+    if any(entry.get("skill_id") == "moyuan.release-note-writer" for entry in lock_after_remove.get("installed", [])):
+        print("ERROR: remove should delete release-note-writer from the lock file")
+        return 1
+
+    require_success(
+        "direct install release-note-writer into bundle target",
+        [
+            "scripts/install_skill.py",
+            repo_relative_path(release_spec),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+        ],
+    )
+    require_success(
+        "install release-engineering bundle",
+        [
+            "scripts/install_skill_bundle.py",
+            "release-engineering-starter",
+            "--market-dir",
+            repo_relative_path(market_root),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+        ],
+    )
+    bundle_report_path = bundle_install_root / "bundle-reports" / "release-engineering-starter.json"
+    if not bundle_report_path.is_file():
+        print("ERROR: bundle install should produce a bundle report")
+        return 1
+    installed_bundles_output = require_success(
+        "list installed bundles",
+        [
+            "scripts/list_installed_bundles.py",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+        ],
+    )
+    if "release-engineering-starter" not in installed_bundles_output:
+        print("ERROR: installed bundle listing should include release-engineering-starter")
+        return 1
+    require_success(
+        "doctor installed bundle state",
+        [
+            "scripts/check_installed_market_state.py",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--strict",
+        ],
+    )
+    update_bundle_dry_run = require_success(
+        "dry-run update release-engineering bundle",
+        [
+            "scripts/update_skill_bundle.py",
+            "release-engineering-starter",
+            "--market-dir",
+            repo_relative_path(market_root),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--dry-run",
+        ],
+    )
+    if "planned=3" not in update_bundle_dry_run or "failed=0" not in update_bundle_dry_run:
+        print("ERROR: bundle update dry run should plan to refresh all three bundle members without failures")
+        return 1
+    require_success(
+        "update release-engineering bundle",
+        [
+            "scripts/update_skill_bundle.py",
+            "release-engineering-starter",
+            "--market-dir",
+            repo_relative_path(market_root),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+        ],
+    )
+    bundle_report = load_json(bundle_report_path)
+    bundle_installed_ids = {
+        entry.get("skill_id")
+        for entry in bundle_report.get("results", [])
+        if entry.get("status") == "installed"
+    }
+    if bundle_installed_ids != {
+        "moyuan.release-note-writer",
+        "moyuan.issue-triage-report",
+        "moyuan.api-change-risk-review",
+    }:
+        print("ERROR: release-engineering-starter should install all three expected skills")
+        return 1
+    bundle_lock_payload = load_json(bundle_install_root / "skills.lock.json")
+    bundle_lock_ids = {entry.get("skill_id") for entry in bundle_lock_payload.get("installed", [])}
+    if bundle_lock_ids != bundle_installed_ids:
+        print("ERROR: bundle install should update skills.lock.json for every installed skill")
+        return 1
+    release_bundle_entry = next(
+        (entry for entry in bundle_lock_payload.get("installed", []) if entry.get("skill_id") == "moyuan.release-note-writer"),
+        None,
+    )
+    release_sources = release_bundle_entry.get("sources", []) if isinstance(release_bundle_entry, dict) else []
+    release_source_pairs = {
+        (item.get("kind"), item.get("id"))
+        for item in release_sources
+        if isinstance(item, dict)
+    }
+    if release_source_pairs != {("direct", "direct-install"), ("bundle", "release-engineering-starter")}:
+        print("ERROR: release-note-writer should retain both direct and bundle ownership sources")
+        return 1
+    snapshot_json_path = output_root / "snapshots" / "bundle-installed.json"
+    snapshot_markdown_path = output_root / "snapshots" / "bundle-installed.md"
+    require_success(
+        "snapshot installed bundle state",
+        [
+            "scripts/skills_market.py",
+            "snapshot-installed",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--output-path",
+            repo_relative_path(snapshot_json_path),
+            "--markdown-path",
+            repo_relative_path(snapshot_markdown_path),
+        ],
+    )
+    if not snapshot_json_path.is_file() or not snapshot_markdown_path.is_file():
+        print("ERROR: snapshot-installed should write both JSON and Markdown outputs")
+        return 1
+    snapshot_payload = load_json(snapshot_json_path)
+    if snapshot_payload.get("summary", {}).get("installed_count") != 3:
+        print("ERROR: snapshot-installed should capture the full installed skill count for the bundle target")
+        return 1
+    if snapshot_payload.get("summary", {}).get("bundle_count") != 1:
+        print("ERROR: snapshot-installed should capture the installed bundle count")
+        return 1
+    if snapshot_payload.get("counts", {}).get("source_kinds", {}).get("bundle") != 3:
+        print("ERROR: snapshot-installed should summarize bundle ownership counts")
+        return 1
+    if "Installed Market Snapshot" not in snapshot_markdown_path.read_text(encoding="utf-8"):
+        print("ERROR: snapshot-installed Markdown output should contain the snapshot heading")
+        return 1
+    verify_same_dir = output_root / "verify-same"
+    require_success(
+        "verify installed state against baseline snapshot",
+        [
+            "scripts/skills_market.py",
+            "verify-installed",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--output-dir",
+            repo_relative_path(verify_same_dir),
+            "--strict",
+        ],
+    )
+    expected_verify_outputs = [
+        verify_same_dir / "current-snapshot.json",
+        verify_same_dir / "current-snapshot.md",
+        verify_same_dir / "diff.json",
+        verify_same_dir / "diff.md",
+    ]
+    if not all(path.is_file() for path in expected_verify_outputs):
+        print("ERROR: verify-installed should write current snapshot and diff artifacts")
+        return 1
+    bundle_dry_run = require_success(
+        "dry-run install skill-authoring bundle",
+        [
+            "scripts/install_skill_bundle.py",
+            "skill-authoring-starter",
+            "--market-dir",
+            repo_relative_path(market_root),
+            "--target-root",
+            repo_relative_path(output_root / "bundle-dry-run"),
+            "--dry-run",
+        ],
+    )
+    if "moyuan.harness-engineering" not in bundle_dry_run or "skipped=1" not in bundle_dry_run:
+        print("ERROR: skill-authoring bundle dry run should surface the archived-skill skip")
+        return 1
+    remove_bundle_dry_run = require_success(
+        "dry-run remove release-engineering bundle",
+        [
+            "scripts/remove_skill_bundle.py",
+            "release-engineering-starter",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--dry-run",
+        ],
+    )
+    if "Would remove skills: moyuan.issue-triage-report, moyuan.api-change-risk-review" not in remove_bundle_dry_run:
+        print("ERROR: bundle dry-run removal should plan to remove issue-triage-report and api-change-risk-review")
+        return 1
+    if "Would retain skills: moyuan.release-note-writer" not in remove_bundle_dry_run:
+        print("ERROR: bundle dry-run removal should retain release-note-writer because of direct ownership")
+        return 1
+    require_success(
+        "remove release-engineering bundle",
+        [
+            "scripts/remove_skill_bundle.py",
+            "release-engineering-starter",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+        ],
+    )
+    if bundle_report_path.exists():
+        print("ERROR: remove-bundle should delete the bundle report")
+        return 1
+    bundle_lock_after_remove = load_json(bundle_install_root / "skills.lock.json")
+    bundle_lock_after_remove_ids = {entry.get("skill_id") for entry in bundle_lock_after_remove.get("installed", [])}
+    if bundle_lock_after_remove_ids != {"moyuan.release-note-writer"}:
+        print("ERROR: remove-bundle should retain only the directly owned release-note-writer")
+        return 1
+    release_after_remove = next(
+        (entry for entry in bundle_lock_after_remove.get("installed", []) if entry.get("skill_id") == "moyuan.release-note-writer"),
+        None,
+    )
+    release_after_sources = release_after_remove.get("sources", []) if isinstance(release_after_remove, dict) else []
+    release_after_pairs = {
+        (item.get("kind"), item.get("id"))
+        for item in release_after_sources
+        if isinstance(item, dict)
+    }
+    if release_after_pairs != {("direct", "direct-install")}:
+        print("ERROR: remove-bundle should leave release-note-writer with only its direct source")
+        return 1
+    if not (bundle_install_root / "release-note-writer" / "SKILL.md").is_file():
+        print("ERROR: remove-bundle should keep the directly owned release-note-writer files")
+        return 1
+    if (bundle_install_root / "issue-triage-report").exists() or (bundle_install_root / "api-change-risk-review").exists():
+        print("ERROR: remove-bundle should delete bundle-only skills")
+        return 1
+    snapshot_after_remove_json = output_root / "snapshots" / "bundle-after-remove.json"
+    snapshot_after_remove_markdown = output_root / "snapshots" / "bundle-after-remove.md"
+    require_success(
+        "snapshot post-remove bundle state",
+        [
+            "scripts/skills_market.py",
+            "snapshot-installed",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--output-path",
+            repo_relative_path(snapshot_after_remove_json),
+            "--markdown-path",
+            repo_relative_path(snapshot_after_remove_markdown),
+        ],
+    )
+    snapshot_diff_json = output_root / "snapshots" / "bundle-installed-diff.json"
+    snapshot_diff_markdown = output_root / "snapshots" / "bundle-installed-diff.md"
+    require_success(
+        "diff installed snapshots",
+        [
+            "scripts/skills_market.py",
+            "diff-installed",
+            repo_relative_path(snapshot_json_path),
+            repo_relative_path(snapshot_after_remove_json),
+            "--output-path",
+            repo_relative_path(snapshot_diff_json),
+            "--markdown-path",
+            repo_relative_path(snapshot_diff_markdown),
+        ],
+    )
+    if not snapshot_diff_json.is_file() or not snapshot_diff_markdown.is_file():
+        print("ERROR: diff-installed should write both JSON and Markdown diff outputs")
+        return 1
+    snapshot_diff_payload = load_json(snapshot_diff_json)
+    removed_skill_ids = {
+        entry.get("skill_id")
+        for entry in snapshot_diff_payload.get("skills", {}).get("removed", [])
+        if isinstance(entry, dict)
+    }
+    if removed_skill_ids != {"moyuan.issue-triage-report", "moyuan.api-change-risk-review"}:
+        print("ERROR: snapshot diff should report the two bundle-only skills as removed")
+        return 1
+    changed_skill_ids = {
+        entry.get("skill_id")
+        for entry in snapshot_diff_payload.get("skills", {}).get("changed", [])
+        if isinstance(entry, dict)
+    }
+    if "moyuan.release-note-writer" not in changed_skill_ids:
+        print("ERROR: snapshot diff should report release-note-writer source changes after bundle removal")
+        return 1
+    removed_bundle_ids = {
+        entry.get("bundle_id")
+        for entry in snapshot_diff_payload.get("bundles", {}).get("removed", [])
+        if isinstance(entry, dict)
+    }
+    if removed_bundle_ids != {"release-engineering-starter"}:
+        print("ERROR: snapshot diff should report the removed release-engineering bundle")
+        return 1
+    if "Installed Market Snapshot Diff" not in snapshot_diff_markdown.read_text(encoding="utf-8"):
+        print("ERROR: snapshot diff Markdown output should contain the diff heading")
+        return 1
+    verify_drift = run_python(
+        [
+            "scripts/skills_market.py",
+            "verify-installed",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--json",
+            "--strict",
+        ]
+    )
+    if verify_drift.returncode == 0:
+        print("ERROR: verify-installed should fail in strict mode when the live state drifts from baseline")
+        if verify_drift.stdout.strip():
+            print(verify_drift.stdout.strip())
+        if verify_drift.stderr.strip():
+            print(verify_drift.stderr.strip())
+        return 1
+    verify_drift_payload = json.loads(verify_drift.stdout)
+    if verify_drift_payload.get("matches") is not False:
+        print("ERROR: verify-installed drift payload should report matches=false")
+        return 1
+    verify_removed_skill_ids = {
+        entry.get("skill_id")
+        for entry in verify_drift_payload.get("diff", {}).get("skills", {}).get("removed", [])
+        if isinstance(entry, dict)
+    }
+    if verify_removed_skill_ids != {"moyuan.issue-triage-report", "moyuan.api-change-risk-review"}:
+        print("ERROR: verify-installed should surface the removed bundle-only skills")
+        return 1
+    promotion_diff_json = output_root / "snapshots" / "bundle-baseline-transition.json"
+    promotion_diff_markdown = output_root / "snapshots" / "bundle-baseline-transition.md"
+    require_success(
+        "promote installed baseline",
+        [
+            "scripts/skills_market.py",
+            "promote-installed-baseline",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--markdown-path",
+            repo_relative_path(snapshot_markdown_path),
+            "--diff-output-path",
+            repo_relative_path(promotion_diff_json),
+            "--diff-markdown-path",
+            repo_relative_path(promotion_diff_markdown),
+        ],
+    )
+    if not promotion_diff_json.is_file() or not promotion_diff_markdown.is_file():
+        print("ERROR: promote-installed-baseline should write transition diff artifacts when replacing a baseline")
+        return 1
+    promoted_baseline = load_json(snapshot_json_path)
+    if promoted_baseline.get("summary", {}).get("installed_count") != 1:
+        print("ERROR: promoted baseline should capture the current post-remove installed skill count")
+        return 1
+    if promoted_baseline.get("summary", {}).get("bundle_count") != 0:
+        print("ERROR: promoted baseline should capture that no bundles remain after bundle removal")
+        return 1
+    promotion_diff_payload = load_json(promotion_diff_json)
+    promotion_removed_skill_ids = {
+        entry.get("skill_id")
+        for entry in promotion_diff_payload.get("skills", {}).get("removed", [])
+        if isinstance(entry, dict)
+    }
+    if promotion_removed_skill_ids != {"moyuan.issue-triage-report", "moyuan.api-change-risk-review"}:
+        print("ERROR: promoted baseline transition diff should preserve the removed bundle-only skills")
+        return 1
+    require_success(
+        "verify installed state against promoted baseline",
+        [
+            "scripts/skills_market.py",
+            "verify-installed",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--strict",
+        ],
+    )
+
+    doctor_bad_root.mkdir(parents=True, exist_ok=True)
+    (doctor_bad_root / "orphan-skill").mkdir(parents=True, exist_ok=True)
+    stale_report_dir = doctor_bad_root / "bundle-reports"
+    stale_report_dir.mkdir(parents=True, exist_ok=True)
+    stale_report_path = stale_report_dir / "stale-bundle.json"
+    stale_report_path.write_text(
+        json.dumps(
+            {
+                "bundle_id": "stale-bundle",
+                "title": "Stale Bundle",
+                "results": [
+                    {
+                        "skill_id": "moyuan.missing-skill",
+                        "status": "installed",
+                    }
+                ],
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    doctor_bad = run_python(
+        [
+            "scripts/check_installed_market_state.py",
+            "--target-root",
+            repo_relative_path(doctor_bad_root),
+            "--strict",
+        ]
+    )
+    if doctor_bad.returncode == 0 or "orphan installed directory" not in doctor_bad.stdout:
+        print("ERROR: doctor-installed should fail in strict mode when orphan directories exist")
+        if doctor_bad.stdout.strip():
+            print(doctor_bad.stdout.strip())
+        if doctor_bad.stderr.strip():
+            print(doctor_bad.stderr.strip())
+        return 1
+    if "stale-bundle" not in doctor_bad.stdout:
+        print("ERROR: doctor-installed should flag stale bundle reports")
+        if doctor_bad.stdout.strip():
+            print(doctor_bad.stdout.strip())
+        return 1
+
+    repair_dry_run = require_success(
+        "repair installed state dry-run",
+        [
+            "scripts/skills_market.py",
+            "repair-installed",
+            "--target-root",
+            repo_relative_path(doctor_bad_root),
+            "--dry-run",
+        ],
+    )
+    if "Would remove orphan directories" not in repair_dry_run or "Would remove stale bundle reports" not in repair_dry_run:
+        print("ERROR: repair-installed dry-run should describe both orphan directories and stale bundle reports")
+        return 1
+
+    require_success(
+        "repair installed state",
+        [
+            "scripts/skills_market.py",
+            "repair-installed",
+            "--target-root",
+            repo_relative_path(doctor_bad_root),
+        ],
+    )
+    if (doctor_bad_root / "orphan-skill").exists():
+        print("ERROR: repair-installed should delete orphan install directories")
+        return 1
+    if stale_report_path.exists():
+        print("ERROR: repair-installed should delete stale bundle reports")
+        return 1
+    doctor_repaired = run_python(
+        [
+            "scripts/check_installed_market_state.py",
+            "--target-root",
+            repo_relative_path(doctor_bad_root),
+            "--strict",
+        ]
+    )
+    if doctor_repaired.returncode != 0:
+        print("ERROR: doctor-installed should pass after repair-installed resolves low-risk drift")
+        if doctor_repaired.stdout.strip():
+            print(doctor_repaired.stdout.strip())
+        if doctor_repaired.stderr.strip():
+            print(doctor_repaired.stderr.strip())
+        return 1
+
+    registry_index = load_json(output_root / "registry" / "registry.json")
+    if registry_index.get("public", {}).get("federation_feed") != "federation/public-feed.json":
+        print("ERROR: hosted registry output should publish the public federation feed path")
+        return 1
+
+    index_payload = load_json(market_root / "index.json")
+    stable_count = index_payload["channels"]["stable"]["count"]
+    beta_count = index_payload["channels"]["beta"]["count"]
+    if stable_count < 1 or beta_count < 1:
+        print("ERROR: market index should expose both stable and beta channels in smoke test")
+        return 1
+
+    print("Market pipeline smoke test passed.")
+    print(f"Stable channel count: {stable_count}")
+    print(f"Beta channel count: {beta_count}")
+    print(f"Artifacts root: {output_root}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

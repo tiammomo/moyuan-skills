@@ -1,0 +1,24 @@
+{
+  "id": "skill-authoring-starter",
+  "title": "Skill Authoring Starter",
+  "summary": "A teaching bundle for authors learning structure, progressive disclosure, and harness-aware evolution of a skill repo.",
+  "description": "This bundle keeps the authoring path together: start with build-skills, review the older progressive disclosure reference, and inspect the archived harness-engineering skill for historical context.",
+  "status": "published",
+  "channels": ["stable", "beta"],
+  "skills": [
+    "moyuan.build-skills",
+    "moyuan.progressive-disclosure",
+    "moyuan.harness-engineering"
+  ],
+  "use_cases": [
+    "skill author onboarding",
+    "teaching repo walkthroughs",
+    "historical architecture study"
+  ],
+  "keywords": [
+    "skills",
+    "teaching",
+    "harness",
+    "progressive-disclosure"
+  ]
+}

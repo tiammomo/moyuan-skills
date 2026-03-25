@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.progressive-disclosure",
+  "publisher": "moyuan",
+  "name": "progressive-disclosure",
+  "title": "Progressive Disclosure",
+  "version": "0.1.0",
+  "channel": "stable",
+  "summary": "Teach how to split knowledge across SKILL.md, references, scripts, and assets for cleaner routing.",
+  "description": "A teaching skill that shows how to reduce prompt bloat, narrow routing, and move the right content into the right layer of a reusable skill.",
+  "categories": ["teaching", "skill-architecture"],
+  "tags": ["progressive-disclosure", "routing", "references", "skills"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": false
+  },
+  "quality": {
+    "checker": "python skills/progressive-disclosure/scripts/check_progressive_disclosure.py",
+    "eval": "python scripts/run_eval_harness.py --skills release-note-writer",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "deprecated",
+    "replacement_skill_id": "moyuan.build-skills",
+    "sunset_at": "2026-06-30",
+    "notes": "Progressive disclosure is still kept for study, but the main teaching path has moved into build-skills and the teaching docs."
+  },
+  "artifacts": {
+    "source_dir": "skills/progressive-disclosure",
+    "entrypoint": "skills/progressive-disclosure/SKILL.md",
+    "docs": "docs/progressive-disclosure.md"
+  },
+  "search": {
+    "keywords": ["context splitting", "routing", "reference design", "progressive loading"],
+    "related_skills": ["build-skills", "harness-engineering"]
+  },
+  "distribution": {
+    "capabilities": ["progressive-disclosure", "skill-router-design", "instruction-layering"],
+    "starter_bundle_ids": ["skill-authoring-starter"]
+  }
+}

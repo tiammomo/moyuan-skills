@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.issue-triage-report",
+  "publisher": "moyuan",
+  "name": "issue-triage-report",
+  "title": "Issue Triage Report",
+  "version": "0.1.0",
+  "channel": "stable",
+  "summary": "Generate weekly triage summaries from CSV issue exports for engineering and product operations workflows.",
+  "description": "A practical business skill that drafts and lints structured issue triage reports from tracker exports, grouping urgent issues, blockers, follow-ups, and backlog watch items.",
+  "categories": ["operations", "reporting"],
+  "tags": ["issues", "triage", "csv", "report"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": "python skills/issue-triage-report/scripts/check_issue_triage_report.py",
+    "eval": "python scripts/run_eval_harness.py --skills issue-triage-report",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Active reference skill for support and operations reporting."
+  },
+  "artifacts": {
+    "source_dir": "skills/issue-triage-report",
+    "entrypoint": "skills/issue-triage-report/SKILL.md",
+    "docs": "docs/issue-triage-report.md"
+  },
+  "search": {
+    "keywords": ["issue triage", "weekly report", "csv issues", "ops review"],
+    "related_skills": ["release-note-writer", "incident-postmortem-writer"]
+  },
+  "distribution": {
+    "capabilities": ["issue-triage", "bug-clustering", "ops-reporting"],
+    "starter_bundle_ids": ["release-engineering-starter", "incident-ops-starter"]
+  }
+}

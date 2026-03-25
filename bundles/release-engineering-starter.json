@@ -1,0 +1,24 @@
+{
+  "id": "release-engineering-starter",
+  "title": "Release Engineering Starter",
+  "summary": "A starter bundle for teams that need to review changes, triage issues, and publish release-facing communication.",
+  "description": "This bundle combines release-note generation, issue triage, and API change review so a team can move from noisy change input to a governed release package.",
+  "status": "published",
+  "channels": ["stable", "beta"],
+  "skills": [
+    "moyuan.release-note-writer",
+    "moyuan.issue-triage-report",
+    "moyuan.api-change-risk-review"
+  ],
+  "use_cases": [
+    "release planning",
+    "api rollout review",
+    "change communication"
+  ],
+  "keywords": [
+    "release",
+    "triage",
+    "api",
+    "changelog"
+  ]
+}

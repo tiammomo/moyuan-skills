@@ -151,6 +151,8 @@
 - [docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
 - [docs/teaching/14-first-hour-onboarding.md](./docs/teaching/14-first-hour-onboarding.md)
 - [docs/teaching/15-newcomer-faq.md](./docs/teaching/15-newcomer-faq.md)
+- [docs/teaching/16-skills-market-evolution.md](./docs/teaching/16-skills-market-evolution.md)
+- [docs/teaching/17-market-registry-and-federation.md](./docs/teaching/17-market-registry-and-federation.md)
 
 ## 仓库结构
 
@@ -162,6 +164,7 @@
 |  |- eval-harness/
 |  |- lint-fixtures/
 |  `- harness-prototypes/
+|- schemas/
 |- scripts/
 |- skills/
 |  |- build-skills/
@@ -203,6 +206,148 @@
 - 越往后，真正重要的不只是 prompt 或 reference，而是 trigger、tool contract、state、memory、eval、safety、automation 这些外围 harness
 - 因此，做 skill 的同时就应该开始思考：哪些东西属于 skill，哪些东西应该上移到 harness
 
+## Skills Market 方向
+
+这个项目接下来的核心演进目标，是从“教学型 skills 实验室”继续走向“skills market 参考实现”。
+
+目标不是只继续堆 skill，而是同时补齐：
+
+- skill 包如何标准化
+- skill 如何被搜索、筛选、安装、更新
+- quality / trust / review 信号如何进入 market
+- public market 和 private market 如何并存
+
+对应草案见：
+
+- [docs/market-spec.md](./docs/market-spec.md)
+- [docs/market-governance.md](./docs/market-governance.md)
+- [docs/market-registry.md](./docs/market-registry.md)
+- [docs/publisher-guide.md](./docs/publisher-guide.md)
+- [docs/consumer-guide.md](./docs/consumer-guide.md)
+
+当前本地已经跑通的最小 market 执行闭环是：
+
+```text
+python scripts/skills_market.py smoke
+```
+
+## Skills Market Client Workflow
+
+如果你想从“搜索 skill”一路走到“本地安装、查看、更新、移除”，当前最小可运行链路是：
+
+```text
+python scripts/skills_market.py package release-note-writer
+python scripts/skills_market.py provenance-check dist/market/install/release-note-writer-0.1.0.json
+python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --target-root dist/installed-skills
+python scripts/skills_market.py list-installed --target-root dist/installed-skills
+python scripts/skills_market.py update moyuan.release-note-writer --index dist/market/channels/stable.json --target-root dist/installed-skills --dry-run
+python scripts/skills_market.py remove moyuan.release-note-writer --target-root dist/installed-skills
+```
+
+这条链路补齐了当前本地 market client 的最小生命周期：
+
+- `install` 会校验 `checksum`、`provenance` 和 `lifecycle`
+- `list-installed` 会读取 `skills.lock.json`
+- `update` 会从 channel index 解析最新 install spec
+- `remove` 会删除安装目录并同步更新 lock
+
+## Skills Market Bundle Workflow
+
+如果你想一次性拉下一组 starter bundle，而不是逐个安装 skill，当前本地 market 已经支持：
+
+```text
+python scripts/skills_market.py list-bundles
+python scripts/skills_market.py install-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles
+python scripts/skills_market.py install-bundle skill-authoring-starter --market-dir dist/market --target-root dist/installed-bundles --dry-run
+```
+
+这条链路补的是 bundle 级消费能力：
+
+- `list-bundles` 负责发现一组适合一起安装的能力包
+- `install-bundle` 会按 bundle 内 skill 的 channel 解析 install spec
+- `archived` 或 `blocked` 的 skill 会被清晰跳过，而不是让整组安装直接崩掉
+- 实际安装后会在目标目录下生成 bundle report，方便回看结果
+
+## Skills Market Bundle State Workflow
+
+如果你已经装过 starter bundle，当前也可以继续查看和移除它：
+
+```text
+python scripts/skills_market.py list-installed-bundles --target-root dist/installed-bundles
+python scripts/skills_market.py remove-bundle release-engineering-starter --target-root dist/installed-bundles --dry-run
+python scripts/skills_market.py remove-bundle release-engineering-starter --target-root dist/installed-bundles
+```
+
+这条链路补的是 bundle 安装后的状态管理：
+
+- `install` 会把 direct install 和 bundle install 的来源一起写进 `skills.lock.json`
+- `list-installed-bundles` 会把 bundle report 和当前 lock 状态对齐后展示
+- `remove-bundle` 会只删掉真正只属于这个 bundle 的 skill
+- 如果某个 skill 同时属于 direct install 或别的 bundle，它会被保留，只移除当前 bundle 的 ownership
+
+## Skills Market Bundle Update Workflow
+
+如果你已经装过一个 starter bundle，当前也可以按最新 market 状态把它重新对齐：
+
+```text
+python scripts/skills_market.py update-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles --dry-run
+python scripts/skills_market.py update-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles
+```
+
+这条链路补的是 bundle 的“升级和修复”能力：
+
+- 会重新解析 bundle 当前应该包含哪些 skill
+- 会按最新 channel index 刷新这些 skill 的 install spec
+- 如果某个 skill 已经不再属于 bundle，或者现在变成 `archived / blocked`，会在 reconcile 阶段移除当前 bundle 的 ownership
+- 如果某个 skill 还有 direct install 或别的 bundle 作为来源，它仍然会被保留
+
+## Skills Market Installed-State Doctor
+
+如果你想确认本地安装态没有漂移，当前也可以直接跑安装态体检：
+
+```text
+python scripts/skills_market.py doctor-installed --target-root dist/installed-skills
+python scripts/skills_market.py doctor-installed --target-root dist/installed-skills --strict
+python scripts/skills_market.py repair-installed --target-root dist/installed-skills --dry-run
+python scripts/skills_market.py repair-installed --target-root dist/installed-skills
+python scripts/skills_market.py snapshot-installed --target-root dist/installed-skills --output-path dist/installed-skills/snapshots/latest.json --markdown-path dist/installed-skills/snapshots/latest.md
+python scripts/skills_market.py diff-installed dist/installed-skills/snapshots/before.json dist/installed-skills/snapshots/after.json --output-path dist/installed-skills/snapshots/diff.json --markdown-path dist/installed-skills/snapshots/diff.md
+python scripts/skills_market.py verify-installed dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --output-dir dist/installed-skills/verification --strict
+python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md
+```
+
+这条链路补的是“本地 market client 能不能自查”：
+
+- 会检查 `skills.lock.json`、bundle report、安装目录三者是否一致
+- 会检查 lock 里的 `install_spec`、`provenance_path` 和 installed entrypoint 是否仍然有效
+- 会检查 bundle ownership 是否指向真实存在的 bundle report
+- 会识别未被 lock 追踪的 orphan 安装目录
+- 会保守修复 orphan 安装目录和已经失效的 bundle report
+- 会导出一份 installed-state snapshot，方便归档、review 和后续 diff
+- 会对比两次 snapshot，沉淀出 skill / bundle 的变化报告
+- 会拿当前安装态直接对比基线 snapshot，把 drift 变成可失败的校验门禁
+- 会在 drift 被接受后，把当前 live state 提升成新的 baseline，并保留 transition diff
+
+如果你想直接生成静态 market catalog，可以跑：
+
+```text
+python scripts/skills_market.py catalog
+python scripts/skills_market.py recommend
+python scripts/skills_market.py federation-feed
+python scripts/skills_market.py registry
+```
+
+如果你想验证 publisher / org policy 并生成 org/private market：
+
+```text
+python scripts/skills_market.py governance-check
+python scripts/skills_market.py provenance-check dist/market/install/release-note-writer-0.1.0.json
+python scripts/skills_market.py org-index governance/orgs/moyuan-internal.json
+python scripts/skills_market.py catalog --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py recommend --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py federation-feed --org-policy governance/orgs/moyuan-internal.json
+```
+
 这也是本仓库同时保留 `build-skills`、`progressive-disclosure` 和 `harness-engineering` 三个教学入口的原因。
 
 ## 当前完善结果
@@ -229,3 +374,4 @@
 - 再补更重的集成型业务案例
 - 继续扩 baseline eval 与 regression 报告
 - 把单条 runtime blueprint 推向多 skill orchestration 和更强的 state / audit 管理
+- 把 skill 包、registry、installer 和 trust 信号收敛成一套可运行的 skills market

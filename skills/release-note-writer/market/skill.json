@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.release-note-writer",
+  "publisher": "moyuan",
+  "name": "release-note-writer",
+  "title": "Release Note Writer",
+  "version": "0.1.0",
+  "channel": "stable",
+  "summary": "Draft and lint release notes from structured change input for product and release engineering teams.",
+  "description": "A business skill that turns structured release data into publishable release notes with deterministic linting, making it a strong reference skill for packaging and local market install flows.",
+  "categories": ["release-engineering", "docs"],
+  "tags": ["release-notes", "changelog", "writer", "docs"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": "python skills/release-note-writer/scripts/check_release_note_writer.py",
+    "eval": "python scripts/run_eval_harness.py --skills release-note-writer",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Primary stable business skill for release communication workflows."
+  },
+  "artifacts": {
+    "source_dir": "skills/release-note-writer",
+    "entrypoint": "skills/release-note-writer/SKILL.md",
+    "docs": "docs/release-note-writer.md"
+  },
+  "search": {
+    "keywords": ["release notes", "changelog", "publication draft", "release docs"],
+    "related_skills": ["issue-triage-report", "api-change-risk-review"]
+  },
+  "distribution": {
+    "capabilities": ["release-drafting", "change-summarization", "documentation-publishing"],
+    "starter_bundle_ids": ["release-engineering-starter", "incident-ops-starter"]
+  }
+}

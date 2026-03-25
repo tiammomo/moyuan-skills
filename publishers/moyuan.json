@@ -1,0 +1,15 @@
+{
+  "id": "moyuan",
+  "display_name": "Moyuan Skills Team",
+  "verified": true,
+  "trust_level": "official",
+  "contact_email": "pearfl@qq.com",
+  "homepage": "https://github.com/tiammomo/moyuan-skills",
+  "namespaces": ["moyuan"],
+  "verification": {
+    "issued_by": "moyuan-market-review-board",
+    "issued_at": "2026-03-26",
+    "policy_url": "https://github.com/tiammomo/moyuan-skills/blob/master/docs/market-governance.md",
+    "method": "manual-review-plus-ci"
+  }
+}

@@ -47,6 +47,12 @@ jobs:
       - name: Check harness prototypes
         run: python scripts/check_harness_prototypes.py
 
+      - name: Check market governance
+        run: python scripts/check_market_governance.py
+
+      - name: Run market pipeline smoke
+        run: python scripts/skills_market.py smoke
+
       - name: Run harness runtime example
         run: python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml
 

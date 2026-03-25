@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.api-change-risk-review",
+  "publisher": "moyuan",
+  "name": "api-change-risk-review",
+  "title": "API Change Risk Review",
+  "version": "0.1.0",
+  "channel": "beta",
+  "summary": "Compare before and after schema snapshots to draft API compatibility risk reviews and rollout checks.",
+  "description": "A tool-heavy business skill that computes schema diffs, drafts compatibility reviews, and lints the result, making it a strong reference for multi-step market-ready skills.",
+  "categories": ["platform", "api-governance"],
+  "tags": ["api", "schema", "compatibility", "risk-review"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": "python skills/api-change-risk-review/scripts/check_api_change_risk_review.py",
+    "eval": "python scripts/run_eval_harness.py --skills api-change-risk-review",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Active beta skill for API review and rollout-risk analysis."
+  },
+  "artifacts": {
+    "source_dir": "skills/api-change-risk-review",
+    "entrypoint": "skills/api-change-risk-review/SKILL.md",
+    "docs": "docs/api-change-risk-review.md"
+  },
+  "search": {
+    "keywords": ["api review", "schema diff", "compatibility", "rollout risk"],
+    "related_skills": ["release-note-writer", "incident-postmortem-writer"]
+  },
+  "distribution": {
+    "capabilities": ["api-diff-review", "compatibility-analysis", "rollout-risk-assessment"],
+    "starter_bundle_ids": ["release-engineering-starter"]
+  }
+}

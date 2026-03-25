@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/skill-channel.schema.json",
+  "title": "Skill Channel Index",
+  "type": "object",
+  "required": ["channel", "generated_at", "skills"],
+  "properties": {
+    "channel": { "type": "string", "enum": ["stable", "beta", "internal"] },
+    "generated_at": { "type": "string", "minLength": 10 },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "title",
+          "version",
+          "summary",
+          "categories",
+          "tags",
+          "install_spec",
+          "review_status",
+          "lifecycle_status"
+        ],
+        "properties": {
+          "id": { "type": "string", "minLength": 3 },
+          "name": { "type": "string", "minLength": 2 },
+          "title": { "type": "string", "minLength": 3 },
+          "version": { "type": "string", "minLength": 3 },
+          "summary": { "type": "string", "minLength": 10 },
+          "categories": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 2 }
+          },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 2 }
+          },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 3 }
+          },
+          "starter_bundle_ids": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 3 }
+          },
+          "install_spec": { "type": "string", "minLength": 5 },
+          "provenance_path": { "type": "string", "minLength": 5 },
+          "review_status": { "type": "string", "enum": ["draft", "reviewed", "deprecated"] },
+          "lifecycle_status": { "type": "string", "enum": ["active", "deprecated", "blocked", "archived"] },
+          "replacement_skill_id": { "type": "string" }
+        }
+      }
+    }
+  }
+}

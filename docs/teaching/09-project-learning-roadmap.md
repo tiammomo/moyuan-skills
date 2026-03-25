@@ -139,4 +139,5 @@
 - 想开始实操写 skill：进入 [03-build-your-first-skill.md](./03-build-your-first-skill.md)
 - 想理解案例梯度：进入 [07-case-gradient.md](./07-case-gradient.md)
 - 想理解系统层：进入 [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
+- 想理解项目为什么继续往 market 演进：进入 [16-skills-market-evolution.md](./16-skills-market-evolution.md)
 - 想直接按角色进入：进入 [10-learner-path.md](./10-learner-path.md)、[11-skill-author-path.md](./11-skill-author-path.md)、[12-maintainer-path.md](./12-maintainer-path.md) 或 [13-harness-builder-path.md](./13-harness-builder-path.md)

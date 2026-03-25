@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.harness-engineering",
+  "publisher": "moyuan",
+  "name": "harness-engineering",
+  "title": "Harness Engineering",
+  "version": "0.1.0",
+  "channel": "beta",
+  "summary": "Teach how skills evolve into orchestration, eval, safety, automation, and runtime layers.",
+  "description": "A teaching skill for teams that need to move beyond SKILL.md and reason about tool contracts, eval loops, runtime blueprints, and operating-system-style agent layers.",
+  "categories": ["teaching", "systems"],
+  "tags": ["harness", "eval", "automation", "tool-contract"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": false
+  },
+  "quality": {
+    "checker": "python skills/harness-engineering/scripts/check_harness_engineering.py",
+    "eval": "python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "archived",
+    "replacement_skill_id": "",
+    "sunset_at": "2026-03-26",
+    "notes": "Historical teaching reference kept for context after the runtime and prototype docs became the main harness path."
+  },
+  "artifacts": {
+    "source_dir": "skills/harness-engineering",
+    "entrypoint": "skills/harness-engineering/SKILL.md",
+    "docs": "docs/harness-engineering.md"
+  },
+  "search": {
+    "keywords": ["harness engineering", "tool contract", "runtime", "eval"],
+    "related_skills": ["build-skills", "progressive-disclosure"]
+  },
+  "distribution": {
+    "capabilities": ["harness-design", "eval-orchestration", "runtime-blueprinting"],
+    "starter_bundle_ids": ["skill-authoring-starter"]
+  }
+}

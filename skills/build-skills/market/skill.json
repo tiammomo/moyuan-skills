@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.build-skills",
+  "publisher": "moyuan",
+  "name": "build-skills",
+  "title": "Build Skills",
+  "version": "0.1.0",
+  "channel": "stable",
+  "summary": "Teach how to design, scaffold, validate, and evolve reusable skills inside the Moyuan workflow.",
+  "description": "A teaching skill that helps authors turn a narrow capability into a reusable, testable skill with clear structure, routing, and validation expectations.",
+  "categories": ["teaching", "skill-authoring"],
+  "tags": ["skills", "authoring", "teaching", "structure"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": false
+  },
+  "quality": {
+    "checker": "python skills/build-skills/scripts/check_build_skills.py",
+    "eval": "python scripts/run_eval_harness.py --skills release-note-writer",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Primary teaching skill for authors learning how to structure market-ready skills."
+  },
+  "artifacts": {
+    "source_dir": "skills/build-skills",
+    "entrypoint": "skills/build-skills/SKILL.md",
+    "docs": "docs/skill-authoring.md"
+  },
+  "search": {
+    "keywords": ["skill design", "skill scaffolding", "authoring", "skill validation"],
+    "related_skills": ["progressive-disclosure", "harness-engineering"]
+  },
+  "distribution": {
+    "capabilities": ["skill-authoring", "skill-structure-design", "repo-scaffolding"],
+    "starter_bundle_ids": ["skill-authoring-starter"]
+  }
+}
