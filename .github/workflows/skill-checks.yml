@@ -3,6 +3,7 @@ name: Skill Checks
 on:
   push:
     branches:
+      - master
       - main
       - "codex/**"
   pull_request:
@@ -24,6 +25,8 @@ jobs:
             command: python skills/release-note-writer/scripts/check_release_note_writer.py
           - name: issue-triage-report
             command: python skills/issue-triage-report/scripts/check_issue_triage_report.py
+          - name: api-change-risk-review
+            command: python skills/api-change-risk-review/scripts/check_api_change_risk_review.py
           - name: incident-postmortem-writer
             command: python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py
     steps:
@@ -37,6 +40,15 @@ jobs:
 
       - name: Validate progressive skill structure
         run: python scripts/check_progressive_skills.py
+
+      - name: Check documentation links
+        run: python scripts/check_docs_links.py
+
+      - name: Check harness prototypes
+        run: python scripts/check_harness_prototypes.py
+
+      - name: Run harness runtime example
+        run: python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml
 
       - name: Run ${{ matrix.name }} checks
         run: ${{ matrix.command }}
@@ -54,4 +66,4 @@ jobs:
           python-version: "3.11"
 
       - name: Run eval harness example
-        run: python scripts/run_eval_harness.py
+        run: python scripts/run_eval_harness.py --baseline examples/eval-harness/baseline.json

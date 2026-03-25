@@ -1,0 +1,45 @@
+---
+name: your-skill-name
+description: Briefly explain what the skill does and when it should trigger. Use when Codex needs to solve a narrow task family with repeatable routing and safety guidance.
+---
+
+# Your Skill Title
+
+Use this skill to solve one narrow task family well.
+
+## Safety First
+
+- State the highest-risk failure mode first.
+- State what the skill must not invent, publish, or modify without review.
+- Keep irreversible or externally visible actions behind explicit confirmation.
+
+## Task Router
+
+- Do the main happy-path task:
+  Read the one reference or run the one script that best matches the request.
+- Review, lint, or verify the output:
+  Run the smallest local checker or open the review checklist.
+
+## Progressive Loading
+
+- Stay in this file for routing, safety rules, and command choice.
+- Read only the single `references/*.md` file that matches the current task.
+- Load only the needed script when you have to execute or patch implementation logic.
+- Do not preload every resource just because the skill triggered.
+
+## Default Workflow
+
+1. Confirm the exact task boundary and output format.
+2. Route to the smallest useful resource.
+3. Generate or edit the output.
+4. Run the local check or review step.
+5. Keep a human review point when the output is externally visible.
+
+## Reference Files
+
+- [references/topic-guide.md](./references/topic-guide.md): explain the one topic that should be loaded on demand.
+
+## Bundled Resources
+
+- `scripts/check_your_skill.py`: local smoke checker.
+- `assets/output-template.md`: reusable output scaffold.

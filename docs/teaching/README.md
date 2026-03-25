@@ -18,6 +18,11 @@
 6. [06-exercises-and-capstone.md](./06-exercises-and-capstone.md)
 7. [07-case-gradient.md](./07-case-gradient.md)
 8. [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
+9. [09-project-learning-roadmap.md](./09-project-learning-roadmap.md)
+10. [10-learner-path.md](./10-learner-path.md)
+11. [11-skill-author-path.md](./11-skill-author-path.md)
+12. [12-maintainer-path.md](./12-maintainer-path.md)
+13. [13-harness-builder-path.md](./13-harness-builder-path.md)
 
 ## 这个目录解决什么问题
 
@@ -45,6 +50,23 @@
 - 新成员 onboarding 路径
 - 后续课程和案例的扩展结构
 
+### 对项目 owner / curriculum 设计者
+
+帮助你继续判断：
+
+- 这个仓库现在已经补到了哪一层
+- 下一阶段最值得补的是课程、案例、lint、eval 还是 harness
+- 如何把学习路径和工程演进路线放到同一张图里
+
+## 角色化入口
+
+如果你已经知道自己的目标，比按编号顺序读更快的入口是：
+
+- 初学者：从 [10-learner-path.md](./10-learner-path.md) 开始
+- Skill 作者：从 [11-skill-author-path.md](./11-skill-author-path.md) 开始
+- 维护者：从 [12-maintainer-path.md](./12-maintainer-path.md) 开始
+- Harness 设计者：从 [13-harness-builder-path.md](./13-harness-builder-path.md) 开始
+
 ## 学习完成后的预期能力
 
 完成这一组内容后，应该至少能做到：
@@ -56,3 +78,4 @@
 - 按练习与 capstone 路径完成一次从 skill 到 harness 的完整设计演练
 - 理解真实业务案例怎样形成案例梯度
 - 看懂 eval harness、tool contract、safety gate、automation 原型之间的关系
+- 能把整个项目按“学习层、案例层、校验层、系统层”四个维度讲清楚

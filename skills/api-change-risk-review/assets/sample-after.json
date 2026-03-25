@@ -1,0 +1,42 @@
+{
+  "api_name": "Billing API",
+  "version": "2.0.0",
+  "endpoints": [
+    {
+      "path": "/v1/invoices/{invoice_id}",
+      "method": "GET",
+      "summary": "Fetch a single invoice",
+      "auth": "service",
+      "request": {
+        "fields": [
+          {"name": "invoice_id", "type": "string", "required": true},
+          {"name": "include_items", "type": "boolean", "required": false},
+          {"name": "region", "type": "string", "required": true}
+        ]
+      },
+      "response": {
+        "fields": [
+          {"name": "invoice_id", "type": "string", "required": true},
+          {"name": "state", "type": "string", "required": true},
+          {"name": "currency", "type": "string", "required": true}
+        ]
+      }
+    },
+    {
+      "path": "/v1/invoices/export",
+      "method": "POST",
+      "summary": "Export invoice data",
+      "auth": "service",
+      "request": {
+        "fields": [
+          {"name": "date_range", "type": "string", "required": true}
+        ]
+      },
+      "response": {
+        "fields": [
+          {"name": "job_id", "type": "string", "required": true}
+        ]
+      }
+    }
+  ]
+}

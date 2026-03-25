@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SKILLS_DIR = ROOT / "skills"
 DOCS_DIR = ROOT / "docs"
 TEACHING_DIR = DOCS_DIR / "teaching"
+LINT_FIXTURES_DIR = ROOT / "examples" / "lint-fixtures"
 FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 SECONDARY_HEADING_RE = re.compile(r"^## (.+?)\s*$")
 CONTENTS_LINK_RE = re.compile(r"\[[^\]]+\]\(#([^)]+)\)")
@@ -50,7 +51,20 @@ REQUIRED_TEACHING_FILES = (
     "06-exercises-and-capstone.md",
     "07-case-gradient.md",
     "08-evals-and-prototypes.md",
+    "09-project-learning-roadmap.md",
+    "10-learner-path.md",
+    "11-skill-author-path.md",
+    "12-maintainer-path.md",
+    "13-harness-builder-path.md",
 )
+REQUIRED_LINT_FIXTURES = (
+    "README.md",
+    "bad-router.md",
+    "bad-setup-heading.md",
+    "bad-openai.yaml",
+)
+MIN_DESCRIPTION_LENGTH = 120
+MAX_DESCRIPTION_LENGTH = 420
 
 
 def parse_frontmatter(text: str) -> dict[str, str] | None:
@@ -463,6 +477,19 @@ def validate_teaching_docs() -> list[str]:
     return errors
 
 
+def validate_lint_fixtures() -> list[str]:
+    errors: list[str] = []
+    if not LINT_FIXTURES_DIR.is_dir():
+        return ["examples: missing examples/lint-fixtures directory"]
+
+    for filename in REQUIRED_LINT_FIXTURES:
+        path = LINT_FIXTURES_DIR / filename
+        if not path.is_file():
+            errors.append(f"examples: missing lint fixture '{filename}'")
+
+    return errors
+
+
 def validate_skill(skill_dir: Path) -> list[str]:
     errors: list[str] = []
     skill_md = skill_dir / "SKILL.md"
@@ -487,8 +514,14 @@ def validate_skill(skill_dir: Path) -> list[str]:
         if frontmatter.get("name") != skill_dir.name:
             errors.append(f"{skill_dir.name}: frontmatter name must match directory name")
         description = frontmatter.get("description", "")
+        if not MIN_DESCRIPTION_LENGTH <= len(description) <= MAX_DESCRIPTION_LENGTH:
+            errors.append(
+                f"{skill_dir.name}: description should be {MIN_DESCRIPTION_LENGTH}-{MAX_DESCRIPTION_LENGTH} characters (got {len(description)})"
+            )
         if "Use when" not in description:
             errors.append(f"{skill_dir.name}: description should include an explicit 'Use when ...' trigger clause")
+        if "Codex needs to" not in description and "Codex needs" not in description:
+            errors.append(f"{skill_dir.name}: description should describe what Codex needs to do, not only the artifact name")
 
     for heading in REQUIRED_HEADINGS:
         if heading not in text:
@@ -540,6 +573,7 @@ def main() -> int:
     for skill_dir in skill_dirs:
         all_errors.extend(validate_skill(skill_dir))
     all_errors.extend(validate_teaching_docs())
+    all_errors.extend(validate_lint_fixtures())
 
     if all_errors:
         for error in all_errors:

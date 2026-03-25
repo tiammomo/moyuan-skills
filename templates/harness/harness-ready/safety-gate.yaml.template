@@ -1,0 +1,16 @@
+gate:
+  id: "public-review"
+  applies_to:
+    skills:
+      - "skill-name"
+    actions:
+      - "publish"
+  required_checks:
+    - "lint passes"
+    - "review note exists"
+  blockers:
+    - "unresolved placeholders"
+    - "missing approval"
+  audit_artifacts:
+    - "generated draft"
+    - "approval record"

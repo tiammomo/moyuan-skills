@@ -1,0 +1,12 @@
+{
+  "format": "simple-yaml",
+  "root": "gate",
+  "required": {
+    "gate": ["id", "applies_to", "required_checks", "blockers", "audit_artifacts"],
+    "applies_to": ["skills", "actions"]
+  },
+  "list_fields": {
+    "gate": ["required_checks", "blockers", "audit_artifacts"],
+    "applies_to": ["skills", "actions"]
+  }
+}

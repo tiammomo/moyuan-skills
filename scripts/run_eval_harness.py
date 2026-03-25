@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Run the repository eval harness with graders and report generation."""
+"""Run the repository eval harness with graders, baselines, and report generation."""
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -115,12 +116,82 @@ def run_case(cases_root: Path, case: dict) -> dict:
         result["graders"] = grader_results
         result["passed"] = graders_passed and result["draft_passed"] and result["lint_passed"]
         result["output_excerpt"] = "\n".join(text.splitlines()[:12])
+        result["output_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if not graders_passed:
             for grader in grader_results:
                 if not grader["passed"]:
                     result["messages"].extend(grader["messages"])
 
     return result
+
+
+def build_skill_summary(case_results: list[dict]) -> list[dict]:
+    grouped: dict[str, dict] = {}
+    for case in case_results:
+        entry = grouped.setdefault(
+            case["skill"],
+            {"skill": case["skill"], "cases": 0, "passed": 0, "failed": 0, "graders_passed": 0, "graders_total": 0},
+        )
+        entry["cases"] += 1
+        entry["passed"] += int(case["passed"])
+        entry["failed"] += int(not case["passed"])
+        entry["graders_passed"] += sum(1 for grader in case["graders"] if grader["passed"])
+        entry["graders_total"] += len(case["graders"])
+    return [grouped[key] for key in sorted(grouped)]
+
+
+def build_baseline_snapshot(report_payload: dict) -> dict:
+    return {
+        "report_name": report_payload["report_name"],
+        "generated_at": report_payload["generated_at"],
+        "cases": [
+            {
+                "name": case["name"],
+                "skill": case["skill"],
+                "passed": case["passed"],
+                "output_sha256": case.get("output_sha256", ""),
+            }
+            for case in report_payload["cases"]
+        ],
+    }
+
+
+def compare_baseline(case_results: list[dict], baseline_payload: dict | None) -> dict | None:
+    if baseline_payload is None:
+        return None
+
+    current = {(case["skill"], case["name"]): case for case in case_results}
+    baseline_cases = {
+        (case["skill"], case["name"]): case
+        for case in baseline_payload.get("cases", [])
+        if isinstance(case, dict) and "skill" in case and "name" in case
+    }
+
+    new_cases = [f"{skill}:{name}" for skill, name in sorted(current.keys() - baseline_cases.keys())]
+    removed_cases = [f"{skill}:{name}" for skill, name in sorted(baseline_cases.keys() - current.keys())]
+    changed_cases: list[dict] = []
+
+    for key in sorted(current.keys() & baseline_cases.keys()):
+        current_case = current[key]
+        baseline_case = baseline_cases[key]
+        if current_case.get("output_sha256") != baseline_case.get("output_sha256") or current_case.get("passed") != baseline_case.get("passed"):
+            changed_cases.append(
+                {
+                    "case": f"{key[0]}:{key[1]}",
+                    "baseline_passed": baseline_case.get("passed"),
+                    "current_passed": current_case.get("passed"),
+                    "baseline_sha256": baseline_case.get("output_sha256"),
+                    "current_sha256": current_case.get("output_sha256"),
+                }
+            )
+
+    return {
+        "baseline_name": baseline_payload.get("report_name", "Unnamed baseline"),
+        "new_cases": new_cases,
+        "removed_cases": removed_cases,
+        "changed_cases": changed_cases,
+        "matches": not new_cases and not removed_cases and not changed_cases,
+    }
 
 
 def render_markdown_report(payload: dict) -> str:
@@ -136,11 +207,26 @@ def render_markdown_report(payload: dict) -> str:
         f"- Failed: {payload['summary']['failed']}",
         f"- Graders passed: {payload['summary']['graders_passed']}/{payload['summary']['graders_total']}",
         "",
-        "## Case Results",
+        "## Skill Summary",
         "",
-        "| Case | Skill | Status | Graders |",
-        "| --- | --- | --- | --- |",
+        "| Skill | Cases | Passed | Failed | Graders |",
+        "| --- | --- | --- | --- | --- |",
     ]
+
+    for item in payload["skill_summary"]:
+        lines.append(
+            f"| {item['skill']} | {item['cases']} | {item['passed']} | {item['failed']} | {item['graders_passed']}/{item['graders_total']} |"
+        )
+
+    lines.extend(
+        [
+            "",
+            "## Case Results",
+            "",
+            "| Case | Skill | Status | Graders |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
 
     for case in payload["cases"]:
         grader_total = len(case["graders"])
@@ -148,9 +234,23 @@ def render_markdown_report(payload: dict) -> str:
         status = "PASS" if case["passed"] else "FAIL"
         lines.append(f"| {case['name']} | {case['skill']} | {status} | {grader_passed}/{grader_total} |")
 
-    lines.append("")
-    lines.append("## Details")
-    lines.append("")
+    baseline = payload.get("baseline_diff")
+    if baseline is not None:
+        lines.extend(["", "## Baseline Diff", ""])
+        lines.append(f"- Baseline: {baseline['baseline_name']}")
+        if baseline["matches"]:
+            lines.append("- No diff against baseline.")
+        else:
+            if baseline["new_cases"]:
+                lines.append(f"- New cases: {', '.join(baseline['new_cases'])}")
+            if baseline["removed_cases"]:
+                lines.append(f"- Removed cases: {', '.join(baseline['removed_cases'])}")
+            for item in baseline["changed_cases"]:
+                lines.append(
+                    f"- Changed: {item['case']} (passed {item['baseline_passed']} -> {item['current_passed']})"
+                )
+
+    lines.extend(["", "## Details", ""])
 
     for case in payload["cases"]:
         status = "PASS" if case["passed"] else "FAIL"
@@ -181,6 +281,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional list of skill names to filter the case set.",
     )
+    parser.add_argument(
+        "--baseline",
+        type=Path,
+        default=None,
+        help="Optional baseline snapshot JSON to diff against.",
+    )
+    parser.add_argument(
+        "--write-baseline",
+        type=Path,
+        default=None,
+        help="Optional path to write the current case output hashes as a baseline snapshot.",
+    )
     return parser
 
 
@@ -201,6 +313,10 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: no eval cases selected")
         return 1
 
+    baseline_payload = None
+    if args.baseline is not None:
+        baseline_payload = json.loads(args.baseline.read_text(encoding="utf-8"))
+
     cases_root = args.cases.parent
     case_results = [run_case(cases_root, case) for case in cases]
     graders_total = sum(len(case["graders"]) for case in case_results)
@@ -218,7 +334,9 @@ def main(argv: list[str] | None = None) -> int:
             "graders_total": graders_total,
             "graders_passed": graders_passed,
         },
+        "skill_summary": build_skill_summary(case_results),
         "cases": case_results,
+        "baseline_diff": compare_baseline(case_results, baseline_payload),
     }
 
     if args.report_dir is None:
@@ -232,11 +350,20 @@ def main(argv: list[str] | None = None) -> int:
     json_path.write_text(json.dumps(report_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     md_path.write_text(render_markdown_report(report_payload), encoding="utf-8")
 
+    if args.write_baseline is not None:
+        args.write_baseline.parent.mkdir(parents=True, exist_ok=True)
+        args.write_baseline.write_text(
+            json.dumps(build_baseline_snapshot(report_payload), indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+
     print(
         f"Eval harness completed: {report_payload['summary']['passed']}/{report_payload['summary']['cases']} cases passed."
     )
     print(f"JSON report: {json_path}")
     print(f"Markdown report: {md_path}")
+    if args.write_baseline is not None:
+        print(f"Baseline snapshot: {args.write_baseline}")
 
     return 0 if report_payload["summary"]["failed"] == 0 else 1
 

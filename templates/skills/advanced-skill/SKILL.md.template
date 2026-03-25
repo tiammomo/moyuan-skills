@@ -1,0 +1,51 @@
+---
+name: your-advanced-skill
+description: Explain the business task, the structured input or workflow shape, and the exact situations where the skill should trigger. Use when Codex needs to route between references, scripts, assets, and local verification for a repeatable task family.
+---
+
+# Your Advanced Skill
+
+Use this skill to turn structured input or a stable workflow into a reviewable output.
+
+## Safety First
+
+- Document the sensitive inputs, risky outputs, and review boundary.
+- State what must never be invented or widened beyond source facts.
+- Require review before any broad circulation or external action.
+
+## Task Router
+
+- Draft output from structured input:
+  Use the main `draft` command, then read the input contract reference.
+- Improve wording, grouping, or audience fit:
+  Read the editorial or design rules reference.
+- Review or lint a draft:
+  Read the review checklist, then run the `lint` command.
+- Verify or extend the bundled example:
+  Run the local checker.
+
+## Progressive Loading
+
+- Stay in this file for routing, safety rules, and command selection.
+- Read only the single `references/*.md` file that matches the current subtask.
+- Load only the implementation script or checker when you need to execute or patch them.
+- Open assets only when generating or reviewing concrete output.
+- Do not preload every reference file just because this skill triggered.
+
+## Default Workflow
+
+1. Confirm the source-of-truth input and audience.
+2. Run the deterministic step first.
+3. Generate the draft from the bundled template.
+4. Lint or review the result.
+5. Apply audience-specific edits after the facts are stable.
+6. Keep the final human review boundary explicit.
+
+## Reference Files
+
+- [references/topic-guide.md](./references/topic-guide.md): structured input contract and workflow rules.
+
+## Bundled Resources
+
+- `scripts/check_your_skill.py`: local smoke checker.
+- `assets/output-template.md`: reusable output template.

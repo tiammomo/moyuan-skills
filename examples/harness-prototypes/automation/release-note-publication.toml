@@ -1,0 +1,13 @@
+name = "release-note-publication"
+skill = "release-note-writer"
+command = "python skills/release-note-writer/scripts/release_note_writer.py draft skills/release-note-writer/assets/sample-release-input.json examples/harness-prototypes/runtime-output/release-note-publication.md"
+schedule = "WEEKLY Thu 15:00 Asia/Shanghai"
+review_required = true
+
+prechecks = [
+  "python skills/release-note-writer/scripts/check_release_note_writer.py",
+]
+
+postchecks = [
+  "python skills/release-note-writer/scripts/release_note_writer.py lint examples/harness-prototypes/runtime-output/release-note-publication.md",
+]

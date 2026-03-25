@@ -1,0 +1,15 @@
+{
+  "name": "skill-name-happy-path",
+  "skill": "skill-name",
+  "input": "skill-name/sample-input.json",
+  "graders": [
+    {
+      "type": "contains_all",
+      "label": "core content",
+      "values": [
+        "# Title",
+        "## Summary"
+      ]
+    }
+  ]
+}

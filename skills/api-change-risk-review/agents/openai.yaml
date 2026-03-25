@@ -1,0 +1,4 @@
+interface:
+  display_name: "API Change Risk Review"
+  short_description: "Diff, draft, and lint API compatibility reviews."
+  default_prompt: "Use $api-change-risk-review to assess before and after API schema changes."

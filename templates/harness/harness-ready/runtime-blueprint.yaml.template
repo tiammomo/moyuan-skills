@@ -1,0 +1,20 @@
+runtime_blueprint:
+  id: "{workflow_id}"
+  skill: "{skill_name}"
+  automation: "examples/harness-prototypes/automation/{automation_file}.toml"
+  tool_contract: "examples/harness-prototypes/tool-contracts/{tool_contract_file}.yaml"
+  gate: "examples/harness-prototypes/safety-gates/{gate_file}.yaml"
+  action: "{action_name}"
+  checks:
+    automated:
+      - "{automated_check}"
+    manual:
+      - "{manual_check_one}"
+      - "{manual_check_two}"
+  artifacts:
+    generated draft: "{draft_path}"
+    review note: "{review_note_path}"
+    approval record: "{approval_record_path}"
+  outputs:
+    report_json: "{report_json_name}.json"
+    report_markdown: "{report_markdown_name}.md"

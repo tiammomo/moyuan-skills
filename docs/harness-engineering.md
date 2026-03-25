@@ -139,7 +139,19 @@
 - safety gate
 - automation
 
+并且在它们之上补了一层最小运行面：
+
+- runtime blueprint
+- executable runtime
+
 对应说明见：
 
 - [harness-prototypes.md](./harness-prototypes.md)
+- [harness-runtime.md](./harness-runtime.md)
+
+对应的仓库级检查与 stub 入口见：
+
+- `python scripts/check_harness_prototypes.py`
+- `python scripts/run_harness_stub.py ...`
+- `python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml`
 

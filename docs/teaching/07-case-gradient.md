@@ -8,7 +8,8 @@
 
 1. [../../skills/issue-triage-report/SKILL.md](../../skills/issue-triage-report/SKILL.md)
 2. [../../skills/release-note-writer/SKILL.md](../../skills/release-note-writer/SKILL.md)
-3. [../../skills/incident-postmortem-writer/SKILL.md](../../skills/incident-postmortem-writer/SKILL.md)
+3. [../../skills/api-change-risk-review/SKILL.md](../../skills/api-change-risk-review/SKILL.md)
+4. [../../skills/incident-postmortem-writer/SKILL.md](../../skills/incident-postmortem-writer/SKILL.md)
 
 ## 为什么是这个顺序
 
@@ -27,9 +28,17 @@
 - 结构化变更如何进入面向读者的文案
 - highlights、breaking changes、known issues 这类发布语义
 
+### `api-change-risk-review`
+
+适合第三个看，因为它已经开始把 skill 做成“工具步骤 + 评审文档”：
+
+- 先比较 before / after schema snapshot
+- 再输出 API compatibility risk review
+- 已经非常接近 tool contract 和 rollout gate 的场景
+
 ### `incident-postmortem-writer`
 
-适合最后看，因为它最接近 harness 问题：
+适合最后看，因为它最接近高风险内部文档：
 
 - 风险更高
 - 审批需求更强
@@ -37,10 +46,9 @@
 
 ## 学习时最值得比较的维度
 
-比较这三个 skill 时，重点看：
+比较这四个 skill 时，重点看：
 
 - 输入契约差异
 - `Safety First` 的强弱差异
 - 模板结构差异
-- 为什么有的更适合直接进入 safety gate
-
+- 为什么有的已经开始需要 tool contract、baseline eval 或 safety gate

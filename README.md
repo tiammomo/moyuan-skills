@@ -46,7 +46,7 @@
 
 ## 当前 Skills
 
-截至 2026-03-24，这个仓库包含三份教学型 skill 和三份示范型业务 skill：
+截至 2026-03-25，这个仓库包含三份教学型 skill 和四份示范型业务 skill：
 
 | Skill | 类型 | 主题 | 当前状态 | 入口 |
 | --- | --- | --- | --- | --- |
@@ -55,6 +55,7 @@
 | `harness-engineering` | 教学型 | 如何从 skill 继续演进到工具编排、评测闭环和 agent operating system | 已完成首版 | [docs/harness-engineering.md](./docs/harness-engineering.md) |
 | `issue-triage-report` | 示范型业务 | 如何从 CSV issue 导出生成 triage 摘要 | 已完成首版 | [docs/issue-triage-report.md](./docs/issue-triage-report.md) |
 | `release-note-writer` | 示范型业务 | 如何从结构化变更输入生成并校验发布说明 | 已完成首版 | [docs/release-note-writer.md](./docs/release-note-writer.md) |
+| `api-change-risk-review` | 示范型业务 | 如何从 before / after schema snapshot 生成 API 风险评审 | 已完成首版 | [docs/api-change-risk-review.md](./docs/api-change-risk-review.md) |
 | `incident-postmortem-writer` | 示范型业务 | 如何从 incident record 生成并校验 postmortem | 已完成首版 | [docs/incident-postmortem-writer.md](./docs/incident-postmortem-writer.md) |
 
 ## 推荐学习路径
@@ -62,13 +63,14 @@
 如果你第一次进入这个仓库，推荐按下面顺序阅读：
 
 1. [docs/teaching/README.md](./docs/teaching/README.md)
-2. [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
-3. [docs/skill-quickstart.md](./docs/skill-quickstart.md)
-4. [docs/skill-spec.md](./docs/skill-spec.md)
-5. [docs/skill-authoring.md](./docs/skill-authoring.md)
-6. [docs/progressive-disclosure.md](./docs/progressive-disclosure.md)
-7. [docs/harness-engineering.md](./docs/harness-engineering.md)
-8. [docs/skill-future-roadmap.md](./docs/skill-future-roadmap.md)
+2. [docs/teaching/09-project-learning-roadmap.md](./docs/teaching/09-project-learning-roadmap.md)
+3. [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
+4. [docs/skill-quickstart.md](./docs/skill-quickstart.md)
+5. [docs/skill-spec.md](./docs/skill-spec.md)
+6. [docs/skill-authoring.md](./docs/skill-authoring.md)
+7. [docs/progressive-disclosure.md](./docs/progressive-disclosure.md)
+8. [docs/harness-engineering.md](./docs/harness-engineering.md)
+9. [docs/skill-future-roadmap.md](./docs/skill-future-roadmap.md)
 
 如果你想直接看可触发 skill，再进入：
 
@@ -77,6 +79,7 @@
 - [skills/harness-engineering/SKILL.md](./skills/harness-engineering/SKILL.md)
 - [skills/issue-triage-report/SKILL.md](./skills/issue-triage-report/SKILL.md)
 - [skills/release-note-writer/SKILL.md](./skills/release-note-writer/SKILL.md)
+- [skills/api-change-risk-review/SKILL.md](./skills/api-change-risk-review/SKILL.md)
 - [skills/incident-postmortem-writer/SKILL.md](./skills/incident-postmortem-writer/SKILL.md)
 
 如果你想走一条更课程化的路径，直接进入：
@@ -87,6 +90,11 @@
 - [docs/teaching/05-harness-roadmap.md](./docs/teaching/05-harness-roadmap.md)
 - [docs/teaching/07-case-gradient.md](./docs/teaching/07-case-gradient.md)
 - [docs/teaching/08-evals-and-prototypes.md](./docs/teaching/08-evals-and-prototypes.md)
+- [docs/teaching/09-project-learning-roadmap.md](./docs/teaching/09-project-learning-roadmap.md)
+- [docs/teaching/10-learner-path.md](./docs/teaching/10-learner-path.md)
+- [docs/teaching/11-skill-author-path.md](./docs/teaching/11-skill-author-path.md)
+- [docs/teaching/12-maintainer-path.md](./docs/teaching/12-maintainer-path.md)
+- [docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
 
 ## 仓库结构
 
@@ -96,6 +104,7 @@
 |  `- teaching/
 |- examples/
 |  |- eval-harness/
+|  |- lint-fixtures/
 |  `- harness-prototypes/
 |- scripts/
 |- skills/
@@ -104,7 +113,10 @@
 |  |- harness-engineering/
 |  |- issue-triage-report/
 |  |- release-note-writer/
+|  |- api-change-risk-review/
 |  `- incident-postmortem-writer/
+|- templates/
+|- CONTRIBUTING.md
 `- .github/workflows/
 ```
 
@@ -113,15 +125,19 @@
 仓库当前提供多类本地检查入口：
 
 - `python scripts/check_progressive_skills.py`
+- `python scripts/check_docs_links.py`
+- `python scripts/check_harness_prototypes.py`
 - `python skills/build-skills/scripts/check_build_skills.py`
 - `python skills/progressive-disclosure/scripts/check_progressive_disclosure.py`
 - `python skills/harness-engineering/scripts/check_harness_engineering.py`
 - `python skills/issue-triage-report/scripts/check_issue_triage_report.py`
 - `python skills/release-note-writer/scripts/check_release_note_writer.py`
 - `python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py`
-- `python scripts/run_eval_harness.py`
+- `python skills/api-change-risk-review/scripts/check_api_change_risk_review.py`
+- `python scripts/run_eval_harness.py --baseline examples/eval-harness/baseline.json`
+- `python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml`
 
-其中第一条检查整个仓库的渐进式结构、router 质量、teaching 完整性和 `openai.yaml` 一致性，六条 skill-local checker 检查各自技能包的关键资源与样例链路，最后一条命令运行带 grader 和 report 的 eval harness。
+其中前两条分别检查结构约定与文档链接，第三条检查 harness prototype 的 schema / example / stub / runtime blueprint，六条已有 skill-local checker 加上一条新的多步业务 skill checker 负责验证各自技能包的关键资源与主链路，倒数第二条命令运行带 grader、baseline、diff 和 report 的 eval harness，最后一条命令运行最小可执行 harness runtime。
 
 ## 这个仓库对未来 skills 的判断
 
@@ -133,40 +149,27 @@
 
 这也是本仓库同时保留 `build-skills`、`progressive-disclosure` 和 `harness-engineering` 三个教学入口的原因。
 
-## 项目下一步完善方向
+## 当前完善结果
 
-我已经补了一份更完整的规划文档：
+这轮完善已经把原先的规划项基本落成稳定资产，仓库现在新增了：
 
-- [docs/project-improvement-plan.md](./docs/project-improvement-plan.md)
-
-当前最值得优先推进的方向有六类：
-
-1. 把 `docs/teaching/` 继续扩成完整课程体系，补练习、作业和 capstone。
-2. 增加 2 到 3 个真实示范型业务 skill，验证方法论如何落地。
-3. 增强渐进式披露相关 lint，让更多规范可自动回归。
-4. 开始建设 harness 原型，包括 tool contract、eval、safety gate、automation。
-5. 补开发环境与仓库运维说明，提升长期维护体验。
-6. 把现有方法论继续沉淀成更细的模板资产。
-
-如果把这个项目看成一个长期演进的实验平台，那么下一阶段的核心目标不是“文档更多”，而是：
-
-- 学习路径更完整
-- 案例更真实
-- harness 更可落地
-
-这 6 个方向的详细拆解已经整理到：
-
-- [docs/project-improvement-plan.md](./docs/project-improvement-plan.md)
-
-其中教学体系这一条线，已经进一步落到：
-
-- [docs/teaching/06-exercises-and-capstone.md](./docs/teaching/06-exercises-and-capstone.md)
-
-当前已经补上的下一阶段资产包括：
-
-- 两份新示范型业务 skill：
-  [docs/issue-triage-report.md](./docs/issue-triage-report.md) 和 [docs/incident-postmortem-writer.md](./docs/incident-postmortem-writer.md)
-- 一套升级后的 eval harness：
+- 角色化教学路径：
+  [docs/teaching/10-learner-path.md](./docs/teaching/10-learner-path.md)、[docs/teaching/11-skill-author-path.md](./docs/teaching/11-skill-author-path.md)、[docs/teaching/12-maintainer-path.md](./docs/teaching/12-maintainer-path.md)、[docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
+- 一个更偏 tool-heavy / multi-step 的真实业务 skill：
+  [docs/api-change-risk-review.md](./docs/api-change-risk-review.md)
+- 更强的仓库 lint 和 docs lint：
+  [scripts/check_progressive_skills.py](./scripts/check_progressive_skills.py)、[scripts/check_docs_links.py](./scripts/check_docs_links.py)
+- 带 baseline / diff / skill summary 的 eval harness：
   [scripts/run_eval_harness.py](./scripts/run_eval_harness.py)
-- 三类 harness 原型：
-  [docs/harness-prototypes.md](./docs/harness-prototypes.md)
+- 带 schema / checker / stub 的 harness prototypes：
+  [docs/harness-prototypes.md](./docs/harness-prototypes.md)、[scripts/check_harness_prototypes.py](./scripts/check_harness_prototypes.py)、[scripts/run_harness_stub.py](./scripts/run_harness_stub.py)
+- 把 automation、tool contract、gate 串成一次真实 run 的最小运行层：
+  [docs/harness-runtime.md](./docs/harness-runtime.md)、[scripts/run_harness_runtime.py](./scripts/run_harness_runtime.py)
+- contributor 指南和模板资产库：
+  [CONTRIBUTING.md](./CONTRIBUTING.md)、[docs/template-library.md](./docs/template-library.md)
+
+如果你想继续往下推进，最自然的下一步已经不再是“先写规划”，而是直接沿这三条线继续迭代：
+
+- 再补更重的集成型业务案例
+- 继续扩 baseline eval 与 regression 报告
+- 把单条 runtime blueprint 推向多 skill orchestration 和更强的 state / audit 管理

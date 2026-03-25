@@ -48,7 +48,11 @@
    学怎么把 skill 放进更大的 agent system
 7. 再看 [teaching/07-case-gradient.md](./teaching/07-case-gradient.md)
    对比真实业务案例的梯度和边界
-8. 最后看 [skill-future-roadmap.md](./skill-future-roadmap.md)
+8. 再看 [teaching/09-project-learning-roadmap.md](./teaching/09-project-learning-roadmap.md)
+   把整个仓库按学习层、案例层、校验层、系统层串成一张图
+9. 再看 [template-library.md](./template-library.md)
+   看什么时候该用 beginner、advanced、harness-ready 三套模板包
+10. 最后看 [skill-future-roadmap.md](./skill-future-roadmap.md)
    把静态 skill、动态 harness、eval 和 automation 放到一条演进线上看
 
 ## 三个教学型 skill 分别学什么

@@ -1,0 +1,34 @@
+{
+  "api_name": "Billing API",
+  "from_version": "1.8.0",
+  "to_version": "2.0.0",
+  "risk_level": "high",
+  "summary": "The Billing API introduces one new export endpoint, but the invoice lookup endpoint now requires service auth, adds a required region field, and renames one response field while removing another.",
+  "breaking_changes": [
+    "GET /v1/invoices/{invoice_id} changed auth from user to service.",
+    "GET /v1/invoices/{invoice_id} added required request field `region`.",
+    "GET /v1/invoices/{invoice_id} removed response field `status`.",
+    "GET /v1/invoices/{invoice_id} removed response field `total`.",
+    "GET /v1/invoices/{invoice_id} added response field `state`."
+  ],
+  "additive_changes": [
+    "Added endpoint POST /v1/invoices/export."
+  ],
+  "deprecations": [
+    "POST /v1/invoices/search is no longer present in the target snapshot and should be treated as a removal until the owning team confirms migration guidance."
+  ],
+  "migration_notes": [
+    "Consumers of GET /v1/invoices/{invoice_id} need a service-auth path before rollout.",
+    "Client requests must now send the required `region` field.",
+    "Downstream readers that expect `status` or `total` must be updated before the 2.0.0 rollout."
+  ],
+  "rollout_checks": [
+    "Confirm service credentials are available for all invoice lookup callers.",
+    "Add compatibility tests that assert the new request and response contract.",
+    "Stage rollout behind a migration checkpoint with owning-team approval."
+  ],
+  "open_questions": [
+    "Should `state` fully replace `status`, or is an adapter period required?",
+    "Which clients still rely on `total` from this endpoint response?"
+  ]
+}

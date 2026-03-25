@@ -1,0 +1,19 @@
+tool_contract:
+  id: "skill-name.command"
+  skill: "skill-name"
+  command: "python skills/skill-name/scripts/skill_name.py draft <input> <output>"
+  input:
+    format: "json"
+    required_fields:
+      - "field_one"
+      - "field_two"
+  output:
+    format: "markdown"
+    required_headings:
+      - "## Summary"
+      - "## Details"
+  failure_modes:
+    - "missing required input field"
+    - "lint failure before publication"
+  safety:
+    - "human review required before external sharing"

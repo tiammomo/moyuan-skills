@@ -1,0 +1,3 @@
+Release note publication approved for demo runtime.
+Approver: Documentation Owner
+Approval type: Human reviewer approved the draft

@@ -1,0 +1,36 @@
+{
+  "report_name": "Moyuan Skills Eval Harness",
+  "generated_at": "2026-03-25T01:13:21.144676+00:00",
+  "cases": [
+    {
+      "name": "release-note-feature",
+      "skill": "release-note-writer",
+      "passed": true,
+      "output_sha256": "893e080ff37b14580460e301c44c57f6b365849a54ad65516c10c5eb5237742c"
+    },
+    {
+      "name": "release-note-hotfix",
+      "skill": "release-note-writer",
+      "passed": true,
+      "output_sha256": "386f653679b282338ee5d81318e21935e24bbe366d296df96578b6b5c4d974dd"
+    },
+    {
+      "name": "issue-triage-weekly",
+      "skill": "issue-triage-report",
+      "passed": true,
+      "output_sha256": "bc795dc46f3422408dd05f7f51daa3f4dfcd6b1072c80bf93f564653c437915c"
+    },
+    {
+      "name": "api-change-risk-billing",
+      "skill": "api-change-risk-review",
+      "passed": true,
+      "output_sha256": "698391f04d94bcd3bfb8ac7239b2be2194b99de0331bf6c2ef1dc7c191a4612e"
+    },
+    {
+      "name": "incident-postmortem-sev2",
+      "skill": "incident-postmortem-writer",
+      "passed": true,
+      "output_sha256": "7ea522ec627354903d43a7f3eb1e0ff4bbf4bad72fbc75630e7d447bb7e5a42b"
+    }
+  ]
+}

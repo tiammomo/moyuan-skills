@@ -1,0 +1,7 @@
+{
+  "format": "toml",
+  "required": ["name", "skill", "command", "schedule", "review_required", "prechecks", "postchecks"],
+  "list_fields": ["prechecks", "postchecks"],
+  "string_fields": ["name", "skill", "command", "schedule"],
+  "bool_fields": ["review_required"]
+}

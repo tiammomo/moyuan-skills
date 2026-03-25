@@ -1,0 +1,20 @@
+runtime_blueprint:
+  id: "release-note-publication-demo"
+  skill: "release-note-writer"
+  automation: "examples/harness-prototypes/automation/release-note-publication.toml"
+  tool_contract: "examples/harness-prototypes/tool-contracts/release-note-writer.yaml"
+  gate: "examples/harness-prototypes/safety-gates/publication-review.yaml"
+  action: "publish"
+  checks:
+    automated:
+      - "script lint passes"
+    manual:
+      - "sensitive terms review complete"
+      - "human reviewer approved the draft"
+  artifacts:
+    generated draft: "examples/harness-prototypes/runtime-output/release-note-publication.md"
+    review note: "examples/harness-prototypes/audit/release-note-review-note.md"
+    approval record: "examples/harness-prototypes/audit/release-note-approval-record.txt"
+  outputs:
+    report_json: "examples/harness-prototypes/runtime-output/release-note-runtime.json"
+    report_markdown: "examples/harness-prototypes/runtime-output/release-note-runtime.md"

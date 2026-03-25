@@ -1,0 +1,14 @@
+{
+  "format": "simple-yaml",
+  "root": "tool_contract",
+  "required": {
+    "tool_contract": ["id", "skill", "command", "input", "output", "failure_modes", "safety"],
+    "input": ["format", "required_fields"],
+    "output": ["format", "required_headings"]
+  },
+  "list_fields": {
+    "tool_contract": ["failure_modes", "safety"],
+    "input": ["required_fields"],
+    "output": ["required_headings"]
+  }
+}

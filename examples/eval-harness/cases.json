@@ -90,6 +90,36 @@
       ]
     },
     {
+      "name": "api-change-risk-billing",
+      "skill": "api-change-risk-review",
+      "input": "api-change-risk-review/billing-api-diff.json",
+      "graders": [
+        {
+          "type": "contains_all",
+          "label": "risk-review content",
+          "values": [
+            "# Billing API Change Risk Review",
+            "_Risk level: high_",
+            "## Breaking Changes",
+            "GET /v1/invoices/{invoice_id}"
+          ]
+        },
+        {
+          "type": "requires_headings",
+          "label": "required headings",
+          "values": [
+            "## Summary",
+            "## Breaking Changes",
+            "## Additive Changes",
+            "## Deprecations",
+            "## Migration Notes",
+            "## Rollout Checks",
+            "## Open Questions"
+          ]
+        }
+      ]
+    },
+    {
       "name": "incident-postmortem-sev2",
       "skill": "incident-postmortem-writer",
       "input": "incident-postmortem-writer/incident-sev2.json",

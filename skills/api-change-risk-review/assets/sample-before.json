@@ -1,0 +1,43 @@
+{
+  "api_name": "Billing API",
+  "version": "1.8.0",
+  "endpoints": [
+    {
+      "path": "/v1/invoices/{invoice_id}",
+      "method": "GET",
+      "summary": "Fetch a single invoice",
+      "auth": "user",
+      "request": {
+        "fields": [
+          {"name": "invoice_id", "type": "string", "required": true},
+          {"name": "include_items", "type": "boolean", "required": false}
+        ]
+      },
+      "response": {
+        "fields": [
+          {"name": "invoice_id", "type": "string", "required": true},
+          {"name": "status", "type": "string", "required": true},
+          {"name": "total", "type": "number", "required": true}
+        ]
+      }
+    },
+    {
+      "path": "/v1/invoices/search",
+      "method": "POST",
+      "summary": "Search invoices",
+      "auth": "service",
+      "request": {
+        "fields": [
+          {"name": "query", "type": "string", "required": true},
+          {"name": "page", "type": "integer", "required": false}
+        ]
+      },
+      "response": {
+        "fields": [
+          {"name": "results", "type": "array", "required": true},
+          {"name": "next_page", "type": "string", "required": false}
+        ]
+      }
+    }
+  ]
+}

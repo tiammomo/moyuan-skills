@@ -1,6 +1,6 @@
 ---
 name: incident-postmortem-writer
-description: Draft and lint structured incident postmortems from a JSON incident record, including impact, timeline, root cause, and action items with publication guardrails. Use when Codex needs to turn incident metadata into an internal postmortem draft, prepare a reviewable incident summary, validate a postmortem before circulation, or extend a realistic business skill with stronger safety, structured timelines, and action-item reporting.
+description: Draft and lint structured incident postmortems from JSON incident records, covering impact, timeline, root cause, and action items with publication guardrails. Use when Codex needs to turn incident metadata into an internal postmortem draft, prepare an incident summary, validate a postmortem before circulation, or teach a business skill with safety rules, structured timelines, and action-item reporting.
 ---
 
 # Incident Postmortem Writer
@@ -54,4 +54,3 @@ Use this skill to turn a structured incident record into a reviewable postmortem
 - `scripts/check_incident_postmortem_writer.py`: local smoke checker that drafts and lints a sample postmortem.
 - `assets/postmortem-template.md`: reusable markdown template for generated postmortems.
 - `assets/sample-incident.json`: sample structured incident record for testing and teaching.
-

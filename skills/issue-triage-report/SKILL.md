@@ -1,6 +1,6 @@
 ---
 name: issue-triage-report
-description: Draft and lint a structured issue triage report from CSV issue exports, grouping urgent issues, decision blockers, assigned follow-ups, and backlog watch items. Use when Codex needs to turn issue tracker exports into a weekly triage summary, prepare an engineering or product operations review, validate a triage report before circulation, or extend a practical business skill with CSV parsing, references, templates, and checks.
+description: Draft and lint structured issue triage reports from CSV issue exports, grouping urgent items, decision blockers, follow-ups, and backlog watch. Use when Codex needs to turn tracker exports into a weekly triage summary, prepare an engineering or product ops review, validate a draft before circulation, or teach a practical business skill with CSV parsing, references, templates, and checks.
 ---
 
 # Issue Triage Report
@@ -54,4 +54,3 @@ Use this skill to turn a CSV issue export into a concise triage report for engin
 - `scripts/check_issue_triage_report.py`: local smoke checker that drafts and lints a sample triage report.
 - `assets/issue-triage-template.md`: reusable markdown template for generated triage reports.
 - `assets/sample-issues.csv`: sample CSV issue export for testing and teaching.
-

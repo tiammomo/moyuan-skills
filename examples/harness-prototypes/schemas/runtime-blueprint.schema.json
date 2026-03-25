@@ -1,0 +1,13 @@
+{
+  "format": "simple-yaml",
+  "root": "runtime_blueprint",
+  "required": {
+    "runtime_blueprint": ["id", "skill", "automation", "tool_contract", "gate", "action", "checks", "artifacts", "outputs"],
+    "checks": ["automated", "manual"],
+    "artifacts": ["generated draft", "review note", "approval record"],
+    "outputs": ["report_json", "report_markdown"]
+  },
+  "list_fields": {
+    "checks": ["automated", "manual"]
+  }
+}

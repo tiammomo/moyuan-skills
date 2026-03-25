@@ -1,0 +1,13 @@
+name = "weekly-skill-run"
+skill = "skill-name"
+command = "python skills/skill-name/scripts/skill_name.py draft data/input.json out/output.md"
+schedule = "WEEKLY Fri 09:00 Asia/Shanghai"
+review_required = true
+
+prechecks = [
+  "python scripts/check_progressive_skills.py",
+]
+
+postchecks = [
+  "python skills/skill-name/scripts/skill_name.py lint out/output.md",
+]
