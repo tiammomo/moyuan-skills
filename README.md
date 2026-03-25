@@ -47,6 +47,23 @@
 2. agent 怎么用
 3. 仓库怎么持续保持整洁
 
+## 新人术语速查
+
+第一次读这个仓库时，先只记住下面几个词就够了：
+
+- `frontmatter`
+  `SKILL.md` 顶部那段最短的触发描述，负责说明“这个 skill 做什么、什么时候用”
+- `Task Router`
+  `SKILL.md` 里的路由区，负责把不同问题导向不同 reference、script 或 workflow
+- `checker`
+  一条可以反复运行的检查命令，用来确认 skill 资源和主链路没有坏
+- `eval`
+  一组固定 case 和 grader，用来判断输出质量有没有退化
+- `harness`
+  skill 外面的系统层，负责 tool contract、state、eval、safety、automation 这些能力
+
+如果这些词还不熟，先看 [docs/teaching/15-newcomer-faq.md](./docs/teaching/15-newcomer-faq.md)。
+
 ## 什么是渐进式 skill
 
 这个仓库延续参考项目的核心思想：skill 应该是“渐进式加载”的能力包，而不是一篇越来越长的总说明书。
@@ -106,6 +123,8 @@
   [docs/teaching/12-maintainer-path.md](./docs/teaching/12-maintainer-path.md)
 - 继续做 harness：
   [docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
+- 想先补齐术语和常见疑问：
+  [docs/teaching/15-newcomer-faq.md](./docs/teaching/15-newcomer-faq.md)
 
 如果你想直接看可触发 skill，再进入：
 
@@ -131,6 +150,7 @@
 - [docs/teaching/12-maintainer-path.md](./docs/teaching/12-maintainer-path.md)
 - [docs/teaching/13-harness-builder-path.md](./docs/teaching/13-harness-builder-path.md)
 - [docs/teaching/14-first-hour-onboarding.md](./docs/teaching/14-first-hour-onboarding.md)
+- [docs/teaching/15-newcomer-faq.md](./docs/teaching/15-newcomer-faq.md)
 
 ## 仓库结构
 

@@ -2,6 +2,24 @@
 
 这份文档汇总这个仓库最常用的开发与验证命令。
 
+## 新人先跑哪几条
+
+如果你只是第一次进入仓库，不需要把所有命令都跑一遍。
+
+先跑这三条就够了：
+
+```text
+python scripts/check_progressive_skills.py
+python skills/release-note-writer/scripts/check_release_note_writer.py
+python scripts/run_eval_harness.py --skills release-note-writer
+```
+
+这样你能先确认：
+
+- 仓库结构没坏
+- 至少一个业务案例能跑通
+- eval harness 不是空概念
+
 ## 仓库级结构检查
 
 检查所有 skill 的渐进式结构、reference 可达性，以及 `agents/openai.yaml` 一致性：

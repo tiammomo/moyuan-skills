@@ -12,6 +12,10 @@
 - 看懂一个最小 skill 长什么样
 - 跑通一条最小检查或示例命令
 
+如果你在过程中卡在术语上，立刻插入阅读：
+
+- [15-newcomer-faq.md](./15-newcomer-faq.md)
+
 ## 第 0 到 10 分钟：先知道仓库在干什么
 
 先读：
@@ -69,6 +73,17 @@ python skills/release-note-writer/scripts/check_release_note_writer.py
 - [../repo-commands.md](../repo-commands.md)
 
 这样你就知道仓库不只是“能读”，也是真的“能验证”。
+
+## 如果你今天就想做第一次小贡献
+
+最适合新人的第一笔改动通常不是新建一个复杂 skill，而是下面这些小任务：
+
+- 修正文档里的歧义表述
+- 给某篇教学文档补一个更清楚的例子
+- 给已有 skill 补一个更准确的说明链接
+- 帮 README 或 teaching 目录补入口
+
+这样的第一笔改动更容易让你先熟悉仓库结构，再进入更复杂的实现。
 
 ## 第一小时不要做什么
 

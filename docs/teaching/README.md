@@ -13,9 +13,10 @@
 给新成员最省力的入口不是直接丢一串文档，而是先走这条短路径：
 
 1. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
-2. [02-read-the-repo.md](./02-read-the-repo.md)
-3. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
-4. [10-learner-path.md](./10-learner-path.md)
+2. [15-newcomer-faq.md](./15-newcomer-faq.md)
+3. [02-read-the-repo.md](./02-read-the-repo.md)
+4. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
+5. [10-learner-path.md](./10-learner-path.md)
 
 ## 推荐学习顺序
 
@@ -33,6 +34,7 @@
 12. [12-maintainer-path.md](./12-maintainer-path.md)
 13. [13-harness-builder-path.md](./13-harness-builder-path.md)
 14. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
+15. [15-newcomer-faq.md](./15-newcomer-faq.md)
 
 ## 这个目录解决什么问题
 
@@ -77,6 +79,7 @@
 - 维护者：从 [12-maintainer-path.md](./12-maintainer-path.md) 开始
 - Harness 设计者：从 [13-harness-builder-path.md](./13-harness-builder-path.md) 开始
 - 带新人 onboarding：从 [14-first-hour-onboarding.md](./14-first-hour-onboarding.md) 开始
+- 想先补术语和常见问题：从 [15-newcomer-faq.md](./15-newcomer-faq.md) 开始
 
 ## 学习完成后的预期能力
 

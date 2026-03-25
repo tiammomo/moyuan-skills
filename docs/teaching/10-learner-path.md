@@ -16,6 +16,10 @@
 
 建议先从 [14-first-hour-onboarding.md](./14-first-hour-onboarding.md) 开始，再回到这条路径。
 
+如果你在读到一半时发现自己卡在术语上，再插入：
+
+- [15-newcomer-faq.md](./15-newcomer-faq.md)
+
 ## 建议顺序
 
 1. [01-learning-map.md](./01-learning-map.md)
@@ -44,3 +48,4 @@
 - 一开始就想把 skill 写成万能工具
 - 先写很长的正文，再回头补触发句
 - 还没建立最小心智模型，就直接跳进 harness 细节
+- 看到术语先硬记，不先回头确认它在仓库里到底承担什么角色
