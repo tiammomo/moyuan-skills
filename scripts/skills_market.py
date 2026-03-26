@@ -14,21 +14,26 @@ import build_org_market_index
 import check_market_governance
 import check_installed_market_state
 import check_market_pipeline
+import diff_installed_history_baselines
 import diff_installed_market_snapshots
 import install_skill_bundle
 import install_skill
+import list_installed_baseline_history
 import list_installed_bundles
 import list_skill_bundles
 import list_installed_skills
 import package_skill
 import promote_installed_market_baseline
+import prune_installed_baseline_history
 import repair_installed_market_state
 import remove_skill_bundle
 import remove_skill
+import restore_installed_market_baseline
 import search_skills
 import snapshot_installed_market_state
 import update_skill_bundle
 import update_installed_skill
+import verify_installed_history_baseline
 import validate_market_manifest
 import verify_installed_market_baseline
 import verify_market_provenance
@@ -144,6 +149,14 @@ def build_parser() -> argparse.ArgumentParser:
     diff_parser.add_argument("--markdown-path", help="Optional Markdown diff output path.")
     diff_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    diff_history_parser = subparsers.add_parser("diff-installed-history", help="Compare two archived installed baseline history entries.")
+    diff_history_parser.add_argument("history", help="Baseline history JSON file.")
+    diff_history_parser.add_argument("before_entry", help="Older history entry sequence number or 'latest'.")
+    diff_history_parser.add_argument("after_entry", help="Newer history entry sequence number or 'latest'.")
+    diff_history_parser.add_argument("--output-path", help="Optional JSON diff output path.")
+    diff_history_parser.add_argument("--markdown-path", help="Optional Markdown diff output path.")
+    diff_history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
     verify_parser = subparsers.add_parser("verify-installed", help="Compare a live installed-state target against a baseline snapshot.")
     verify_parser.add_argument("baseline", help="Baseline snapshot JSON file.")
     verify_parser.add_argument("--target-root", help="Installation root directory.")
@@ -151,13 +164,42 @@ def build_parser() -> argparse.ArgumentParser:
     verify_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     verify_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when drift is detected.")
 
+    verify_history_parser = subparsers.add_parser("verify-installed-history", help="Compare a live installed-state target against an archived baseline history entry.")
+    verify_history_parser.add_argument("history", help="Baseline history JSON file.")
+    verify_history_parser.add_argument("entry", help="History entry sequence number or 'latest'.")
+    verify_history_parser.add_argument("--target-root", help="Installation root directory.")
+    verify_history_parser.add_argument("--output-dir", help="Optional directory for current snapshot and diff artifacts.")
+    verify_history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    verify_history_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when drift is detected.")
+
+    history_parser = subparsers.add_parser("list-installed-baseline-history", help="List installed-state baseline promotion history.")
+    history_parser.add_argument("history", help="Baseline history JSON file.")
+    history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    prune_history_parser = subparsers.add_parser("prune-installed-baseline-history", help="Prune retained installed-state baseline history entries.")
+    prune_history_parser.add_argument("history", help="Baseline history JSON file.")
+    prune_history_parser.add_argument("--keep-last", type=int, required=True, help="Number of newest history entries to keep.")
+    prune_history_parser.add_argument("--history-markdown-path", help="Optional Markdown history summary path.")
+    prune_history_parser.add_argument("--dry-run", action="store_true", help="Only print planned archive removals.")
+    prune_history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
     promote_parser = subparsers.add_parser("promote-installed-baseline", help="Promote the current live state into a refreshed baseline snapshot.")
     promote_parser.add_argument("baseline", help="Destination baseline snapshot JSON file.")
     promote_parser.add_argument("--target-root", help="Installation root directory.")
     promote_parser.add_argument("--markdown-path", help="Optional Markdown baseline summary path.")
     promote_parser.add_argument("--diff-output-path", help="Optional JSON path for the transition diff.")
     promote_parser.add_argument("--diff-markdown-path", help="Optional Markdown path for the transition diff.")
+    promote_parser.add_argument("--history-path", help="Optional JSON path for baseline promotion history.")
+    promote_parser.add_argument("--history-markdown-path", help="Optional Markdown path for baseline promotion history.")
+    promote_parser.add_argument("--archive-dir", help="Optional archive directory for promoted baseline copies.")
     promote_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    restore_parser = subparsers.add_parser("restore-installed-baseline", help="Restore a promoted installed-state baseline from history.")
+    restore_parser.add_argument("history", help="Baseline history JSON file.")
+    restore_parser.add_argument("entry", help="History entry sequence number or 'latest'.")
+    restore_parser.add_argument("--baseline-path", help="Optional restore destination for the baseline JSON.")
+    restore_parser.add_argument("--markdown-path", help="Optional restore destination for the baseline Markdown summary.")
+    restore_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     provenance_parser = subparsers.add_parser("provenance-check", help="Verify install spec provenance or a provenance attestation.")
     provenance_parser.add_argument("path", help="Install spec JSON or provenance attestation JSON.")
@@ -368,6 +410,16 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.append("--json")
         return diff_installed_market_snapshots.main(forwarded_args)
 
+    if args.command == "diff-installed-history":
+        forwarded_args = [args.history, args.before_entry, args.after_entry]
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        return diff_installed_history_baselines.main(forwarded_args)
+
     if args.command == "verify-installed":
         forwarded_args = [args.baseline]
         if args.target_root:
@@ -380,6 +432,34 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.append("--strict")
         return verify_installed_market_baseline.main(forwarded_args)
 
+    if args.command == "verify-installed-history":
+        forwarded_args = [args.history, args.entry]
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return verify_installed_history_baseline.main(forwarded_args)
+
+    if args.command == "list-installed-baseline-history":
+        forwarded_args = [args.history]
+        if args.json:
+            forwarded_args.append("--json")
+        return list_installed_baseline_history.main(forwarded_args)
+
+    if args.command == "prune-installed-baseline-history":
+        forwarded_args = [args.history, "--keep-last", str(args.keep_last)]
+        if args.history_markdown_path:
+            forwarded_args.extend(["--history-markdown-path", args.history_markdown_path])
+        if args.dry_run:
+            forwarded_args.append("--dry-run")
+        if args.json:
+            forwarded_args.append("--json")
+        return prune_installed_baseline_history.main(forwarded_args)
+
     if args.command == "promote-installed-baseline":
         forwarded_args = [args.baseline]
         if args.target_root:
@@ -390,9 +470,25 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.extend(["--diff-output-path", args.diff_output_path])
         if args.diff_markdown_path:
             forwarded_args.extend(["--diff-markdown-path", args.diff_markdown_path])
+        if args.history_path:
+            forwarded_args.extend(["--history-path", args.history_path])
+        if args.history_markdown_path:
+            forwarded_args.extend(["--history-markdown-path", args.history_markdown_path])
+        if args.archive_dir:
+            forwarded_args.extend(["--archive-dir", args.archive_dir])
         if args.json:
             forwarded_args.append("--json")
         return promote_installed_market_baseline.main(forwarded_args)
+
+    if args.command == "restore-installed-baseline":
+        forwarded_args = [args.history, args.entry]
+        if args.baseline_path:
+            forwarded_args.extend(["--baseline-path", args.baseline_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        return restore_installed_market_baseline.main(forwarded_args)
 
     if args.command == "provenance-check":
         forwarded_args = [args.path]

@@ -193,7 +193,12 @@ python scripts/skills_market.py repair-installed --target-root dist/installed-sk
 python scripts/skills_market.py snapshot-installed --target-root dist/installed-skills --output-path dist/installed-skills/snapshots/latest.json --markdown-path dist/installed-skills/snapshots/latest.md
 python scripts/skills_market.py diff-installed dist/installed-skills/snapshots/before.json dist/installed-skills/snapshots/after.json --output-path dist/installed-skills/snapshots/diff.json --markdown-path dist/installed-skills/snapshots/diff.md
 python scripts/skills_market.py verify-installed dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --output-dir dist/installed-skills/verification --strict
-python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md
+python scripts/skills_market.py verify-installed-history dist/installed-skills/snapshots/baseline-history.json latest --target-root dist/installed-skills --output-dir dist/installed-skills/verification-history --strict
+python scripts/skills_market.py diff-installed-history dist/installed-skills/snapshots/baseline-history.json 1 latest --output-path dist/installed-skills/snapshots/history-diff.json --markdown-path dist/installed-skills/snapshots/history-diff.md
+python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
+python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
+python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
+python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
 
 这两条命令背后对应的教学点是：
@@ -205,4 +210,9 @@ python scripts/skills_market.py promote-installed-baseline dist/installed-skills
 5. 当你开始修复和运维本地状态时，还需要 snapshot 把“当前状态”沉淀成可回看的记录
 6. 当记录积累起来之后，还需要 diff 把“这次和上次相比变了什么”讲清楚
 7. 当你真的要把安装态纳入运维门禁时，还需要 baseline verify 把 drift 变成可执行的校验规则
+8. 当 drift 被接受之后，还需要 baseline history 和 restore，把运维基线从“覆盖式更新”推进到“可归档、可回放”
+9. 当 history 持续累积之后，还需要 prune 和 retention，把这套运维记录从“可回放”推进到“可长期维护”
+10. 当你需要复盘某个旧基线时，还需要 direct history verify，把“历史可回看”推进到“历史可直接对照和校验”
+11. 当 accepted baseline 继续积累之后，还需要 direct history diff，把“历史可校验”推进到“历史之间也能直接做演进分析”
 8. 当 drift 被接受时，还需要 baseline promotion 把“新期望状态”正式落盘，而不是长期停留在告警状态
+9. 当 baseline 开始持续演进时，还需要 history 把这条演进链条保存下来，方便团队回看

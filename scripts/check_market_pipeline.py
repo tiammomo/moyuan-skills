@@ -533,6 +533,50 @@ def main(argv: list[str] | None = None) -> int:
     if not all(path.is_file() for path in expected_verify_outputs):
         print("ERROR: verify-installed should write current snapshot and diff artifacts")
         return 1
+    promotion_history_json = output_root / "snapshots" / "bundle-installed-history.json"
+    promotion_history_markdown = output_root / "snapshots" / "bundle-installed-history.md"
+    promotion_archive_dir = output_root / "snapshots" / "bundle-installed-archive"
+    require_success(
+        "promote initial installed baseline",
+        [
+            "scripts/skills_market.py",
+            "promote-installed-baseline",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--markdown-path",
+            repo_relative_path(snapshot_markdown_path),
+            "--history-path",
+            repo_relative_path(promotion_history_json),
+            "--history-markdown-path",
+            repo_relative_path(promotion_history_markdown),
+            "--archive-dir",
+            repo_relative_path(promotion_archive_dir),
+        ],
+    )
+    initial_history_payload = load_json(promotion_history_json)
+    if len(initial_history_payload.get("entries", [])) != 1:
+        print("ERROR: initial baseline promotion should create the first history entry")
+        return 1
+    initial_history_entry = initial_history_payload["entries"][0]
+    if initial_history_entry.get("summary", {}).get("installed_count") != 3:
+        print("ERROR: initial baseline promotion history should capture the full bundle-installed count")
+        return 1
+    archived_initial_baseline = Path(str(initial_history_entry.get("archived_baseline_path", "")))
+    if not archived_initial_baseline.is_file():
+        print("ERROR: initial baseline promotion should archive the promoted baseline snapshot")
+        return 1
+    initial_history_output = require_success(
+        "list initial installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "list-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+        ],
+    )
+    if "Entries: 1" not in initial_history_output:
+        print("ERROR: initial baseline history listing should report one promotion entry")
+        return 1
     bundle_dry_run = require_success(
         "dry-run install skill-authoring bundle",
         [
@@ -707,8 +751,17 @@ def main(argv: list[str] | None = None) -> int:
             repo_relative_path(promotion_diff_json),
             "--diff-markdown-path",
             repo_relative_path(promotion_diff_markdown),
+            "--history-path",
+            repo_relative_path(promotion_history_json),
+            "--history-markdown-path",
+            repo_relative_path(promotion_history_markdown),
+            "--archive-dir",
+            repo_relative_path(promotion_archive_dir),
         ],
     )
+    if not promotion_history_json.is_file() or not promotion_history_markdown.is_file():
+        print("ERROR: promote-installed-baseline should write baseline history artifacts")
+        return 1
     if not promotion_diff_json.is_file() or not promotion_diff_markdown.is_file():
         print("ERROR: promote-installed-baseline should write transition diff artifacts when replacing a baseline")
         return 1
@@ -728,12 +781,291 @@ def main(argv: list[str] | None = None) -> int:
     if promotion_removed_skill_ids != {"moyuan.issue-triage-report", "moyuan.api-change-risk-review"}:
         print("ERROR: promoted baseline transition diff should preserve the removed bundle-only skills")
         return 1
+    history_payload = load_json(promotion_history_json)
+    if len(history_payload.get("entries", [])) != 2:
+        print("ERROR: baseline history should record both the original and refreshed promoted baselines")
+        return 1
+    latest_history_entry = history_payload["entries"][-1]
+    if latest_history_entry.get("summary", {}).get("installed_count") != 1:
+        print("ERROR: baseline history entry should capture the promoted installed skill count")
+        return 1
+    archived_latest_baseline = Path(str(latest_history_entry.get("archived_baseline_path", "")))
+    if not archived_latest_baseline.is_file():
+        print("ERROR: refreshed baseline promotion should archive the new baseline snapshot")
+        return 1
+    history_output = require_success(
+        "list installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "list-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+        ],
+    )
+    if "Entries: 2" not in history_output:
+        print("ERROR: list-installed-baseline-history should report both recorded promotion entries")
+        return 1
+    verify_history_entry_one = run_python(
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history",
+            repo_relative_path(promotion_history_json),
+            "1",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--json",
+            "--strict",
+        ]
+    )
+    if verify_history_entry_one.returncode == 0:
+        print("ERROR: verify-installed-history should fail in strict mode when an older archived baseline drifts from live state")
+        if verify_history_entry_one.stdout.strip():
+            print(verify_history_entry_one.stdout.strip())
+        if verify_history_entry_one.stderr.strip():
+            print(verify_history_entry_one.stderr.strip())
+        return 1
+    verify_history_entry_one_payload = json.loads(verify_history_entry_one.stdout)
+    if verify_history_entry_one_payload.get("history_entry") != 1 or verify_history_entry_one_payload.get("matches") is not False:
+        print("ERROR: verify-installed-history should report the requested historical entry and drift state")
+        return 1
+    verify_history_latest_dir = output_root / "verify-history-latest"
+    require_success(
+        "verify latest archived installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history",
+            repo_relative_path(promotion_history_json),
+            "latest",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--output-dir",
+            repo_relative_path(verify_history_latest_dir),
+            "--strict",
+        ],
+    )
+    expected_verify_history_outputs = [
+        verify_history_latest_dir / "current-snapshot.json",
+        verify_history_latest_dir / "current-snapshot.md",
+        verify_history_latest_dir / "diff.json",
+        verify_history_latest_dir / "diff.md",
+    ]
+    if not all(path.is_file() for path in expected_verify_history_outputs):
+        print("ERROR: verify-installed-history should write current snapshot and diff artifacts")
+        return 1
+    history_diff_json = output_root / "snapshots" / "history-entry-diff.json"
+    history_diff_markdown = output_root / "snapshots" / "history-entry-diff.md"
+    require_success(
+        "diff archived installed baseline history entries",
+        [
+            "scripts/skills_market.py",
+            "diff-installed-history",
+            repo_relative_path(promotion_history_json),
+            "1",
+            "2",
+            "--output-path",
+            repo_relative_path(history_diff_json),
+            "--markdown-path",
+            repo_relative_path(history_diff_markdown),
+        ],
+    )
+    if not history_diff_json.is_file() or not history_diff_markdown.is_file():
+        print("ERROR: diff-installed-history should write both JSON and Markdown diff outputs")
+        return 1
+    history_diff_payload = load_json(history_diff_json)
+    if history_diff_payload.get("before_entry") != 1 or history_diff_payload.get("after_entry") != 2:
+        print("ERROR: diff-installed-history should record the resolved history entry numbers")
+        return 1
+    history_removed_skill_ids = {
+        entry.get("skill_id")
+        for entry in history_diff_payload.get("skills", {}).get("removed", [])
+        if isinstance(entry, dict)
+    }
+    if history_removed_skill_ids != {"moyuan.issue-triage-report", "moyuan.api-change-risk-review"}:
+        print("ERROR: diff-installed-history should report the two bundle-only skills as removed between entry 1 and entry 2")
+        return 1
+    if "Installed Market Snapshot Diff" not in history_diff_markdown.read_text(encoding="utf-8"):
+        print("ERROR: diff-installed-history Markdown output should contain the diff heading")
+        return 1
+    require_success(
+        "restore original installed baseline",
+        [
+            "scripts/skills_market.py",
+            "restore-installed-baseline",
+            repo_relative_path(promotion_history_json),
+            "1",
+            "--baseline-path",
+            repo_relative_path(snapshot_json_path),
+            "--markdown-path",
+            repo_relative_path(snapshot_markdown_path),
+        ],
+    )
+    restored_original_baseline = load_json(snapshot_json_path)
+    if restored_original_baseline.get("summary", {}).get("installed_count") != 3:
+        print("ERROR: restoring the first baseline history entry should recover the original installed skill count")
+        return 1
+    if restored_original_baseline.get("summary", {}).get("bundle_count") != 1:
+        print("ERROR: restoring the first baseline history entry should recover the original bundle count")
+        return 1
+    restored_drift = run_python(
+        [
+            "scripts/skills_market.py",
+            "verify-installed",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--strict",
+        ]
+    )
+    if restored_drift.returncode == 0:
+        print("ERROR: restoring an older baseline should surface drift against the current live state")
+        if restored_drift.stdout.strip():
+            print(restored_drift.stdout.strip())
+        if restored_drift.stderr.strip():
+            print(restored_drift.stderr.strip())
+        return 1
+    require_success(
+        "restore latest installed baseline",
+        [
+            "scripts/skills_market.py",
+            "restore-installed-baseline",
+            repo_relative_path(promotion_history_json),
+            "latest",
+            "--baseline-path",
+            repo_relative_path(snapshot_json_path),
+            "--markdown-path",
+            repo_relative_path(snapshot_markdown_path),
+        ],
+    )
+    restored_latest_baseline = load_json(snapshot_json_path)
+    if restored_latest_baseline.get("summary", {}).get("installed_count") != 1:
+        print("ERROR: restoring the latest baseline history entry should recover the refreshed installed skill count")
+        return 1
     require_success(
         "verify installed state against promoted baseline",
         [
             "scripts/skills_market.py",
             "verify-installed",
             repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--strict",
+        ],
+    )
+    prune_history_dry_run = require_success(
+        "dry-run prune installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "prune-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--keep-last",
+            "1",
+            "--dry-run",
+        ],
+    )
+    if "Pruned sequences: 1" not in prune_history_dry_run or "Retained sequences: 2" not in prune_history_dry_run:
+        print("ERROR: prune-installed-baseline-history dry-run should report pruning the first entry and keeping the latest one")
+        return 1
+    require_success(
+        "prune installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "prune-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--keep-last",
+            "1",
+        ],
+    )
+    pruned_history_payload = load_json(promotion_history_json)
+    if len(pruned_history_payload.get("entries", [])) != 1:
+        print("ERROR: pruning baseline history should retain only one entry")
+        return 1
+    retained_entry = pruned_history_payload["entries"][0]
+    if retained_entry.get("sequence") != 2:
+        print("ERROR: pruning baseline history should retain the latest promoted entry without renumbering it")
+        return 1
+    if archived_initial_baseline.exists():
+        print("ERROR: pruning baseline history should remove archived files for pruned entries")
+        return 1
+    pruned_history_output = require_success(
+        "list pruned installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "list-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+        ],
+    )
+    if "Entries: 1" not in pruned_history_output or "Next sequence: 3" not in pruned_history_output:
+        print("ERROR: pruned baseline history should preserve the next sequence after dropping old entries")
+        return 1
+    verify_pruned_entry = run_python(
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history",
+            repo_relative_path(promotion_history_json),
+            "1",
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+        ]
+    )
+    if verify_pruned_entry.returncode == 0 or "baseline history entry not found: 1" not in verify_pruned_entry.stderr:
+        print("ERROR: verify-installed-history should stop resolving pruned history entries")
+        if verify_pruned_entry.stdout.strip():
+            print(verify_pruned_entry.stdout.strip())
+        if verify_pruned_entry.stderr.strip():
+            print(verify_pruned_entry.stderr.strip())
+        return 1
+    diff_pruned_entry = run_python(
+        [
+            "scripts/skills_market.py",
+            "diff-installed-history",
+            repo_relative_path(promotion_history_json),
+            "1",
+            "latest",
+        ]
+    )
+    if diff_pruned_entry.returncode == 0 or "baseline history entry not found: 1" not in diff_pruned_entry.stderr:
+        print("ERROR: diff-installed-history should stop resolving pruned history entries")
+        if diff_pruned_entry.stdout.strip():
+            print(diff_pruned_entry.stdout.strip())
+        if diff_pruned_entry.stderr.strip():
+            print(diff_pruned_entry.stderr.strip())
+        return 1
+    require_success(
+        "promote installed baseline after prune",
+        [
+            "scripts/skills_market.py",
+            "promote-installed-baseline",
+            repo_relative_path(snapshot_json_path),
+            "--target-root",
+            repo_relative_path(bundle_install_root),
+            "--markdown-path",
+            repo_relative_path(snapshot_markdown_path),
+            "--history-path",
+            repo_relative_path(promotion_history_json),
+            "--history-markdown-path",
+            repo_relative_path(promotion_history_markdown),
+            "--archive-dir",
+            repo_relative_path(promotion_archive_dir),
+        ],
+    )
+    post_prune_promotion_history = load_json(promotion_history_json)
+    post_prune_sequences = [
+        entry.get("sequence")
+        for entry in post_prune_promotion_history.get("entries", [])
+        if isinstance(entry, dict)
+    ]
+    if post_prune_sequences != [2, 3]:
+        print("ERROR: promotion after prune should append a new sequence instead of reusing a pruned one")
+        return 1
+    if post_prune_promotion_history.get("next_sequence") != 4:
+        print("ERROR: promotion after prune should advance the next sequence marker")
+        return 1
+    require_success(
+        "verify newest archived installed baseline history after prune",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history",
+            repo_relative_path(promotion_history_json),
+            "latest",
             "--target-root",
             repo_relative_path(bundle_install_root),
             "--strict",

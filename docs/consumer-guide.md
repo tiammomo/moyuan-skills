@@ -156,7 +156,12 @@ python scripts/skills_market.py repair-installed --target-root dist/installed-sk
 python scripts/skills_market.py snapshot-installed --target-root dist/installed-skills --output-path dist/installed-skills/snapshots/latest.json --markdown-path dist/installed-skills/snapshots/latest.md
 python scripts/skills_market.py diff-installed dist/installed-skills/snapshots/before.json dist/installed-skills/snapshots/after.json --output-path dist/installed-skills/snapshots/diff.json --markdown-path dist/installed-skills/snapshots/diff.md
 python scripts/skills_market.py verify-installed dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --output-dir dist/installed-skills/verification --strict
-python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md
+python scripts/skills_market.py verify-installed-history dist/installed-skills/snapshots/baseline-history.json latest --target-root dist/installed-skills --output-dir dist/installed-skills/verification-history --strict
+python scripts/skills_market.py diff-installed-history dist/installed-skills/snapshots/baseline-history.json 1 latest --output-path dist/installed-skills/snapshots/history-diff.json --markdown-path dist/installed-skills/snapshots/history-diff.md
+python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
+python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
+python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
+python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
 
 当前 doctor 会检查：
@@ -189,11 +194,28 @@ python scripts/skills_market.py promote-installed-baseline dist/installed-skills
 - `verify-installed` 会先抓取当前 live state
 - 然后自动和 baseline snapshot 做 diff
 - `--strict` 会在 drift 出现时返回非零退出码，适合接 CI、值班脚本或本地运维门禁
+- `verify-installed-history` 会直接读取某个 archived history entry 做同样的校验，不需要先改写当前 baseline 文件
+
+如果你不是要对 live state 做校验，而是想直接看“两个历史基线之间差了什么”，当前也可以直接比较 history entry：
+
+- `diff-installed-history` 会直接读取两个 archived history entry
+- 它适合做基线演进 review、故障复盘和运维审计
+- 这样你就不需要先 restore 两次、再额外导出 snapshot diff
 
 如果 drift 已经被 review 通过，当前也可以直接把 live state 提升成新的 baseline：
 
 - `promote-installed-baseline` 会重写 baseline snapshot 和对应 Markdown 摘要
 - 如果旧 baseline 已存在，它还会额外生成一份 transition diff，保留这次基线变更记录
+- `--history-path`、`--history-markdown-path` 和 `--archive-dir` 可以把每次 promotion 变成可追溯、可恢复的基线归档动作
+
+如果你想回看 baseline 是怎么一路演进过来的，当前也可以直接看 history：
+
+- `list-installed-baseline-history` 会列出每次 promotion 的时间、目标安装根目录、摘要计数和归档位置
+- `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
+- `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”
+- `restore-installed-baseline` 可以把某个历史 entry 重新写回当前 baseline 文件
+- `prune-installed-baseline-history` 可以清理过旧 history entry 和对应 archive，避免本地运维记录无限增长
+- 这样 baseline promotion 就不再只是“覆盖文件”，而是带历史、可回放的运维动作
 
 ## lifecycle 对安装意味着什么
 

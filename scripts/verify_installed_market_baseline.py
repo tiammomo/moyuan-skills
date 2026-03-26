@@ -79,6 +79,14 @@ def build_verification_payload(baseline_path: Path, target_root: Path) -> tuple[
     return payload, current_payload
 
 
+def write_verification_artifacts(output_dir: Path, current_payload: dict, diff_payload: dict) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    write_text(output_dir / "current-snapshot.json", json.dumps(current_payload, indent=2, ensure_ascii=False) + "\n")
+    write_text(output_dir / "current-snapshot.md", snapshot_installed_market_state.render_markdown(current_payload))
+    write_text(output_dir / "diff.json", json.dumps(diff_payload, indent=2, ensure_ascii=False) + "\n")
+    write_text(output_dir / "diff.md", diff_installed_market_snapshots.render_markdown(diff_payload))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -88,11 +96,7 @@ def main(argv: list[str] | None = None) -> int:
     output_dir: Path | None = None
     if args.output_dir:
         output_dir = resolve_repo_path(args.output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        write_text(output_dir / "current-snapshot.json", json.dumps(current_payload, indent=2, ensure_ascii=False) + "\n")
-        write_text(output_dir / "current-snapshot.md", snapshot_installed_market_state.render_markdown(current_payload))
-        write_text(output_dir / "diff.json", json.dumps(payload["diff"], indent=2, ensure_ascii=False) + "\n")
-        write_text(output_dir / "diff.md", diff_installed_market_snapshots.render_markdown(payload["diff"]))
+        write_verification_artifacts(output_dir, current_payload, payload["diff"])
 
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
