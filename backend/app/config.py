@@ -24,7 +24,10 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     repo_root = Path(os.environ.get("MOYUAN_SKILLS_REPO_ROOT", _default_repo_root())).resolve()
-    cors_env = os.environ.get("MOYUAN_SKILLS_API_CORS", "http://localhost:3000")
+    cors_env = os.environ.get(
+        "MOYUAN_SKILLS_API_CORS",
+        "http://127.0.0.1:33003,http://localhost:33003",
+    )
     cors_origins = tuple(origin.strip() for origin in cors_env.split(",") if origin.strip())
     return Settings(
         repo_root=repo_root,

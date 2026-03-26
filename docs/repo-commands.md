@@ -105,6 +105,19 @@ npm run e2e --prefix frontend
 
 其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend 和 Next.js frontend，验证首页、skills、bundle 和 docs 这几条核心前后端链路。
 
+标准本地端口约定：
+
+- frontend: `33003`
+- backend: `38083`
+
+本地联调可直接用：
+
+```text
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
+set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
+npm run dev:local --prefix frontend
+```
+
 ## Skills Market 草案脚本
 
 验证所有 `skills/*/market/skill.json`：

@@ -68,26 +68,31 @@ Pages now consume live bundle/docs payloads through the shared data layer:
 
 ## Local run
 
+Recommended local ports:
+
+- frontend: `33003`
+- backend: `38083`
+
 ### Backend
 
 ```text
 pip install -r backend/requirements.txt
 set MOYUAN_SKILLS_REPO_ROOT=D:\moyuan\moyuan-skills
-set MOYUAN_SKILLS_API_CORS=http://127.0.0.1:3000
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+set MOYUAN_SKILLS_API_CORS=http://127.0.0.1:33003,http://localhost:33003
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
 ```
 
 ### Frontend in API mode
 
 ```text
-set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:8000
-npm run dev --prefix frontend -- --hostname 127.0.0.1 --port 3000
+set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
+npm run dev:local --prefix frontend
 ```
 
 ### Frontend in filesystem mode
 
 ```text
-npm run dev --prefix frontend -- --hostname 127.0.0.1 --port 3000
+npm run dev:local --prefix frontend
 ```
 
 ## Playwright full-stack verification

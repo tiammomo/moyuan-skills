@@ -181,6 +181,21 @@
 `- .github/workflows/
 ```
 
+## 前后端端口约定
+
+当前前后端联调统一使用：
+
+- frontend: `33003`
+- backend: `38083`
+
+如果要跑 API 模式前端：
+
+```text
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
+set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
+npm run dev:local --prefix frontend
+```
+
 ## 校验命令
 
 仓库当前提供多类本地检查入口：

@@ -28,7 +28,7 @@ This backend keeps those shapes stable while moving file access out of the front
 
 ```text
 pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 38083
 ```
 
 If the repo root is not the current working directory, set:
@@ -40,7 +40,7 @@ set MOYUAN_SKILLS_REPO_ROOT=D:\moyuan\moyuan-skills
 Optional CORS override:
 
 ```text
-set MOYUAN_SKILLS_API_CORS=http://localhost:3000
+set MOYUAN_SKILLS_API_CORS=http://127.0.0.1:33003,http://localhost:33003
 ```
 
 ## Core endpoints
@@ -81,9 +81,14 @@ The frontend now supports both:
 Example:
 
 ```text
-set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:8000
-npm run dev --prefix frontend -- --hostname 127.0.0.1 --port 3000
+set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
+npm run dev:local --prefix frontend
 ```
+
+Recommended local ports:
+
+- frontend: `33003`
+- backend: `38083`
 
 ## Playwright end-to-end verification
 
