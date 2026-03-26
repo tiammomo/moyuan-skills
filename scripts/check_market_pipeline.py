@@ -1018,6 +1018,31 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Execution Drafts" not in healthy_execution_summary_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver execution Markdown output should contain the execution heading")
         return 1
+    history_waiver_preview_dir = output_root / "waiver-preview-healthy"
+    history_waiver_preview_output = require_success(
+        "preview installed baseline history waiver execution",
+        [
+            "scripts/skills_market.py",
+            "preview-installed-history-waiver-execution",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_preview_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_preview_payload = json.loads(history_waiver_preview_output)
+    if history_waiver_preview_payload.get("passes") is not True or history_waiver_preview_payload.get("preview_count") != 0:
+        print("ERROR: healthy waiver preview should report zero review actions")
+        return 1
+    healthy_preview_summary_json = history_waiver_preview_dir / "preview-summary.json"
+    healthy_preview_summary_markdown = history_waiver_preview_dir / "preview-summary.md"
+    if not healthy_preview_summary_json.is_file() or not healthy_preview_summary_markdown.is_file():
+        print("ERROR: healthy waiver preview should write summary artifacts when an output dir is requested")
+        return 1
+    if "Installed Baseline History Waiver Preview" not in healthy_preview_summary_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver preview Markdown output should contain the preview heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1216,6 +1241,64 @@ def main(argv: list[str] | None = None) -> int:
     stale_metrics = set(stale_execution_payload.get("match", {}).get("metrics", []))
     if "added_skills" in stale_metrics or "removed_skills" not in stale_metrics:
         print("ERROR: stale waiver execution draft should pivot to the currently active removed-skills alert scope")
+        return 1
+    history_waiver_preview_findings_dir = output_root / "waiver-preview-findings"
+    history_waiver_preview_findings_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "preview-installed-history-waiver-execution",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_preview_findings_dir),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_preview_findings_result.returncode == 0:
+        print("ERROR: waiver preview should fail in strict mode when review previews are present")
+        if history_waiver_preview_findings_result.stdout.strip():
+            print(history_waiver_preview_findings_result.stdout.strip())
+        if history_waiver_preview_findings_result.stderr.strip():
+            print(history_waiver_preview_findings_result.stderr.strip())
+        return 1
+    history_waiver_preview_findings_payload = json.loads(history_waiver_preview_findings_result.stdout)
+    if history_waiver_preview_findings_payload.get("preview_count") != 2:
+        print("ERROR: waiver preview should emit one preview action for each failing temporary waiver")
+        return 1
+    if history_waiver_preview_findings_payload.get("draft_preview_count") != 2 or history_waiver_preview_findings_payload.get("review_preview_count") != 0:
+        print("ERROR: pre-prune waiver preview should show two draft previews and no cleanup-only previews")
+        return 1
+    expired_preview_payload = load_json(
+        history_waiver_preview_findings_dir / "waivers" / "expired-release-downsize" / "preview.json"
+    )
+    stale_preview_payload = load_json(
+        history_waiver_preview_findings_dir / "waivers" / "stale-added-skills" / "preview.json"
+    )
+    expired_changed_paths = {
+        change.get("path")
+        for action in expired_preview_payload.get("action_previews", [])
+        if isinstance(action, dict)
+        for change in action.get("changes", [])
+        if isinstance(change, dict)
+    }
+    stale_changed_paths = {
+        change.get("path")
+        for action in stale_preview_payload.get("action_previews", [])
+        if isinstance(action, dict)
+        for change in action.get("changes", [])
+        if isinstance(change, dict)
+    }
+    if "expires_on" not in expired_changed_paths or "approval.reason" not in expired_changed_paths:
+        print("ERROR: expired waiver preview should show the renewed expiry and approval reason changes")
+        return 1
+    if "match.metrics" not in stale_changed_paths:
+        print("ERROR: stale waiver preview should show the metric replacement in the generated draft")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -1612,6 +1695,38 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if load_json(post_prune_remove_review).get("mode") != "remove_review":
         print("ERROR: post-prune remove-review artifact should record the cleanup review mode")
+        return 1
+    post_prune_history_waiver_preview_dir = output_root / "waiver-preview-post-prune"
+    post_prune_history_waiver_preview_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "preview-installed-history-waiver-execution",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_preview_dir),
+            "--json",
+            "--strict",
+        ]
+    )
+    if post_prune_history_waiver_preview_result.returncode == 0:
+        print("ERROR: post-prune waiver preview should fail in strict mode when cleanup review is required")
+        if post_prune_history_waiver_preview_result.stdout.strip():
+            print(post_prune_history_waiver_preview_result.stdout.strip())
+        if post_prune_history_waiver_preview_result.stderr.strip():
+            print(post_prune_history_waiver_preview_result.stderr.strip())
+        return 1
+    post_prune_history_waiver_preview = json.loads(post_prune_history_waiver_preview_result.stdout)
+    if post_prune_history_waiver_preview.get("preview_count") != 1:
+        print("ERROR: post-prune waiver preview should emit one cleanup preview for the unmatched built-in waiver")
+        return 1
+    if post_prune_history_waiver_preview.get("draft_preview_count") != 0 or post_prune_history_waiver_preview.get("review_preview_count") != 1:
+        print("ERROR: post-prune waiver preview should fall back to a single review-only preview")
+        return 1
+    post_prune_preview_payload = load_json(
+        post_prune_history_waiver_preview_dir / "waivers" / "approved-release-engineering-downsize" / "preview.json"
+    )
+    if post_prune_preview_payload.get("action_previews", [])[0].get("mode") != "remove_review":
+        print("ERROR: post-prune waiver preview should surface the remove-review action mode")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",
