@@ -64,10 +64,14 @@ def main(argv: list[str] | None = None) -> int:
     install_root = output_root / "installed"
     bundle_install_root = output_root / "bundle-installed"
     doctor_bad_root = output_root / "doctor-bad"
+    fixture_root = ROOT / "dist" / "_smoke-fixtures"
 
     if output_root.exists():
         shutil.rmtree(output_root)
     output_root.mkdir(parents=True, exist_ok=True)
+    if fixture_root.exists():
+        shutil.rmtree(fixture_root)
+    fixture_root.mkdir(parents=True, exist_ok=True)
 
     require_success("validate manifests", ["scripts/validate_market_manifest.py"])
     require_success("validate governance", ["scripts/check_market_governance.py"])
@@ -1268,7 +1272,7 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Source Reconcile Gate" not in healthy_source_reconcile_gate_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver source reconcile gate Markdown output should contain the gate heading")
         return 1
-    waiver_temp_dir = output_root / "waivers"
+    waiver_temp_dir = fixture_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
     expired_history_waiver_path.write_text(
@@ -1613,9 +1617,14 @@ def main(argv: list[str] | None = None) -> int:
     if history_waiver_execute_findings_payload.get("blocked_action_count") != 0:
         print("ERROR: waiver execute staging should not block healthy reviewed apply packs")
         return 1
-    staged_expired_path = history_waiver_execute_stage_dir / expired_history_waiver_path.relative_to(ROOT)
-    staged_stale_path = history_waiver_execute_stage_dir / stale_history_waiver_path.relative_to(ROOT)
-    if not staged_expired_path.is_file() or not staged_stale_path.is_file():
+    staged_paths_by_id = {
+        item.get("waiver_id"): (ROOT / Path(str(item.get("stage_path", "")).strip())).resolve()
+        for item in history_waiver_execute_findings_payload.get("actions", [])
+        if isinstance(item, dict) and str(item.get("stage_path", "")).strip()
+    }
+    staged_expired_path = staged_paths_by_id.get("expired-release-downsize")
+    staged_stale_path = staged_paths_by_id.get("stale-added-skills")
+    if staged_expired_path is None or staged_stale_path is None or not staged_expired_path.is_file() or not staged_stale_path.is_file():
         print("ERROR: waiver execute staging should materialize staged update files under the staging root")
         return 1
     if load_json(staged_expired_path).get("expires_on", "") <= "2026-03-21":
@@ -2153,7 +2162,7 @@ def main(argv: list[str] | None = None) -> int:
     if history_waiver_source_reconcile_waived_gate_payload.get("matched_gate_waiver_count") != 1:
         print("ERROR: source reconcile gate waiver run should match exactly one gate waiver")
         return 1
-    source_reconcile_gate_waiver_temp_dir = output_root / "source-reconcile-gate-waivers"
+    source_reconcile_gate_waiver_temp_dir = fixture_root / "source-reconcile-gate-waivers"
     source_reconcile_gate_waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_source_reconcile_gate_waiver_path = source_reconcile_gate_waiver_temp_dir / "expired-source-drift.json"
     expired_source_reconcile_gate_waiver_path.write_text(
@@ -2366,6 +2375,75 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if source_reconcile_gate_waiver_findings_by_id.get("policy-mismatch-drift") != {"policy_mismatch"}:
         print("ERROR: policy-mismatch source-reconcile gate waiver fixture should report only the policy_mismatch finding code")
+        return 1
+    source_reconcile_gate_waiver_remediation_json = output_root / "snapshots" / "source-reconcile-gate-waiver-remediation.json"
+    source_reconcile_gate_waiver_remediation_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "remediate-installed-history-waiver-source-reconcile-waivers",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(policy_mismatch_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--output-path",
+            repo_relative_path(source_reconcile_gate_waiver_remediation_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if source_reconcile_gate_waiver_remediation_result.returncode == 0:
+        print("ERROR: source-reconcile gate waiver remediation should fail in strict mode when action is required")
+        if source_reconcile_gate_waiver_remediation_result.stdout.strip():
+            print(source_reconcile_gate_waiver_remediation_result.stdout.strip())
+        if source_reconcile_gate_waiver_remediation_result.stderr.strip():
+            print(source_reconcile_gate_waiver_remediation_result.stderr.strip())
+        return 1
+    source_reconcile_gate_waiver_remediation_payload = load_json(source_reconcile_gate_waiver_remediation_json)
+    if source_reconcile_gate_waiver_remediation_payload.get("remediation_count") != 4:
+        print("ERROR: source-reconcile gate waiver remediation should emit one remediation action for each failing temporary gate waiver")
+        return 1
+    source_reconcile_gate_waiver_actions_by_id = {
+        item.get("id"): {
+            action.get("code")
+            for action in item.get("actions", [])
+            if isinstance(action, dict)
+        }
+        for item in source_reconcile_gate_waiver_remediation_payload.get("waivers", [])
+        if isinstance(item, dict)
+    }
+    if source_reconcile_gate_waiver_actions_by_id.get("approved-expired-release-downsize-source-drift") not in (set(), None):
+        print("ERROR: healthy built-in source-reconcile gate waiver should not require remediation")
+        return 1
+    if source_reconcile_gate_waiver_actions_by_id.get("expired-source-drift") != {"renew_or_remove"}:
+        print("ERROR: expired source-reconcile gate waiver remediation should suggest renewing or removing the waiver")
+        return 1
+    if source_reconcile_gate_waiver_actions_by_id.get("stale-blocked-execution") != {"retire_or_replace"}:
+        print("ERROR: stale source-reconcile gate waiver remediation should suggest retiring or replacing the waiver")
+        return 1
+    if source_reconcile_gate_waiver_actions_by_id.get("unmatched-drift") != {"retarget_or_remove"}:
+        print("ERROR: unmatched source-reconcile gate waiver remediation should suggest retargeting or removing the waiver")
+        return 1
+    if source_reconcile_gate_waiver_actions_by_id.get("policy-mismatch-drift") != {"correct_policy_or_split"}:
+        print("ERROR: policy-mismatch source-reconcile gate waiver remediation should suggest correcting the policy or splitting the waiver")
         return 1
     history_waiver_source_reconcile_handoff_gate_output = require_success(
         "gate installed baseline history waiver source reconcile with review-handoff policy",

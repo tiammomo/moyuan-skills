@@ -262,6 +262,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `gate-installed-history-waiver-source-reconcile --policy ...` 会把这份 report 直接转成可复用 gate，默认推荐走命名 policy 而不是手写一串状态规则
 - `gate-installed-history-waiver-source-reconcile --gate-waiver ...` 可以只豁免某个已知 finding 组合，而不是放宽整条 policy
 - `audit-installed-history-waiver-source-reconcile-waivers` 会审计 source-reconcile gate waiver 是否已经过期、失配、陈旧，或者挂在错误 policy 上
+- `remediate-installed-history-waiver-source-reconcile-waivers` 会把这些 audit finding 翻译成具体动作，比如续期、重定向匹配范围、替换或删除 waiver
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver
 - `retire_or_replace` 适合 stale waiver
@@ -295,6 +296,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `gate-installed-history-waiver-source-reconcile --policy source-reconcile-release-gate` 适合严格 release/CI
 - `gate-installed-history-waiver-source-reconcile --policy source-reconcile-release-gate --gate-waiver approved-expired-release-downsize-source-drift` 适合严格 gate 下临时接受一个已知 demo drift
 - `audit-installed-history-waiver-source-reconcile-waivers` 适合在 strict gate 之前先清点这些例外是不是还有效，避免 waiver 累积成长期放行
+- `remediate-installed-history-waiver-source-reconcile-waivers` 适合在 audit 之后直接生成治理动作建议，减少人工判断每条 finding 该怎么处理
 - `gate-installed-history-waiver-source-reconcile --policy source-reconcile-review-handoff` 适合 review/handoff 阶段，只要求策略里声明的条件成立
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线

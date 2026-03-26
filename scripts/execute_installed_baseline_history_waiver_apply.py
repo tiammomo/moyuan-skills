@@ -111,6 +111,20 @@ def prepare_stage_dir(stage_dir: Path | None) -> Path | None:
     return stage_dir
 
 
+def relative_stage_path(source_path: Path, target_root: Path) -> Path:
+    if source_path.is_relative_to(target_root):
+        return source_path.relative_to(target_root)
+    if source_path.is_relative_to(ROOT):
+        return source_path.relative_to(ROOT)
+    return Path(source_path.name)
+
+
+def staged_target_path(action: dict, source_path: Path, stage_dir: Path) -> Path:
+    waiver_id = str(action.get("waiver_id", "")).strip() or "unknown-waiver"
+    action_code = str(action.get("action_code", "")).strip() or "action"
+    return stage_dir / "targets" / waiver_id / f"{action_code}-{source_path.name}"
+
+
 def execute_action(
     action: dict,
     *,
@@ -151,7 +165,7 @@ def execute_action(
         rendered_target_path = ROOT / target_path
         target_text = rendered_target_path.read_text(encoding="utf-8")
         if stage_dir is not None:
-            staged_path = (stage_dir / actual_target_path.relative_to(target_root)).resolve()
+            staged_path = staged_target_path(action, actual_target_path, stage_dir).resolve()
             staged_path.parent.mkdir(parents=True, exist_ok=True)
             staged_path.write_text(target_text, encoding="utf-8")
             result["stage_path"] = repo_relative_path(staged_path)
@@ -170,7 +184,7 @@ def execute_action(
                 existing = json.loads(deletions_path.read_text(encoding="utf-8"))
                 if not isinstance(existing, list):
                     existing = []
-            relative_target = actual_target_path.relative_to(target_root).as_posix()
+            relative_target = relative_stage_path(actual_target_path, target_root).as_posix()
             if relative_target not in existing:
                 existing.append(relative_target)
             write_text(deletions_path, json.dumps(existing, indent=2, ensure_ascii=False) + "\n")
