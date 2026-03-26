@@ -24,7 +24,7 @@ The current frontend already has a clear information architecture:
 
 This backend keeps those shapes stable while moving file access out of the frontend.
 
-The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs.
+The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and copy-friendly action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs.
 
 ## Run
 
@@ -101,7 +101,7 @@ Recommended local ports:
 
 ## Playwright end-to-end verification
 
-The repo now includes a Playwright flow that starts this FastAPI backend and the Next.js frontend together, then validates homepage, skills, bundle, docs search/filter, teaching, and project-doc flows against the real API:
+The repo now includes a Playwright flow that starts this FastAPI backend and the Next.js frontend together, then validates homepage, skills, bundle, docs search/filter, teaching, project-doc, and command-copy flows against the real API:
 
 ```text
 npx playwright install chromium --prefix frontend

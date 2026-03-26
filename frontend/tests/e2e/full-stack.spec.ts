@@ -27,6 +27,8 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-panel')).toBeVisible();
   await expect(page.getByTestId('doc-action-project-primary')).toContainText('python scripts/check_python_market_backend.py');
   await expect(page.getByTestId('doc-action-project-secondary')).toContainText('npm run e2e --prefix frontend');
+  await page.getByTestId('doc-action-copy-project-primary').click();
+  await expect(page.getByTestId('doc-action-copy-project-primary')).toContainText('Copied');
   await expect(page.getByTestId('doc-context-panel')).toBeVisible();
   await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/frontend-backend-integration.md');
   const firstRelatedDoc = page.locator('[data-testid^="related-doc-link-"]').first();
