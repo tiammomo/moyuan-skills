@@ -14,6 +14,7 @@ import build_market_registry
 import build_org_market_index
 import check_installed_baseline_history_alerts
 import audit_installed_baseline_history_waiver_sources
+import check_installed_baseline_history_waiver_source_reconcile_gate
 import check_market_governance
 import check_installed_market_state
 import check_market_pipeline
@@ -409,6 +410,35 @@ def build_parser() -> argparse.ArgumentParser:
     report_reconcile_history_source_parser.add_argument("--output-path", help="Optional JSON report output path.")
     report_reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown report output path.")
     report_reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    gate_reconcile_history_source_parser = subparsers.add_parser(
+        "gate-installed-history-waiver-source-reconcile",
+        help="Evaluate source-reconcile report artifacts as a reusable gate.",
+    )
+    gate_reconcile_history_source_parser.add_argument("history", help="Baseline history JSON file.")
+    gate_reconcile_history_source_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to gate. Defaults to all known waivers.",
+    )
+    gate_reconcile_history_source_parser.add_argument(
+        "--output-dir",
+        help="Directory containing source-reconcile artifacts and receiving gate summaries.",
+    )
+    gate_reconcile_history_source_parser.add_argument("--target-root", help="Optional repo-root mirror used for source audits and verification.")
+    gate_reconcile_history_source_parser.add_argument("--stage-dir", help="Optional staging directory used for staged verification.")
+    gate_reconcile_history_source_parser.add_argument("--execute-summary-path", help="Optional source-reconcile execution summary JSON path.")
+    gate_reconcile_history_source_parser.add_argument(
+        "--allow-state",
+        action="append",
+        default=[],
+        help="Report state that should be treated as passing. Defaults to verified and no_reconcile_actions.",
+    )
+    gate_reconcile_history_source_parser.add_argument("--output-path", help="Optional JSON gate output path.")
+    gate_reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown gate output path.")
+    gate_reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    gate_reconcile_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when the gate fails.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -925,6 +955,30 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             forwarded_args.append("--json")
         return report_installed_baseline_history_waiver_source_reconcile.main(forwarded_args)
+
+    if args.command == "gate-installed-history-waiver-source-reconcile":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.stage_dir:
+            forwarded_args.extend(["--stage-dir", args.stage_dir])
+        if args.execute_summary_path:
+            forwarded_args.extend(["--execute-summary-path", args.execute_summary_path])
+        for allowed_state in args.allow_state:
+            forwarded_args.extend(["--allow-state", allowed_state])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return check_installed_baseline_history_waiver_source_reconcile_gate.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]

@@ -1194,6 +1194,38 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Source Reconcile Verification" not in healthy_source_reconcile_verify_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver source reconcile verify Markdown output should contain the verification heading")
         return 1
+    history_waiver_source_reconcile_gate_output = require_success(
+        "gate installed baseline history waiver source reconcile for healthy workflow",
+        [
+            "scripts/skills_market.py",
+            "gate-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_gate_payload = json.loads(history_waiver_source_reconcile_gate_output)
+    if history_waiver_source_reconcile_gate_payload.get("passes") is not True or history_waiver_source_reconcile_gate_payload.get("report_state") != "verified":
+        print("ERROR: healthy waiver source reconcile gate should pass with report_state=verified")
+        return 1
+    if history_waiver_source_reconcile_gate_payload.get("finding_count") != 0:
+        print("ERROR: healthy waiver source reconcile gate should not emit findings")
+        return 1
+    healthy_source_reconcile_report_json = history_waiver_execute_dir / "source-reconcile-report-summary.json"
+    healthy_source_reconcile_report_markdown = history_waiver_execute_dir / "source-reconcile-report-summary.md"
+    if not healthy_source_reconcile_report_json.is_file() or not healthy_source_reconcile_report_markdown.is_file():
+        print("ERROR: healthy waiver source reconcile gate should also write the aggregated report artifacts")
+        return 1
+    healthy_source_reconcile_gate_json = history_waiver_execute_dir / "source-reconcile-gate-summary.json"
+    healthy_source_reconcile_gate_markdown = history_waiver_execute_dir / "source-reconcile-gate-summary.md"
+    if not healthy_source_reconcile_gate_json.is_file() or not healthy_source_reconcile_gate_markdown.is_file():
+        print("ERROR: healthy waiver source reconcile gate should write summary artifacts")
+        return 1
+    if "Installed Baseline History Waiver Source Reconcile Gate" not in healthy_source_reconcile_gate_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver source reconcile gate Markdown output should contain the gate heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1993,6 +2025,50 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if "Installed Baseline History Waiver Source Reconcile Report" not in source_reconcile_report_markdown.read_text(encoding="utf-8"):
         print("ERROR: source reconcile report Markdown output should contain the report heading")
+        return 1
+    history_waiver_source_reconcile_gate_tampered_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "gate-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_source_reconcile_gate_tampered_result.returncode == 0:
+        print("ERROR: source reconcile gate should fail in strict mode after a written restore target drifts")
+        if history_waiver_source_reconcile_gate_tampered_result.stdout.strip():
+            print(history_waiver_source_reconcile_gate_tampered_result.stdout.strip())
+        if history_waiver_source_reconcile_gate_tampered_result.stderr.strip():
+            print(history_waiver_source_reconcile_gate_tampered_result.stderr.strip())
+        return 1
+    history_waiver_source_reconcile_gate_tampered_payload = json.loads(history_waiver_source_reconcile_gate_tampered_result.stdout)
+    if history_waiver_source_reconcile_gate_tampered_payload.get("passes") is not False or history_waiver_source_reconcile_gate_tampered_payload.get("report_state") != "drifted":
+        print("ERROR: source reconcile gate should fail with report_state=drifted after tampering the written restore target")
+        return 1
+    gate_finding_codes = {finding.get("code") for finding in history_waiver_source_reconcile_gate_tampered_payload.get("findings", [])}
+    if gate_finding_codes != {"disallowed_report_state", "verification_drift"}:
+        print("ERROR: tampered source reconcile gate should emit disallowed_report_state and verification_drift findings")
+        return 1
+    source_reconcile_gate_json = history_waiver_execute_write_updates_dir / "source-reconcile-gate-summary.json"
+    source_reconcile_gate_markdown = history_waiver_execute_write_updates_dir / "source-reconcile-gate-summary.md"
+    if not source_reconcile_gate_json.is_file() or not source_reconcile_gate_markdown.is_file():
+        print("ERROR: tampered source reconcile gate should write JSON and Markdown gate artifacts")
+        return 1
+    if "Installed Baseline History Waiver Source Reconcile Gate" not in source_reconcile_gate_markdown.read_text(encoding="utf-8"):
+        print("ERROR: tampered source reconcile gate Markdown output should contain the gate heading")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"

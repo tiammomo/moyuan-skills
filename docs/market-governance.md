@@ -239,6 +239,13 @@ python scripts/skills_market.py report-installed-history-waiver-source-reconcile
 python scripts/skills_market.py report-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json
 ```
 
+### 18. 对 installed history waiver source reconcile 执行 gate
+
+```text
+python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
+python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -261,3 +268,4 @@ python scripts/skills_market.py report-installed-history-waiver-source-reconcile
 - [../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py](../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py)
 - [../scripts/verify_installed_baseline_history_waiver_source_reconcile.py](../scripts/verify_installed_baseline_history_waiver_source_reconcile.py)
 - [../scripts/report_installed_baseline_history_waiver_source_reconcile.py](../scripts/report_installed_baseline_history_waiver_source_reconcile.py)
+- [../scripts/check_installed_baseline_history_waiver_source_reconcile_gate.py](../scripts/check_installed_baseline_history_waiver_source_reconcile_gate.py)
