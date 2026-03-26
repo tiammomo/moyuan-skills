@@ -25,6 +25,9 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('docs-result-project-frontend-backend-integration').click();
   await expect(page.getByRole('heading', { name: /frontend \/ backend integration/i }).first()).toBeVisible();
   await expect(page.getByTestId('doc-action-panel')).toBeVisible();
+  await expect(page.getByTestId('doc-action-runbook-hint')).toContainText('Recommended run order');
+  await expect(page.getByTestId('doc-action-sequence-1')).toContainText('Step 1 - Start here');
+  await expect(page.getByTestId('doc-action-sequence-2')).toContainText('Step 2 - Finish by verifying');
   await expect(page.getByTestId('doc-action-project-primary')).toContainText('python scripts/check_python_market_backend.py');
   await expect(page.getByTestId('doc-action-project-secondary')).toContainText('npm run e2e --prefix frontend');
   await page.getByTestId('doc-action-copy-project-primary').click();
