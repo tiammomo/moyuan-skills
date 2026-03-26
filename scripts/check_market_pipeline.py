@@ -1093,6 +1093,30 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Apply Execution" not in healthy_execute_summary_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver execute Markdown output should contain the execution heading")
         return 1
+    history_waiver_source_audit_output = require_success(
+        "audit installed baseline history waiver sources",
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_audit_payload = json.loads(history_waiver_source_audit_output)
+    if history_waiver_source_audit_payload.get("passes") is not True or history_waiver_source_audit_payload.get("action_count") != 0:
+        print("ERROR: healthy waiver source audit should report zero findings")
+        return 1
+    healthy_source_audit_json = history_waiver_execute_dir / "source-audit-summary.json"
+    healthy_source_audit_markdown = history_waiver_execute_dir / "source-audit-summary.md"
+    if not healthy_source_audit_json.is_file() or not healthy_source_audit_markdown.is_file():
+        print("ERROR: healthy waiver source audit should write summary artifacts")
+        return 1
+    if "Installed Baseline History Waiver Source Audit" not in healthy_source_audit_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver source audit Markdown output should contain the source-audit heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1449,6 +1473,134 @@ def main(argv: list[str] | None = None) -> int:
     staged_stale_metrics = set(load_json(staged_stale_path).get("match", {}).get("metrics", []))
     if "added_skills" in staged_stale_metrics or "removed_skills" not in staged_stale_metrics:
         print("ERROR: staged stale waiver file should preserve the replacement metric set")
+        return 1
+    history_waiver_source_audit_findings_output = require_success(
+        "audit installed baseline history waiver sources after staging",
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_findings_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_audit_findings_payload = json.loads(history_waiver_source_audit_findings_output)
+    if history_waiver_source_audit_findings_payload.get("pending_count") != 2 or history_waiver_source_audit_findings_payload.get("drift_count") != 0:
+        print("ERROR: staged waiver source audit should classify both reviewed updates as pending without drift")
+        return 1
+    if history_waiver_source_audit_findings_payload.get("staged_record_count") != 2 or history_waiver_source_audit_findings_payload.get("target_match_count") != 0:
+        print("ERROR: staged waiver source audit should report two staged records and no applied target matches")
+        return 1
+    history_waiver_execute_write_updates_root = output_root / "waiver-execute-write-updates-root"
+    for source_path in [expired_history_waiver_path, stale_history_waiver_path]:
+        mirrored_source = history_waiver_execute_write_updates_root / source_path.relative_to(ROOT)
+        mirrored_source.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, mirrored_source)
+    history_waiver_execute_write_updates_dir = output_root / "waiver-execute-write-updates"
+    history_waiver_execute_write_updates_output = require_success(
+        "execute installed baseline history waiver apply pack with write mode for updates",
+        [
+            "scripts/skills_market.py",
+            "execute-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--write",
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_execute_write_updates_payload = json.loads(history_waiver_execute_write_updates_output)
+    if history_waiver_execute_write_updates_payload.get("written_update_count") != 2 or history_waiver_execute_write_updates_payload.get("blocked_action_count") != 0:
+        print("ERROR: waiver execute write mode should apply two reviewed update actions without safety-check failures")
+        return 1
+    history_waiver_source_audit_written_output = require_success(
+        "audit installed baseline history waiver sources after write execution",
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_audit_written_payload = json.loads(history_waiver_source_audit_written_output)
+    if history_waiver_source_audit_written_payload.get("applied_count") != 2 or history_waiver_source_audit_written_payload.get("drift_count") != 0:
+        print("ERROR: written waiver source audit should classify both reviewed updates as applied without drift")
+        return 1
+    if history_waiver_source_audit_written_payload.get("write_record_count") != 2 or history_waiver_source_audit_written_payload.get("target_match_count") != 2:
+        print("ERROR: written waiver source audit should report two write records and two target matches")
+        return 1
+    tampered_written_expired_path = history_waiver_execute_write_updates_root / expired_history_waiver_path.relative_to(ROOT)
+    tampered_written_expired_payload = load_json(tampered_written_expired_path)
+    tampered_written_expired_payload["description"] = "Tampered after execute to verify source drift detection."
+    tampered_written_expired_path.write_text(
+        json.dumps(tampered_written_expired_payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    history_waiver_source_audit_tampered_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_source_audit_tampered_result.returncode == 0:
+        print("ERROR: waiver source audit should fail in strict mode after a reviewed source file drifts")
+        if history_waiver_source_audit_tampered_result.stdout.strip():
+            print(history_waiver_source_audit_tampered_result.stdout.strip())
+        if history_waiver_source_audit_tampered_result.stderr.strip():
+            print(history_waiver_source_audit_tampered_result.stderr.strip())
+        return 1
+    history_waiver_source_audit_tampered_payload = json.loads(history_waiver_source_audit_tampered_result.stdout)
+    if history_waiver_source_audit_tampered_payload.get("drift_count") != 1:
+        print("ERROR: waiver source audit should report exactly one drift after tampering one written source file")
+        return 1
+    drift_states = {
+        result.get("state")
+        for result in history_waiver_source_audit_tampered_payload.get("results", [])
+        if result.get("passes") is not True
+    }
+    if drift_states != {"drifted_after_write"}:
+        print("ERROR: tampered waiver source audit should classify the written update as drifted_after_write")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -1947,6 +2099,24 @@ def main(argv: list[str] | None = None) -> int:
     )
     if executed_delete_target.exists():
         print("ERROR: post-prune write execution should delete the mirrored waiver source file")
+        return 1
+    post_prune_history_waiver_source_audit_output = require_success(
+        "audit installed baseline history waiver sources after delete execution",
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execute_dir),
+            "--target-root",
+            repo_relative_path(post_prune_execute_write_root),
+            "--json",
+            "--strict",
+        ],
+    )
+    post_prune_history_waiver_source_audit_payload = json.loads(post_prune_history_waiver_source_audit_output)
+    if post_prune_history_waiver_source_audit_payload.get("deleted_match_count") != 1 or post_prune_history_waiver_source_audit_payload.get("drift_count") != 0:
+        print("ERROR: post-prune waiver source audit should classify the reviewed delete as applied without drift")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",

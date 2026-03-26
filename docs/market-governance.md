@@ -204,6 +204,13 @@ python scripts/skills_market.py execute-installed-history-waiver-apply dist/inst
 python scripts/skills_market.py execute-installed-history-waiver-apply dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --write --strict
 ```
 
+### 13. 审计 reviewed installed history waiver source state
+
+```text
+python scripts/skills_market.py audit-installed-history-waiver-sources dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
+python scripts/skills_market.py audit-installed-history-waiver-sources dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -221,3 +228,4 @@ python scripts/skills_market.py execute-installed-history-waiver-apply dist/inst
 - [../scripts/preview_installed_baseline_history_waiver_execution.py](../scripts/preview_installed_baseline_history_waiver_execution.py)
 - [../scripts/prepare_installed_baseline_history_waiver_apply.py](../scripts/prepare_installed_baseline_history_waiver_apply.py)
 - [../scripts/execute_installed_baseline_history_waiver_apply.py](../scripts/execute_installed_baseline_history_waiver_apply.py)
+- [../scripts/audit_installed_baseline_history_waiver_sources.py](../scripts/audit_installed_baseline_history_waiver_sources.py)
