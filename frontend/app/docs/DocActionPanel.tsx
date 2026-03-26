@@ -39,6 +39,16 @@ function getOutcomeTestId(testId?: string): string | undefined {
   return `${testId}-outcome`;
 }
 
+function getPrerequisitesTestId(testId?: string): string | undefined {
+  if (!testId) {
+    return undefined;
+  }
+  if (testId.startsWith('doc-action-')) {
+    return testId.replace('doc-action-', 'doc-action-prerequisites-');
+  }
+  return `${testId}-prerequisites`;
+}
+
 async function copyCommandText(value: string): Promise<void> {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
@@ -182,6 +192,15 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
               >
                 <code>{command.command}</code>
               </pre>
+              {command.prerequisites && (
+                <div
+                  className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3"
+                  data-testid={getPrerequisitesTestId(command.testId)}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Prerequisites</p>
+                  <p className="mt-1 text-xs leading-6 text-ink">{command.prerequisites}</p>
+                </div>
+              )}
               {command.expectedOutcome && (
                 <div
                   className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3"

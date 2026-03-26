@@ -153,6 +153,7 @@ export interface ProjectDocPayload extends DocsCatalogEntry {
 export interface DocActionCommand {
   label: string;
   command: string;
+  prerequisites?: string;
   expectedOutcome?: string;
   testId?: string;
 }
