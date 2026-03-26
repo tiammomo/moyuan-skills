@@ -269,6 +269,7 @@ python scripts/skills_market.py diff-installed-history dist/installed-skills/sna
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --latest-only --max-removed-skills 1 --max-removed-bundles 0 --max-installed-delta 1 --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json 1 --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -284,6 +285,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 历史归档的 baseline 能否被直接拿来做 verify，而不用先回写到当前 baseline 文件
 - 两个历史归档 baseline 能否被直接拿来做 diff，而不用手动来回复制旧文件
 - retained history 能否被直接汇总成 timeline/report，而不用人工整理多次 promotion
+- retained transition 能否按阈值直接触发 alert/gate，而不是只靠人工目检 report
 - baseline promotion 能否被保留成 history 和 archive，而不是只有最后一个文件版本
 - 历史 baseline 能否被恢复成当前运维基线，支撑回放和问题复盘
 - 过旧的 baseline history / archive 能否被安全裁剪，而不是持续堆积

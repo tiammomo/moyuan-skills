@@ -161,6 +161,7 @@ python scripts/skills_market.py diff-installed-history dist/installed-skills/sna
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --latest-only --max-removed-skills 1 --max-removed-bundles 0 --max-installed-delta 1 --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -209,6 +210,12 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 它会把 retained entry 的 sequence、时间、摘要计数和关键 transition 汇总成一份 JSON/Markdown 报告
 - 这样维护者在 review accepted baseline 演进时，不需要先手工跑多次 `list` 和 `diff`
 
+如果你想把“基线演进过大”这件事直接变成提醒或门禁，当前也可以直接跑 history alert：
+
+- `alert-installed-baseline-history` 会按阈值检查 retained transition
+- 它适合把“移除 skill 太多”“bundle 变化过大”“installed_count 波动过大”直接转成 alert
+- `--latest-only --strict` 适合接在最新一次 accepted baseline 之后，作为本地 gate 或 review 提醒
+
 如果 drift 已经被 review 通过，当前也可以直接把 live state 提升成新的 baseline：
 
 - `promote-installed-baseline` 会重写 baseline snapshot 和对应 Markdown 摘要
@@ -219,6 +226,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 
 - `list-installed-baseline-history` 会列出每次 promotion 的时间、目标安装根目录、摘要计数和归档位置
 - `report-installed-baseline-history` 会把 retained history 汇总成一份 timeline/report，适合例行 review 和运维归档
+- `alert-installed-baseline-history` 会按阈值标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”
 - `restore-installed-baseline` 可以把某个历史 entry 重新写回当前 baseline 文件

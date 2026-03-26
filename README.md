@@ -318,6 +318,7 @@ python scripts/skills_market.py diff-installed-history dist/installed-skills/sna
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --latest-only --max-removed-skills 1 --max-removed-bundles 0 --max-installed-delta 1 --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -335,6 +336,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 会在 drift 被接受后，把当前 live state 提升成新的 baseline，并保留 transition diff
 - 会为每次 baseline promotion 留下 history，方便回看基线演进轨迹
 - 会把 retained history 汇总成一份 timeline/report，方便维护者快速回顾 accepted baseline 是怎么一路变化的
+- 会在 retained transition 超过阈值时直接给出 alert/gate 信号，方便把大变更接进 review 或本地门禁
 
 如果你想直接生成静态 market catalog，可以跑：
 

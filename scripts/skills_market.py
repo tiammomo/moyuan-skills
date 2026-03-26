@@ -11,6 +11,7 @@ import build_market_index
 import build_market_recommendations
 import build_market_registry
 import build_org_market_index
+import check_installed_baseline_history_alerts
 import check_market_governance
 import check_installed_market_state
 import check_market_pipeline
@@ -182,6 +183,22 @@ def build_parser() -> argparse.ArgumentParser:
     report_history_parser.add_argument("--output-path", help="Optional JSON report output path.")
     report_history_parser.add_argument("--markdown-path", help="Optional Markdown report output path.")
     report_history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    alert_history_parser = subparsers.add_parser("alert-installed-baseline-history", help="Flag unusually large retained installed baseline history transitions.")
+    alert_history_parser.add_argument("history", help="Baseline history JSON file.")
+    alert_history_parser.add_argument("--latest-only", action="store_true", help="Only evaluate the latest retained transition.")
+    alert_history_parser.add_argument("--max-added-skills", type=int, help="Maximum allowed added skills per transition.")
+    alert_history_parser.add_argument("--max-removed-skills", type=int, help="Maximum allowed removed skills per transition.")
+    alert_history_parser.add_argument("--max-changed-skills", type=int, help="Maximum allowed changed skills per transition.")
+    alert_history_parser.add_argument("--max-added-bundles", type=int, help="Maximum allowed added bundles per transition.")
+    alert_history_parser.add_argument("--max-removed-bundles", type=int, help="Maximum allowed removed bundles per transition.")
+    alert_history_parser.add_argument("--max-changed-bundles", type=int, help="Maximum allowed changed bundles per transition.")
+    alert_history_parser.add_argument("--max-installed-delta", type=int, help="Maximum allowed absolute installed-count delta per transition.")
+    alert_history_parser.add_argument("--max-bundle-delta", type=int, help="Maximum allowed absolute bundle-count delta per transition.")
+    alert_history_parser.add_argument("--output-path", help="Optional JSON alert output path.")
+    alert_history_parser.add_argument("--markdown-path", help="Optional Markdown alert output path.")
+    alert_history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    alert_history_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when alerts are present.")
 
     prune_history_parser = subparsers.add_parser("prune-installed-baseline-history", help="Prune retained installed-state baseline history entries.")
     prune_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -466,6 +483,36 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             forwarded_args.append("--json")
         return report_installed_baseline_history.main(forwarded_args)
+
+    if args.command == "alert-installed-baseline-history":
+        forwarded_args = [args.history]
+        if args.latest_only:
+            forwarded_args.append("--latest-only")
+        if args.max_added_skills is not None:
+            forwarded_args.extend(["--max-added-skills", str(args.max_added_skills)])
+        if args.max_removed_skills is not None:
+            forwarded_args.extend(["--max-removed-skills", str(args.max_removed_skills)])
+        if args.max_changed_skills is not None:
+            forwarded_args.extend(["--max-changed-skills", str(args.max_changed_skills)])
+        if args.max_added_bundles is not None:
+            forwarded_args.extend(["--max-added-bundles", str(args.max_added_bundles)])
+        if args.max_removed_bundles is not None:
+            forwarded_args.extend(["--max-removed-bundles", str(args.max_removed_bundles)])
+        if args.max_changed_bundles is not None:
+            forwarded_args.extend(["--max-changed-bundles", str(args.max_changed_bundles)])
+        if args.max_installed_delta is not None:
+            forwarded_args.extend(["--max-installed-delta", str(args.max_installed_delta)])
+        if args.max_bundle_delta is not None:
+            forwarded_args.extend(["--max-bundle-delta", str(args.max_bundle_delta)])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return check_installed_baseline_history_alerts.main(forwarded_args)
 
     if args.command == "prune-installed-baseline-history":
         forwarded_args = [args.history, "--keep-last", str(args.keep_last)]

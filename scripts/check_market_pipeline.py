@@ -921,6 +921,52 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Report" not in history_report_markdown.read_text(encoding="utf-8"):
         print("ERROR: history report Markdown output should contain the report heading")
         return 1
+    history_alert_json = output_root / "snapshots" / "history-alerts.json"
+    history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
+    history_alert_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "alert-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--max-removed-skills",
+            "1",
+            "--max-removed-bundles",
+            "0",
+            "--max-installed-delta",
+            "1",
+            "--output-path",
+            repo_relative_path(history_alert_json),
+            "--markdown-path",
+            repo_relative_path(history_alert_markdown),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_alert_result.returncode == 0:
+        print("ERROR: alert-installed-baseline-history should fail in strict mode for oversized historical transitions")
+        if history_alert_result.stdout.strip():
+            print(history_alert_result.stdout.strip())
+        if history_alert_result.stderr.strip():
+            print(history_alert_result.stderr.strip())
+        return 1
+    if not history_alert_json.is_file() or not history_alert_markdown.is_file():
+        print("ERROR: alert-installed-baseline-history should write both JSON and Markdown outputs")
+        return 1
+    history_alert_payload = json.loads(history_alert_result.stdout)
+    if history_alert_payload.get("passes") is not False or history_alert_payload.get("alert_count", 0) < 1:
+        print("ERROR: alert-installed-baseline-history should report alert findings for oversized transitions")
+        return 1
+    alert_transitions = history_alert_payload.get("transitions", [])
+    if len(alert_transitions) != 1 or alert_transitions[0].get("before_entry") != 1 or alert_transitions[0].get("after_entry") != 2:
+        print("ERROR: alert-installed-baseline-history should evaluate the retained transition between entry 1 and entry 2")
+        return 1
+    alert_metrics = {item.get("metric") for item in alert_transitions[0].get("alerts", []) if isinstance(item, dict)}
+    if "removed_skills" not in alert_metrics or "removed_bundles" not in alert_metrics:
+        print("ERROR: alert-installed-baseline-history should flag both removed skills and removed bundles when thresholds are exceeded")
+        return 1
+    if "Installed Baseline History Alerts" not in history_alert_markdown.read_text(encoding="utf-8"):
+        print("ERROR: history alert Markdown output should contain the alert heading")
+        return 1
     require_success(
         "restore original installed baseline",
         [
@@ -1114,6 +1160,29 @@ def main(argv: list[str] | None = None) -> int:
     ]
     if post_prune_report_sequences != [2, 3]:
         print("ERROR: history report should reflect the retained sequences after prune and re-promotion")
+        return 1
+    post_prune_history_alert_json = output_root / "snapshots" / "history-alerts-post-prune.json"
+    require_success(
+        "alert installed baseline history after prune",
+        [
+            "scripts/skills_market.py",
+            "alert-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--latest-only",
+            "--max-removed-skills",
+            "1",
+            "--max-removed-bundles",
+            "0",
+            "--max-installed-delta",
+            "1",
+            "--output-path",
+            repo_relative_path(post_prune_history_alert_json),
+            "--strict",
+        ],
+    )
+    post_prune_history_alert = load_json(post_prune_history_alert_json)
+    if post_prune_history_alert.get("passes") is not True or post_prune_history_alert.get("alert_count") != 0:
+        print("ERROR: latest-only history alert should pass after prune and re-promotion keep the latest transition small")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",
