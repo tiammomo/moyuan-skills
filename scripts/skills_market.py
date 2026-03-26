@@ -21,6 +21,7 @@ import diff_installed_history_baselines
 import diff_installed_market_snapshots
 import draft_installed_baseline_history_waiver_execution
 import execute_installed_baseline_history_waiver_apply
+import execute_reconcile_installed_baseline_history_waiver_sources
 import install_skill_bundle
 import install_skill
 import list_installed_baseline_history
@@ -338,6 +339,29 @@ def build_parser() -> argparse.ArgumentParser:
     reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown source-reconcile output path.")
     reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     reconcile_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when reconcile follow-up is required.")
+
+    execute_reconcile_history_source_parser = subparsers.add_parser(
+        "execute-installed-history-waiver-source-reconcile",
+        help="Stage or write reviewed source-reconcile repair artifacts safely.",
+    )
+    execute_reconcile_history_source_parser.add_argument("history", help="Baseline history JSON file.")
+    execute_reconcile_history_source_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to execute. Defaults to all known waivers.",
+    )
+    execute_reconcile_history_source_parser.add_argument(
+        "--output-dir",
+        help="Directory containing source-reconcile artifacts and receiving execution summaries.",
+    )
+    execute_reconcile_history_source_parser.add_argument("--stage-dir", help="Optional staging directory for rendered reconcile changes.")
+    execute_reconcile_history_source_parser.add_argument("--target-root", help="Optional repo-root mirror used for --write mode.")
+    execute_reconcile_history_source_parser.add_argument("--write", action="store_true", help="Write approved reconcile changes into the target root.")
+    execute_reconcile_history_source_parser.add_argument("--output-path", help="Optional JSON execution summary output path.")
+    execute_reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown execution summary output path.")
+    execute_reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    execute_reconcile_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when safety checks block execution.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -790,6 +814,28 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return reconcile_installed_baseline_history_waiver_sources.main(forwarded_args)
+
+    if args.command == "execute-installed-history-waiver-source-reconcile":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.stage_dir:
+            forwarded_args.extend(["--stage-dir", args.stage_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.write:
+            forwarded_args.append("--write")
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return execute_reconcile_installed_baseline_history_waiver_sources.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]

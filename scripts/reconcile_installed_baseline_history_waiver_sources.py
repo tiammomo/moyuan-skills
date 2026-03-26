@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 import audit_installed_baseline_history_waiver_sources
-from market_utils import ROOT, repo_relative_path
+from market_utils import ROOT, repo_relative_path, sha256_for_file
 
 
 DEFAULT_OUTPUT_DIR = ROOT / "dist" / "installed-history-waiver-apply"
@@ -112,6 +112,8 @@ def build_restore_target_action(
         "source_state": result.get("state"),
         "execute_status": result.get("execute_status"),
         "source_path": result.get("source_path"),
+        "current_sha256": result.get("current_sha256", ""),
+        "target_sha256": sha256_for_file(target_artifact),
         "target_artifact_path": display_path(target_artifact),
         "patch_path": display_path(patch_artifact),
         "message": "restore the source file to the latest reviewed target content",
@@ -137,6 +139,8 @@ def build_restore_delete_action(
         "source_state": result.get("state"),
         "execute_status": result.get("execute_status"),
         "source_path": result.get("source_path"),
+        "current_sha256": result.get("current_sha256", ""),
+        "target_sha256": "",
         "target_artifact_path": "",
         "patch_path": display_path(patch_artifact),
         "message": "delete the source file again so it matches the reviewed delete state",
@@ -156,6 +160,7 @@ def build_review_action(
         "state": result.get("state"),
         "execute_status": result.get("execute_status"),
         "source_path": result.get("source_path"),
+        "current_sha256": result.get("current_sha256", ""),
         "message": "review manually before restoring because no authoritative written state is available",
     }
     write_text(review_artifact, render_json_payload(review_payload))

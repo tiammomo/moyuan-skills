@@ -312,6 +312,7 @@ python scripts/skills_market.py prepare-installed-history-waiver-apply dist/inst
 python scripts/skills_market.py execute-installed-history-waiver-apply dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --stage-dir dist/installed-skills/snapshots/waiver-stage --strict
 python scripts/skills_market.py audit-installed-history-waiver-sources dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
 python scripts/skills_market.py reconcile-installed-history-waiver-sources dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
+python scripts/skills_market.py execute-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --stage-dir dist/installed-skills/snapshots/waiver-source-reconcile-stage --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -362,6 +363,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - [../scripts/execute_installed_baseline_history_waiver_apply.py](../scripts/execute_installed_baseline_history_waiver_apply.py)
 - [../scripts/audit_installed_baseline_history_waiver_sources.py](../scripts/audit_installed_baseline_history_waiver_sources.py)
 - [../scripts/reconcile_installed_baseline_history_waiver_sources.py](../scripts/reconcile_installed_baseline_history_waiver_sources.py)
+- [../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py](../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py)
 - [../scripts/draft_installed_baseline_history_waiver_execution.py](../scripts/draft_installed_baseline_history_waiver_execution.py)
 - [../scripts/preview_installed_baseline_history_waiver_execution.py](../scripts/preview_installed_baseline_history_waiver_execution.py)
 - [../scripts/prepare_installed_baseline_history_waiver_apply.py](../scripts/prepare_installed_baseline_history_waiver_apply.py)
