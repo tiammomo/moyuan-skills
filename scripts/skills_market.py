@@ -36,6 +36,7 @@ import promote_installed_market_baseline
 import prune_installed_baseline_history
 import report_installed_baseline_history
 import repair_installed_market_state
+import reconcile_installed_baseline_history_waiver_sources
 import remediate_installed_baseline_history_waivers
 import remove_skill_bundle
 import remove_skill
@@ -316,6 +317,27 @@ def build_parser() -> argparse.ArgumentParser:
     audit_history_source_parser.add_argument("--markdown-path", help="Optional Markdown source-audit output path.")
     audit_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     audit_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when source drift is detected.")
+
+    reconcile_history_source_parser = subparsers.add_parser(
+        "reconcile-installed-history-waiver-sources",
+        help="Build reconcile-ready artifacts for waiver source drift findings.",
+    )
+    reconcile_history_source_parser.add_argument("history", help="Baseline history JSON file.")
+    reconcile_history_source_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to reconcile. Defaults to all known waivers.",
+    )
+    reconcile_history_source_parser.add_argument(
+        "--output-dir",
+        help="Directory containing source-audit artifacts and receiving source-reconcile outputs.",
+    )
+    reconcile_history_source_parser.add_argument("--target-root", help="Optional repo-root mirror used for source reconciliation.")
+    reconcile_history_source_parser.add_argument("--output-path", help="Optional JSON source-reconcile output path.")
+    reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown source-reconcile output path.")
+    reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    reconcile_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when reconcile follow-up is required.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -750,6 +772,24 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return audit_installed_baseline_history_waiver_sources.main(forwarded_args)
+
+    if args.command == "reconcile-installed-history-waiver-sources":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return reconcile_installed_baseline_history_waiver_sources.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]

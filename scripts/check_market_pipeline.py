@@ -1117,6 +1117,30 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Source Audit" not in healthy_source_audit_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver source audit Markdown output should contain the source-audit heading")
         return 1
+    history_waiver_source_reconcile_output = require_success(
+        "reconcile installed baseline history waiver sources",
+        [
+            "scripts/skills_market.py",
+            "reconcile-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_payload = json.loads(history_waiver_source_reconcile_output)
+    if history_waiver_source_reconcile_payload.get("passes") is not True or history_waiver_source_reconcile_payload.get("action_count") != 0:
+        print("ERROR: healthy waiver source reconcile should report zero actions")
+        return 1
+    healthy_source_reconcile_json = history_waiver_execute_dir / "source-reconcile-summary.json"
+    healthy_source_reconcile_markdown = history_waiver_execute_dir / "source-reconcile-summary.md"
+    if not healthy_source_reconcile_json.is_file() or not healthy_source_reconcile_markdown.is_file():
+        print("ERROR: healthy waiver source reconcile should write summary artifacts")
+        return 1
+    if "Installed Baseline History Waiver Source Reconcile" not in healthy_source_reconcile_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver source reconcile Markdown output should contain the source-reconcile heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1601,6 +1625,56 @@ def main(argv: list[str] | None = None) -> int:
     }
     if drift_states != {"drifted_after_write"}:
         print("ERROR: tampered waiver source audit should classify the written update as drifted_after_write")
+        return 1
+    history_waiver_source_reconcile_tampered_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "reconcile-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_source_reconcile_tampered_result.returncode == 0:
+        print("ERROR: waiver source reconcile should fail in strict mode when restore work is required")
+        if history_waiver_source_reconcile_tampered_result.stdout.strip():
+            print(history_waiver_source_reconcile_tampered_result.stdout.strip())
+        if history_waiver_source_reconcile_tampered_result.stderr.strip():
+            print(history_waiver_source_reconcile_tampered_result.stderr.strip())
+        return 1
+    history_waiver_source_reconcile_tampered_payload = json.loads(history_waiver_source_reconcile_tampered_result.stdout)
+    if history_waiver_source_reconcile_tampered_payload.get("restore_target_count") != 1 or history_waiver_source_reconcile_tampered_payload.get("review_action_count") != 0:
+        print("ERROR: tampered waiver source reconcile should emit one restore-target action without extra review actions")
+        return 1
+    tampered_reconcile_target = (
+        history_waiver_execute_write_updates_dir
+        / "source-reconcile"
+        / "waivers"
+        / "expired-release-downsize"
+        / "reconcile-action-01.target.json"
+    )
+    tampered_reconcile_patch = (
+        history_waiver_execute_write_updates_dir
+        / "source-reconcile"
+        / "waivers"
+        / "expired-release-downsize"
+        / "reconcile-action-01.patch"
+    )
+    if not tampered_reconcile_target.is_file() or not tampered_reconcile_patch.is_file():
+        print("ERROR: tampered waiver source reconcile should emit both target and patch artifacts")
+        return 1
+    if "Tampered after execute" in tampered_reconcile_target.read_text(encoding="utf-8"):
+        print("ERROR: reconcile target artifact should restore the reviewed content instead of preserving the tampered field")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -2117,6 +2191,77 @@ def main(argv: list[str] | None = None) -> int:
     post_prune_history_waiver_source_audit_payload = json.loads(post_prune_history_waiver_source_audit_output)
     if post_prune_history_waiver_source_audit_payload.get("deleted_match_count") != 1 or post_prune_history_waiver_source_audit_payload.get("drift_count") != 0:
         print("ERROR: post-prune waiver source audit should classify the reviewed delete as applied without drift")
+        return 1
+    recreated_delete_target = (
+        post_prune_execute_write_root
+        / "governance"
+        / "history-alert-waivers"
+        / "approved-release-engineering-downsize.json"
+    )
+    shutil.copy2(
+        ROOT / "governance" / "history-alert-waivers" / "approved-release-engineering-downsize.json",
+        recreated_delete_target,
+    )
+    recreated_delete_audit_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execute_dir),
+            "--target-root",
+            repo_relative_path(post_prune_execute_write_root),
+            "--json",
+            "--strict",
+        ]
+    )
+    if recreated_delete_audit_result.returncode == 0:
+        print("ERROR: post-prune waiver source audit should fail in strict mode after the deleted source file is recreated")
+        if recreated_delete_audit_result.stdout.strip():
+            print(recreated_delete_audit_result.stdout.strip())
+        if recreated_delete_audit_result.stderr.strip():
+            print(recreated_delete_audit_result.stderr.strip())
+        return 1
+    recreated_delete_audit_payload = json.loads(recreated_delete_audit_result.stdout)
+    if recreated_delete_audit_payload.get("drift_count") != 1:
+        print("ERROR: recreated delete target should trigger exactly one source-audit drift finding")
+        return 1
+    recreated_delete_reconcile_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "reconcile-installed-history-waiver-sources",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execute_dir),
+            "--target-root",
+            repo_relative_path(post_prune_execute_write_root),
+            "--json",
+            "--strict",
+        ]
+    )
+    if recreated_delete_reconcile_result.returncode == 0:
+        print("ERROR: post-prune waiver source reconcile should fail in strict mode when delete restore work is required")
+        if recreated_delete_reconcile_result.stdout.strip():
+            print(recreated_delete_reconcile_result.stdout.strip())
+        if recreated_delete_reconcile_result.stderr.strip():
+            print(recreated_delete_reconcile_result.stderr.strip())
+        return 1
+    recreated_delete_reconcile_payload = json.loads(recreated_delete_reconcile_result.stdout)
+    if recreated_delete_reconcile_payload.get("restore_delete_count") != 1 or recreated_delete_reconcile_payload.get("review_action_count") != 0:
+        print("ERROR: recreated delete target should reconcile with one restore-delete action and no extra review actions")
+        return 1
+    recreated_delete_patch = (
+        post_prune_history_waiver_execute_dir
+        / "source-reconcile"
+        / "waivers"
+        / "approved-release-engineering-downsize"
+        / "reconcile-action-01.patch"
+    )
+    if not recreated_delete_patch.is_file():
+        print("ERROR: recreated delete target should emit a restore-delete patch artifact")
+        return 1
+    if "/dev/null" not in recreated_delete_patch.read_text(encoding="utf-8"):
+        print("ERROR: restore-delete patch should target /dev/null")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",

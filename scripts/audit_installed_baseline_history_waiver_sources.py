@@ -80,6 +80,7 @@ def build_apply_payload(history_path: Path, waiver_tokens: list[str]) -> dict:
                 target_path_value = str(action.get("target_path", "")).strip()
                 if target_path_value and (ROOT / target_path_value).is_file():
                     action["resolved_target_sha256"] = sha256_for_file(ROOT / target_path_value)
+                    action["resolved_target_text"] = (ROOT / target_path_value).read_text(encoding="utf-8")
         return payload
 
 

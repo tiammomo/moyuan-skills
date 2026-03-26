@@ -170,6 +170,7 @@ python scripts/skills_market.py preview-installed-history-waiver-execution dist/
 python scripts/skills_market.py prepare-installed-history-waiver-apply dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
 python scripts/skills_market.py execute-installed-history-waiver-apply dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --stage-dir dist/installed-skills/snapshots/waiver-stage --strict
 python scripts/skills_market.py audit-installed-history-waiver-sources dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
+python scripts/skills_market.py reconcile-installed-history-waiver-sources dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -251,6 +252,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `prepare-installed-history-waiver-apply` 会把已经 review 过的 preview 继续变成 apply-ready patch、combined patch 和 target candidate 文件
 - `execute-installed-history-waiver-apply` 会在 source hash 校验通过后，把 apply pack 安全地 stage 到单独目录，或按 `--write` 写回治理镜像目录
 - `audit-installed-history-waiver-sources` 会拿 reviewed apply / execute 工件反查当前治理源文件，明确区分 pending、applied 和 drifted
+- `reconcile-installed-history-waiver-sources` 会把 source-audit 里的 drift finding 收口成 restore target、restore delete 或 review artifact，方便后续恢复治理源文件
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver
 - `retire_or_replace` 适合 stale waiver
@@ -275,6 +277,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `prepare-installed-history-waiver-apply` 可以把已确认的 preview 收口成 patch/candidate 工件，方便后续人工应用或纳入 code review
 - `execute-installed-history-waiver-apply` 可以把已确认的 apply pack 安全落到 staging 目录，或在 `--write` 模式下写入目标治理镜像，同时阻止 source mismatch
 - `audit-installed-history-waiver-sources` 可以在 execute 之后继续核对治理源文件是否还和 reviewed target 一致，适合抓 post-execute drift
+- `reconcile-installed-history-waiver-sources` 可以在 drift 出现后直接生成恢复包，区分“恢复到 reviewed target”“恢复 delete 状态”或“继续人工 review”
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”
