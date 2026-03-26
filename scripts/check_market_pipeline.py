@@ -1939,6 +1939,61 @@ def main(argv: list[str] | None = None) -> int:
     if tampered_verify_states != {"drifted_after_write"}:
         print("ERROR: tampered source reconcile verify should classify the written restore target as drifted_after_write")
         return 1
+    history_waiver_source_reconcile_report_output = require_success(
+        "report installed baseline history waiver source reconcile after written drift",
+        [
+            "scripts/skills_market.py",
+            "report-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--json",
+        ],
+    )
+    history_waiver_source_reconcile_report_payload = json.loads(history_waiver_source_reconcile_report_output)
+    if history_waiver_source_reconcile_report_payload.get("report_complete") is not True:
+        print("ERROR: source reconcile report should be complete once audit, reconcile, execute, and verify summaries exist")
+        return 1
+    if history_waiver_source_reconcile_report_payload.get("report_state") != "drifted":
+        print("ERROR: source reconcile report should classify the tampered written target workflow as drifted")
+        return 1
+    source_reconcile_report_audit = history_waiver_source_reconcile_report_payload.get("source_audit", {})
+    source_reconcile_report_reconcile = history_waiver_source_reconcile_report_payload.get("source_reconcile", {})
+    source_reconcile_report_execute = history_waiver_source_reconcile_report_payload.get("source_reconcile_execution", {})
+    source_reconcile_report_verify = history_waiver_source_reconcile_report_payload.get("source_reconcile_verification", {})
+    if source_reconcile_report_audit.get("drift_count") != 1 or source_reconcile_report_audit.get("applied_count") != 1:
+        print("ERROR: source reconcile report should carry the current source-audit drift and applied counts")
+        return 1
+    if source_reconcile_report_reconcile.get("action_count") != 1 or source_reconcile_report_reconcile.get("restore_target_count") != 1:
+        print("ERROR: source reconcile report should summarize one restore-target reconcile action for the tampered waiver")
+        return 1
+    if source_reconcile_report_execute.get("written_update_count") != 1 or source_reconcile_report_execute.get("available") is not True:
+        print("ERROR: source reconcile report should summarize the reviewed write execution artifact")
+        return 1
+    if source_reconcile_report_verify.get("drift_count") != 1 or source_reconcile_report_verify.get("written_target_match_count") != 0:
+        print("ERROR: source reconcile report should carry the written verification drift state")
+        return 1
+    if history_waiver_source_reconcile_report_payload.get("action_count") != 2:
+        print("ERROR: source reconcile report should aggregate the tracked waiver actions into a single review pack")
+        return 1
+    source_reconcile_report_json = history_waiver_execute_write_updates_dir / "source-reconcile-report-summary.json"
+    source_reconcile_report_markdown = history_waiver_execute_write_updates_dir / "source-reconcile-report-summary.md"
+    if not source_reconcile_report_json.is_file() or not source_reconcile_report_markdown.is_file():
+        print("ERROR: source reconcile report should write JSON and Markdown report artifacts")
+        return 1
+    if "Installed Baseline History Waiver Source Reconcile Report" not in source_reconcile_report_markdown.read_text(encoding="utf-8"):
+        print("ERROR: source reconcile report Markdown output should contain the report heading")
+        return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
     history_alert_result = run_python(
