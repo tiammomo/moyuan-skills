@@ -197,6 +197,7 @@ python scripts/skills_market.py verify-installed-history dist/installed-skills/s
 python scripts/skills_market.py diff-installed-history dist/installed-skills/snapshots/baseline-history.json 1 latest --output-path dist/installed-skills/snapshots/history-diff.json --markdown-path dist/installed-skills/snapshots/history-diff.md
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
+python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -214,5 +215,6 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 9. 当 history 持续累积之后，还需要 prune 和 retention，把这套运维记录从“可回放”推进到“可长期维护”
 10. 当你需要复盘某个旧基线时，还需要 direct history verify，把“历史可回看”推进到“历史可直接对照和校验”
 11. 当 accepted baseline 继续积累之后，还需要 direct history diff，把“历史可校验”推进到“历史之间也能直接做演进分析”
+12. 当 retained history 足够多之后，还需要 history report，把“历史可分析”推进到“历史可直接阅读和复盘”
 8. 当 drift 被接受时，还需要 baseline promotion 把“新期望状态”正式落盘，而不是长期停留在告警状态
 9. 当 baseline 开始持续演进时，还需要 history 把这条演进链条保存下来，方便团队回看

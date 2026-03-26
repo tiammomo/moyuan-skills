@@ -301,6 +301,7 @@ python scripts/skills_market.py verify-installed-history dist/installed-skills/s
 python scripts/skills_market.py diff-installed-history dist/installed-skills/snapshots/baseline-history.json 1 latest --output-path dist/installed-skills/snapshots/history-diff.json --markdown-path dist/installed-skills/snapshots/history-diff.md
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
+python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -316,6 +317,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 当前 live state 也可以直接拿 baseline snapshot 做校验，变成可自动失败的 client-side drift gate
 - 历史归档下来的 baseline 也可以直接做只读 verify，适合 client-side 复盘和历史对照
 - 两个历史归档基线也可以直接彼此做 diff，适合 client-side 基线演进审计
+- retained history 也可以直接导出 timeline/report，适合 client-side 的值班交接、review 和审计归档
 - 当 drift 被接受之后，baseline 也可以被刷新，同时保留 transition diff 作为 client-side baseline history
 - baseline promotion 本身也会留下独立 history 和 archive，变成可查询、可恢复的 client-side baseline audit trail
 - 当历史积累起来之后，client 侧也可以主动 prune 旧 history 和 archive，保留可维护的 retention 边界

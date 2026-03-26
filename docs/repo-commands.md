@@ -268,6 +268,7 @@ python scripts/skills_market.py verify-installed-history dist/installed-skills/s
 python scripts/skills_market.py diff-installed-history dist/installed-skills/snapshots/baseline-history.json 1 latest --output-path dist/installed-skills/snapshots/history-diff.json --markdown-path dist/installed-skills/snapshots/history-diff.md
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
+python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json 1 --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -282,6 +283,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 两次 snapshot 之间的 skill / bundle 变化能否被稳定总结出来
 - 历史归档的 baseline 能否被直接拿来做 verify，而不用先回写到当前 baseline 文件
 - 两个历史归档 baseline 能否被直接拿来做 diff，而不用手动来回复制旧文件
+- retained history 能否被直接汇总成 timeline/report，而不用人工整理多次 promotion
 - baseline promotion 能否被保留成 history 和 archive，而不是只有最后一个文件版本
 - 历史 baseline 能否被恢复成当前运维基线，支撑回放和问题复盘
 - 过旧的 baseline history / archive 能否被安全裁剪，而不是持续堆积

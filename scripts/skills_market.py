@@ -25,6 +25,7 @@ import list_installed_skills
 import package_skill
 import promote_installed_market_baseline
 import prune_installed_baseline_history
+import report_installed_baseline_history
 import repair_installed_market_state
 import remove_skill_bundle
 import remove_skill
@@ -175,6 +176,12 @@ def build_parser() -> argparse.ArgumentParser:
     history_parser = subparsers.add_parser("list-installed-baseline-history", help="List installed-state baseline promotion history.")
     history_parser.add_argument("history", help="Baseline history JSON file.")
     history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
+    report_history_parser.add_argument("history", help="Baseline history JSON file.")
+    report_history_parser.add_argument("--output-path", help="Optional JSON report output path.")
+    report_history_parser.add_argument("--markdown-path", help="Optional Markdown report output path.")
+    report_history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     prune_history_parser = subparsers.add_parser("prune-installed-baseline-history", help="Prune retained installed-state baseline history entries.")
     prune_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -449,6 +456,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             forwarded_args.append("--json")
         return list_installed_baseline_history.main(forwarded_args)
+
+    if args.command == "report-installed-baseline-history":
+        forwarded_args = [args.history]
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        return report_installed_baseline_history.main(forwarded_args)
 
     if args.command == "prune-installed-baseline-history":
         forwarded_args = [args.history, "--keep-last", str(args.keep_last)]

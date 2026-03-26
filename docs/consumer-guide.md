@@ -160,6 +160,7 @@ python scripts/skills_market.py verify-installed-history dist/installed-skills/s
 python scripts/skills_market.py diff-installed-history dist/installed-skills/snapshots/baseline-history.json 1 latest --output-path dist/installed-skills/snapshots/history-diff.json --markdown-path dist/installed-skills/snapshots/history-diff.md
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
+python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -202,6 +203,12 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 它适合做基线演进 review、故障复盘和运维审计
 - 这样你就不需要先 restore 两次、再额外导出 snapshot diff
 
+如果你想快速看整条基线演进轨迹，而不是手工把每个 entry 一个个拼起来，当前也可以直接导出 history report：
+
+- `report-installed-baseline-history` 会输出 timeline 和 transition summary
+- 它会把 retained entry 的 sequence、时间、摘要计数和关键 transition 汇总成一份 JSON/Markdown 报告
+- 这样维护者在 review accepted baseline 演进时，不需要先手工跑多次 `list` 和 `diff`
+
 如果 drift 已经被 review 通过，当前也可以直接把 live state 提升成新的 baseline：
 
 - `promote-installed-baseline` 会重写 baseline snapshot 和对应 Markdown 摘要
@@ -211,6 +218,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 如果你想回看 baseline 是怎么一路演进过来的，当前也可以直接看 history：
 
 - `list-installed-baseline-history` 会列出每次 promotion 的时间、目标安装根目录、摘要计数和归档位置
+- `report-installed-baseline-history` 会把 retained history 汇总成一份 timeline/report，适合例行 review 和运维归档
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”
 - `restore-installed-baseline` 可以把某个历史 entry 重新写回当前 baseline 文件

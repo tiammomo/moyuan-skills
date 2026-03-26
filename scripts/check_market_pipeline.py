@@ -885,6 +885,42 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Market Snapshot Diff" not in history_diff_markdown.read_text(encoding="utf-8"):
         print("ERROR: diff-installed-history Markdown output should contain the diff heading")
         return 1
+    history_report_json = output_root / "snapshots" / "history-report.json"
+    history_report_markdown = output_root / "snapshots" / "history-report.md"
+    require_success(
+        "report installed baseline history",
+        [
+            "scripts/skills_market.py",
+            "report-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--output-path",
+            repo_relative_path(history_report_json),
+            "--markdown-path",
+            repo_relative_path(history_report_markdown),
+        ],
+    )
+    if not history_report_json.is_file() or not history_report_markdown.is_file():
+        print("ERROR: report-installed-baseline-history should write both JSON and Markdown outputs")
+        return 1
+    history_report_payload = load_json(history_report_json)
+    if history_report_payload.get("entries_count") != 2:
+        print("ERROR: history report should summarize both retained entries before prune")
+        return 1
+    report_sequences = [item.get("sequence") for item in history_report_payload.get("timeline", []) if isinstance(item, dict)]
+    if report_sequences != [1, 2]:
+        print("ERROR: history report timeline should preserve the retained sequence order")
+        return 1
+    report_transitions = history_report_payload.get("transitions", [])
+    if len(report_transitions) != 1 or report_transitions[0].get("before_entry") != 1 or report_transitions[0].get("after_entry") != 2:
+        print("ERROR: history report should summarize the single transition between entry 1 and entry 2")
+        return 1
+    report_removed_skill_ids = set(report_transitions[0].get("removed_skill_ids", []))
+    if report_removed_skill_ids != {"moyuan.issue-triage-report", "moyuan.api-change-risk-review"}:
+        print("ERROR: history report should surface the removed bundle-only skills in its transition summary")
+        return 1
+    if "Installed Baseline History Report" not in history_report_markdown.read_text(encoding="utf-8"):
+        print("ERROR: history report Markdown output should contain the report heading")
+        return 1
     require_success(
         "restore original installed baseline",
         [
@@ -1058,6 +1094,26 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if post_prune_promotion_history.get("next_sequence") != 4:
         print("ERROR: promotion after prune should advance the next sequence marker")
+        return 1
+    post_prune_history_report_json = output_root / "snapshots" / "history-report-post-prune.json"
+    require_success(
+        "report installed baseline history after prune",
+        [
+            "scripts/skills_market.py",
+            "report-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--output-path",
+            repo_relative_path(post_prune_history_report_json),
+        ],
+    )
+    post_prune_history_report = load_json(post_prune_history_report_json)
+    post_prune_report_sequences = [
+        item.get("sequence")
+        for item in post_prune_history_report.get("timeline", [])
+        if isinstance(item, dict)
+    ]
+    if post_prune_report_sequences != [2, 3]:
+        print("ERROR: history report should reflect the retained sequences after prune and re-promotion")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",
