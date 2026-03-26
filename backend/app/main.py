@@ -126,3 +126,19 @@ def bundle_detail(bundle_id: str) -> dict:
 @app.get("/api/v1/docs/catalog")
 def docs_catalog() -> dict:
     return repository.get_docs_catalog()
+
+
+@app.get("/api/v1/docs/teaching/{doc_id}")
+def teaching_doc(doc_id: str) -> dict:
+    payload = repository.get_teaching_doc(doc_id)
+    if not payload:
+        raise _not_found("teaching doc", doc_id)
+    return payload
+
+
+@app.get("/api/v1/docs/project/{doc_id}")
+def project_doc(doc_id: str) -> dict:
+    payload = repository.get_project_doc(doc_id)
+    if not payload:
+        raise _not_found("project doc", doc_id)
+    return payload

@@ -21,7 +21,12 @@ export default async function DocsPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Teaching</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {docsCatalog.teaching_docs.slice(0, 6).map((doc) => (
-            <Link key={doc.id} href="/docs/teaching" className="block group" data-testid={`teaching-doc-card-${doc.id}`}>
+            <Link
+              key={doc.id}
+              href={`/docs/teaching/${doc.id}`}
+              className="block group"
+              data-testid={`teaching-doc-card-${doc.id}`}
+            >
               <Card className="h-full p-5 hover:shadow-card-lg hover:-translate-y-1 transition-all duration-300">
                 <div className="flex items-start gap-4">
                   <div className="w-10 h-10 rounded-xl bg-olive text-paper flex items-center justify-center flex-shrink-0">
@@ -67,14 +72,34 @@ export default async function DocsPage() {
 
       <section className="animate-fade-in-delay-2">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Project references</h2>
-        <Card className="p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {docsCatalog.project_docs.slice(0, 6).map((doc) => (
-              <div key={doc.id}>
-                <p className="text-sm font-medium text-ink">{doc.title}</p>
-                <p className="text-xs text-muted mt-1">{doc.path}</p>
-              </div>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {docsCatalog.project_docs.slice(0, 6).map((doc) => (
+            <Link
+              key={doc.id}
+              href={`/docs/project/${doc.id}`}
+              className="block group"
+              data-testid={`project-doc-card-${doc.id}`}
+            >
+              <Card className="h-full p-5 hover:shadow-card-lg hover:-translate-y-1 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-sand text-ink flex items-center justify-center flex-shrink-0 font-semibold">
+                    {doc.title.charAt(0)}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-ink group-hover:text-accent transition-colors">
+                      {doc.title}
+                    </h3>
+                    <p className="text-sm text-muted mt-1">{doc.summary}</p>
+                    <p className="text-xs text-muted mt-2">{doc.path}</p>
+                  </div>
+                </div>
+              </Card>
+            </Link>
+          ))}
+        </div>
+
+        <Card className="p-5 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Link href="/skills" className="text-sm text-accent hover:underline">
               Browse all skills
             </Link>

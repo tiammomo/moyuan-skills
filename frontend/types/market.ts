@@ -140,3 +140,11 @@ export interface DocsCatalog {
   teaching_docs: DocsCatalogEntry[];
   project_docs: DocsCatalogEntry[];
 }
+
+export interface TeachingDocPayload extends DocsCatalogEntry {
+  markdown: string;
+}
+
+export interface ProjectDocPayload extends DocsCatalogEntry {
+  markdown: string;
+}

@@ -196,6 +196,8 @@ set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
 npm run dev:local --prefix frontend
 ```
 
+当前前端已经能直接消费真实后端数据的页面包括首页、skills、channels、bundles、docs，以及 `docs/teaching` 和 `docs/project` 的列表/详情页。
+
 ## 校验命令
 
 仓库当前提供多类本地检查入口：

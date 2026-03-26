@@ -29,6 +29,8 @@ Core endpoints:
 - `GET /api/v1/market/bundles`
 - `GET /api/v1/market/bundles/{bundle_id}`
 - `GET /api/v1/docs/catalog`
+- `GET /api/v1/docs/teaching/{doc_id}`
+- `GET /api/v1/docs/project/{doc_id}`
 
 The repository layer reads these real assets directly:
 
@@ -39,6 +41,8 @@ The repository layer reads these real assets directly:
 - `docs/*.md`
 - `docs/teaching/*.md`
 - `bundles/*.json`
+
+Temporary `docs/*-iteration.md` planning notes are intentionally excluded from the project docs catalog so the frontend only exposes stable user-facing documentation.
 
 ### Frontend data layer
 
@@ -65,6 +69,9 @@ Pages now consume live bundle/docs payloads through the shared data layer:
 - `frontend/app/bundles/[id]/page.tsx`
 - `frontend/app/docs/page.tsx`
 - `frontend/app/docs/[skill]/page.tsx`
+- `frontend/app/docs/teaching/page.tsx`
+- `frontend/app/docs/teaching/[slug]/page.tsx`
+- `frontend/app/docs/project/[slug]/page.tsx`
 
 ## Local run
 
@@ -116,6 +123,8 @@ Then it validates:
 - skill detail pages render install metadata
 - bundle pages render real bundle data
 - docs pages render real skill docs
+- teaching pages render real teaching markdown content
+- project doc pages render real project markdown content
 
 Run:
 
@@ -145,5 +154,5 @@ It is now implemented as:
 
 - a repo-backed Python API
 - a dual-mode frontend data layer
-- real bundle and docs pages
+- real bundle, docs, teaching, and project-doc pages
 - Playwright end-to-end coverage for the core market path

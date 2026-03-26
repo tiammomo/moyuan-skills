@@ -78,6 +78,8 @@
 - [frontend-backend-integration.md](./frontend-backend-integration.md)
   说明如何把当前 `frontend/` 适配到一个 Python backend，并把现有 skills/market 资产映射成前端可直接消费的 API
 - 当前这条链路已经补到双模式数据层和 Playwright 联调验证，文档里同时记录了 API 模式切换方式与前后端整体回归命令。
+- 现在 teaching 目录也已经接入真实后端数据，并支持从前端直接打开 repo-backed teaching markdown 详情页。
+- 现在 project docs 也已经接入真实后端数据，并支持从 docs center 直接打开 repo-backed 项目文档详情页。
 
 ## Teaching 目录
 

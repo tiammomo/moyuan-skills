@@ -21,4 +21,14 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-doc-card-release-note-writer')).toBeVisible();
   await page.getByTestId('skill-doc-card-release-note-writer').click();
   await expect(page.getByRole('heading', { name: /release note writer/i }).first()).toBeVisible();
+
+  await page.goto('/docs/teaching');
+  await expect(page.getByTestId('teaching-doc-link-14-first-hour-onboarding')).toBeVisible();
+  await page.getByTestId('teaching-doc-link-14-first-hour-onboarding').click();
+  await expect(page.getByRole('heading', { name: /first hour|onboarding/i }).first()).toBeVisible();
+
+  await page.goto('/docs');
+  await expect(page.getByTestId('project-doc-card-frontend-backend-integration')).toBeVisible();
+  await page.getByTestId('project-doc-card-frontend-backend-integration').click();
+  await expect(page.getByRole('heading', { name: /frontend \/ backend integration/i }).first()).toBeVisible();
 });

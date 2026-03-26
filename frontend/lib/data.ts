@@ -9,9 +9,11 @@ import type {
   DocsCatalogEntry,
   InstallSpec,
   MarketIndex,
+  ProjectDocPayload,
   SkillDetailPayload,
   SkillManifest,
   SkillSummary,
+  TeachingDocPayload,
 } from '@/types/market';
 
 const DATA_ROOT = path.join(process.cwd(), '..');
@@ -103,6 +105,10 @@ function firstParagraph(markdown: string): string {
   }
 
   return buffer.join(' ').trim();
+}
+
+function isInternalIterationDoc(id: string): boolean {
+  return id.endsWith('-iteration');
 }
 
 export async function getMarketIndex(): Promise<MarketIndex> {
@@ -366,7 +372,7 @@ export async function getDocsCatalog(): Promise<DocsCatalog> {
   const docsRoot = path.join(DATA_ROOT, 'docs');
   const projectDocs: DocsCatalogEntry[] = [];
   for (const fileName of (await fs.readdir(docsRoot)).filter((file) => file.endsWith('.md')).sort()) {
-    if (fileName === 'README.md' || skillDocFileNames.has(fileName)) {
+    if (fileName === 'README.md' || skillDocFileNames.has(fileName) || isInternalIterationDoc(fileName.replace(/\.md$/, ''))) {
       continue;
     }
 
@@ -385,4 +391,58 @@ export async function getDocsCatalog(): Promise<DocsCatalog> {
     teaching_docs: teachingDocs,
     project_docs: projectDocs,
   };
+}
+
+export async function getTeachingDoc(docId: string): Promise<TeachingDocPayload | null> {
+  if (isApiMode()) {
+    try {
+      return await fetchJson<TeachingDocPayload>(`/api/v1/docs/teaching/${docId}`);
+    } catch {
+      return null;
+    }
+  }
+
+  const filePath = path.join(DATA_ROOT, 'docs', 'teaching', `${docId}.md`);
+  try {
+    const markdown = await fs.readFile(filePath, 'utf-8');
+    return {
+      id: docId,
+      kind: 'teaching',
+      title: firstHeading(markdown, docId),
+      summary: firstParagraph(markdown),
+      markdown,
+      path: `docs/teaching/${docId}.md`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getProjectDoc(docId: string): Promise<ProjectDocPayload | null> {
+  if (isInternalIterationDoc(docId)) {
+    return null;
+  }
+
+  if (isApiMode()) {
+    try {
+      return await fetchJson<ProjectDocPayload>(`/api/v1/docs/project/${docId}`);
+    } catch {
+      return null;
+    }
+  }
+
+  const filePath = path.join(DATA_ROOT, 'docs', `${docId}.md`);
+  try {
+    const markdown = await fs.readFile(filePath, 'utf-8');
+    return {
+      id: docId,
+      kind: 'project',
+      title: firstHeading(markdown, docId),
+      summary: firstParagraph(markdown),
+      markdown,
+      path: `docs/${docId}.md`,
+    };
+  } catch {
+    return null;
+  }
 }

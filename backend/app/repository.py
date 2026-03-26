@@ -43,6 +43,10 @@ def _first_paragraph(markdown: str) -> str:
     return " ".join(buffer).strip()
 
 
+def _is_internal_iteration_doc(path: Path) -> bool:
+    return path.stem.endswith("-iteration")
+
+
 class MarketRepository:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -141,6 +145,34 @@ class MarketRepository:
         if not doc_path.is_file():
             return None
         return _read_text(doc_path)
+
+    def get_teaching_doc(self, doc_id: str) -> dict[str, Any] | None:
+        path = self.settings.teaching_root / f"{doc_id}.md"
+        if not path.is_file():
+            return None
+        markdown = _read_text(path)
+        return {
+            "id": doc_id,
+            "kind": "teaching",
+            "title": _first_heading(markdown, doc_id),
+            "summary": _first_paragraph(markdown),
+            "markdown": markdown,
+            "path": str(path.relative_to(self.repo_root)).replace("\\", "/"),
+        }
+
+    def get_project_doc(self, doc_id: str) -> dict[str, Any] | None:
+        path = self.settings.docs_root / f"{doc_id}.md"
+        if not path.is_file() or _is_internal_iteration_doc(path):
+            return None
+        markdown = _read_text(path)
+        return {
+            "id": doc_id,
+            "kind": "project",
+            "title": _first_heading(markdown, doc_id),
+            "summary": _first_paragraph(markdown),
+            "markdown": markdown,
+            "path": str(path.relative_to(self.repo_root)).replace("\\", "/"),
+        }
 
     def get_skill_detail(self, name: str) -> dict[str, Any] | None:
         manifest = self.get_skill_manifest(name)
@@ -263,7 +295,7 @@ class MarketRepository:
         root_docs: list[dict[str, Any]] = []
         skill_doc_names = {f"{skill['name']}.md" for skill in self.get_all_skills() if skill.get("name")}
         for path in sorted(self.settings.docs_root.glob("*.md")):
-            if path.name == "README.md" or path.name in skill_doc_names:
+            if path.name == "README.md" or path.name in skill_doc_names or _is_internal_iteration_doc(path):
                 continue
             markdown = _read_text(path)
             root_docs.append(
@@ -292,5 +324,6 @@ class MarketRepository:
             "doc_catalog": {
                 "skill_doc_count": len(self.get_docs_catalog().get("skill_docs", [])),
                 "teaching_doc_count": len(self.get_docs_catalog().get("teaching_docs", [])),
+                "project_doc_count": len(self.get_docs_catalog().get("project_docs", [])),
             },
         }

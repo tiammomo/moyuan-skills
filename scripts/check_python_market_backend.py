@@ -45,8 +45,24 @@ def main() -> int:
         return 1
 
     docs_catalog = repository.get_docs_catalog()
-    if not docs_catalog.get("skill_docs") or not docs_catalog.get("teaching_docs"):
-        print("ERROR: docs catalog should include both skill docs and teaching docs")
+    if not docs_catalog.get("skill_docs") or not docs_catalog.get("teaching_docs") or not docs_catalog.get("project_docs"):
+        print("ERROR: docs catalog should include skill docs, teaching docs, and project docs")
+        return 1
+
+    first_teaching = docs_catalog["teaching_docs"][0]["id"]
+    teaching_doc = repository.get_teaching_doc(first_teaching)
+    if not teaching_doc or not teaching_doc.get("markdown"):
+        print("ERROR: backend should expose teaching doc content for catalog entries")
+        return 1
+
+    project_doc = repository.get_project_doc("frontend-backend-integration")
+    if not project_doc or not project_doc.get("markdown"):
+        print("ERROR: backend should expose project doc content for known project docs")
+        return 1
+
+    leaked_internal_doc = repository.get_project_doc("frontend-project-docs-iteration")
+    if leaked_internal_doc is not None:
+        print("ERROR: temporary iteration notes should not leak through the project docs API")
         return 1
 
     print(
