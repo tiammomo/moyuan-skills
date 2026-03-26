@@ -2848,6 +2848,146 @@ def main(argv: list[str] | None = None) -> int:
         if mirrored_source.read_text(encoding="utf-8") != target_artifact.read_text(encoding="utf-8"):
             print("ERROR: source-reconcile gate waiver apply write mode should render the prepared target JSON into the mirrored source root")
             return 1
+    source_reconcile_gate_waiver_apply_verify_stage_json = output_root / "snapshots" / "source-reconcile-gate-waiver-apply-verify-stage.json"
+    source_reconcile_gate_waiver_apply_verify_stage_markdown = output_root / "snapshots" / "source-reconcile-gate-waiver-apply-verify-stage.md"
+    source_reconcile_gate_waiver_apply_verify_stage_output = require_success(
+        "verify staged source-reconcile gate waiver apply execution",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(policy_mismatch_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(source_reconcile_gate_waiver_apply_write_root),
+            "--source-reconcile-execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--apply-execute-summary-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_execute_stage_json),
+            "--output-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_verify_stage_json),
+            "--markdown-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_verify_stage_markdown),
+            "--json",
+            "--strict",
+        ],
+    )
+    source_reconcile_gate_waiver_apply_verify_stage_payload = json.loads(source_reconcile_gate_waiver_apply_verify_stage_output)
+    if source_reconcile_gate_waiver_apply_verify_stage_payload.get("staged_target_match_count") != 3 or source_reconcile_gate_waiver_apply_verify_stage_payload.get("manual_review_count") != 1:
+        print("ERROR: staged source-reconcile gate waiver apply verification should confirm three staged targets and one manual review hold")
+        return 1
+    if source_reconcile_gate_waiver_apply_verify_stage_payload.get("drift_count") != 0 or source_reconcile_gate_waiver_apply_verify_stage_payload.get("blocked_count") != 0:
+        print("ERROR: staged source-reconcile gate waiver apply verification should not report drift or blocked findings in the healthy smoke workflow")
+        return 1
+    if "# Installed Baseline History Waiver Source Reconcile Gate Waiver Apply Verification" not in source_reconcile_gate_waiver_apply_verify_stage_markdown.read_text(encoding="utf-8"):
+        print("ERROR: source-reconcile gate waiver apply verification Markdown output should contain the verification heading")
+        return 1
+    source_reconcile_gate_waiver_apply_verify_write_json = output_root / "snapshots" / "source-reconcile-gate-waiver-apply-verify-write.json"
+    source_reconcile_gate_waiver_apply_verify_write_output = require_success(
+        "verify written source-reconcile gate waiver apply execution",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(source_reconcile_gate_waiver_apply_write_root),
+            "--source-reconcile-execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--apply-execute-summary-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_execute_write_json),
+            "--output-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_verify_write_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    source_reconcile_gate_waiver_apply_verify_write_payload = json.loads(source_reconcile_gate_waiver_apply_verify_write_output)
+    if source_reconcile_gate_waiver_apply_verify_write_payload.get("written_target_match_count") != 3 or source_reconcile_gate_waiver_apply_verify_write_payload.get("drift_count") != 0:
+        print("ERROR: written source-reconcile gate waiver apply verification should confirm three written targets and no drift")
+        return 1
+    tampered_source_reconcile_gate_apply_source = source_reconcile_gate_waiver_apply_write_root / expired_source_reconcile_gate_waiver_path.relative_to(ROOT)
+    tampered_source_reconcile_gate_apply_source.write_text(
+        tampered_source_reconcile_gate_apply_source.read_text(encoding="utf-8").replace(
+            "TODO: refresh the approval rationale",
+            "tampered source-reconcile gate waiver apply verification",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    source_reconcile_gate_waiver_apply_verify_tampered_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(source_reconcile_gate_waiver_apply_write_root),
+            "--source-reconcile-execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--apply-execute-summary-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_execute_write_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if source_reconcile_gate_waiver_apply_verify_tampered_result.returncode == 0:
+        print("ERROR: source-reconcile gate waiver apply verification should fail in strict mode after a written target drifts")
+        if source_reconcile_gate_waiver_apply_verify_tampered_result.stdout.strip():
+            print(source_reconcile_gate_waiver_apply_verify_tampered_result.stdout.strip())
+        if source_reconcile_gate_waiver_apply_verify_tampered_result.stderr.strip():
+            print(source_reconcile_gate_waiver_apply_verify_tampered_result.stderr.strip())
+        return 1
+    source_reconcile_gate_waiver_apply_verify_tampered_payload = json.loads(source_reconcile_gate_waiver_apply_verify_tampered_result.stdout)
+    if source_reconcile_gate_waiver_apply_verify_tampered_payload.get("drift_count") != 1:
+        print("ERROR: source-reconcile gate waiver apply verification should report one drift finding after the mirrored source is tampered")
+        return 1
     history_waiver_source_reconcile_handoff_gate_output = require_success(
         "gate installed baseline history waiver source reconcile with review-handoff policy",
         [
