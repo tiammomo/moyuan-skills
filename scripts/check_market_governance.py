@@ -19,10 +19,23 @@ def main() -> int:
     history_alert_policies, history_alert_policy_errors = check_installed_baseline_history_alerts.load_policy_profiles()
     history_alert_waivers, history_alert_waiver_errors = check_installed_baseline_history_alerts.load_waiver_profiles()
     source_reconcile_gate_policies, source_reconcile_gate_policy_errors = check_installed_baseline_history_waiver_source_reconcile_gate.load_policy_profiles()
-    errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors, *history_alert_waiver_errors, *source_reconcile_gate_policy_errors]
+    source_reconcile_gate_waivers, source_reconcile_gate_waiver_errors = check_installed_baseline_history_waiver_source_reconcile_gate.load_waiver_profiles()
+    errors = [
+        *manifest_errors,
+        *publisher_errors,
+        *history_alert_policy_errors,
+        *history_alert_waiver_errors,
+        *source_reconcile_gate_policy_errors,
+        *source_reconcile_gate_waiver_errors,
+    ]
     known_history_policy_ids = {
         str(policy.get("id", "")).strip()
         for policy in history_alert_policies
+        if isinstance(policy, dict)
+    }
+    known_source_reconcile_policy_ids = {
+        str(policy.get("id", "")).strip()
+        for policy in source_reconcile_gate_policies
         if isinstance(policy, dict)
     }
 
@@ -42,6 +55,13 @@ def main() -> int:
             errors.append(
                 f"history alert waiver '{waiver_id}' references unknown policy id '{policy_id}'"
             )
+    for waiver in source_reconcile_gate_waivers:
+        waiver_id = str(waiver.get("id", "")).strip()
+        policy_id = str(waiver.get("policy_id", "")).strip()
+        if policy_id and policy_id not in known_source_reconcile_policy_ids:
+            errors.append(
+                f"source-reconcile gate waiver '{waiver_id}' references unknown policy id '{policy_id}'"
+            )
 
     if errors:
         for error in errors:
@@ -54,7 +74,8 @@ def main() -> int:
         f"{valid_policy_count} org policy file(s), and "
         f"{len(history_alert_policies)} history alert policy file(s), "
         f"{len(history_alert_waivers)} history alert waiver file(s), and "
-        f"{len(source_reconcile_gate_policies)} source-reconcile gate policy file(s)."
+        f"{len(source_reconcile_gate_policies)} source-reconcile gate policy file(s), and "
+        f"{len(source_reconcile_gate_waivers)} source-reconcile gate waiver file(s)."
     )
     return 0
 

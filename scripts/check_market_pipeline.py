@@ -1214,6 +1214,26 @@ def main(argv: list[str] | None = None) -> int:
     if source_reconcile_policy_ids != {"source-reconcile-release-gate", "source-reconcile-review-handoff"}:
         print("ERROR: source reconcile policy list should expose the expected built-in policy ids")
         return 1
+    source_reconcile_waiver_list_output = require_success(
+        "list installed history waiver source reconcile waivers",
+        [
+            "scripts/skills_market.py",
+            "list-installed-history-waiver-source-reconcile-waivers",
+            "--json",
+        ],
+    )
+    source_reconcile_waiver_list_payload = json.loads(source_reconcile_waiver_list_output)
+    if source_reconcile_waiver_list_payload.get("count") != 1:
+        print("ERROR: source reconcile waiver list should expose one built-in waiver profile")
+        return 1
+    source_reconcile_waiver_ids = {
+        item.get("id")
+        for item in source_reconcile_waiver_list_payload.get("waivers", [])
+        if isinstance(item, dict)
+    }
+    if source_reconcile_waiver_ids != {"approved-expired-release-downsize-source-drift"}:
+        print("ERROR: source reconcile waiver list should expose the expected built-in waiver id")
+        return 1
     history_waiver_source_reconcile_gate_output = require_success(
         "gate installed baseline history waiver source reconcile for healthy workflow",
         [
@@ -2086,6 +2106,9 @@ def main(argv: list[str] | None = None) -> int:
     if gate_finding_codes != {"disallowed_report_state", "verification_drift"}:
         print("ERROR: tampered source reconcile gate should emit disallowed_report_state and verification_drift findings")
         return 1
+    if history_waiver_source_reconcile_gate_tampered_payload.get("active_finding_count") != 2 or history_waiver_source_reconcile_gate_tampered_payload.get("waived_finding_count") != 0:
+        print("ERROR: tampered source reconcile gate should report two active findings and zero waived findings without gate waivers")
+        return 1
     source_reconcile_gate_json = history_waiver_execute_write_updates_dir / "source-reconcile-gate-summary.json"
     source_reconcile_gate_markdown = history_waiver_execute_write_updates_dir / "source-reconcile-gate-summary.md"
     if not source_reconcile_gate_json.is_file() or not source_reconcile_gate_markdown.is_file():
@@ -2093,6 +2116,42 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if "Installed Baseline History Waiver Source Reconcile Gate" not in source_reconcile_gate_markdown.read_text(encoding="utf-8"):
         print("ERROR: tampered source reconcile gate Markdown output should contain the gate heading")
+        return 1
+    history_waiver_source_reconcile_waived_gate_output = require_success(
+        "gate installed baseline history waiver source reconcile with a release waiver",
+        [
+            "scripts/skills_market.py",
+            "gate-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--policy",
+            "source-reconcile-release-gate",
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_waived_gate_payload = json.loads(history_waiver_source_reconcile_waived_gate_output)
+    if history_waiver_source_reconcile_waived_gate_payload.get("passes") is not True or history_waiver_source_reconcile_waived_gate_payload.get("report_state") != "drifted":
+        print("ERROR: source reconcile gate waiver should allow the strict release gate to pass while preserving report_state=drifted")
+        return 1
+    if history_waiver_source_reconcile_waived_gate_payload.get("finding_count") != 2 or history_waiver_source_reconcile_waived_gate_payload.get("active_finding_count") != 0 or history_waiver_source_reconcile_waived_gate_payload.get("waived_finding_count") != 2:
+        print("ERROR: source reconcile gate waiver should convert both strict findings into waived findings")
+        return 1
+    if history_waiver_source_reconcile_waived_gate_payload.get("matched_gate_waiver_count") != 1:
+        print("ERROR: source reconcile gate waiver run should match exactly one gate waiver")
         return 1
     history_waiver_source_reconcile_handoff_gate_output = require_success(
         "gate installed baseline history waiver source reconcile with review-handoff policy",

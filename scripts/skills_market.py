@@ -29,6 +29,7 @@ import list_installed_baseline_history
 import list_installed_baseline_history_policies
 import list_installed_baseline_history_waivers
 import list_installed_baseline_history_waiver_source_reconcile_policies
+import list_installed_baseline_history_waiver_source_reconcile_waivers
 import list_installed_bundles
 import list_skill_bundles
 import list_installed_skills
@@ -204,6 +205,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="List reusable installed history waiver source-reconcile gate policies.",
     )
     source_reconcile_policy_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    source_reconcile_waiver_parser = subparsers.add_parser(
+        "list-installed-history-waiver-source-reconcile-waivers",
+        help="List reusable installed history waiver source-reconcile gate waivers.",
+    )
+    source_reconcile_waiver_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     audit_history_waivers_parser = subparsers.add_parser(
         "audit-installed-history-waivers",
@@ -429,6 +436,12 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="Named waiver id or JSON file path to gate. Defaults to all known waivers.",
+    )
+    gate_reconcile_history_source_parser.add_argument(
+        "--gate-waiver",
+        action="append",
+        default=[],
+        help="Named source-reconcile gate waiver id or JSON file path. May be used more than once.",
     )
     gate_reconcile_history_source_parser.add_argument(
         "--output-dir",
@@ -772,6 +785,12 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.append("--json")
         return list_installed_baseline_history_waiver_source_reconcile_policies.main(forwarded_args)
 
+    if args.command == "list-installed-history-waiver-source-reconcile-waivers":
+        forwarded_args = []
+        if args.json:
+            forwarded_args.append("--json")
+        return list_installed_baseline_history_waiver_source_reconcile_waivers.main(forwarded_args)
+
     if args.command == "audit-installed-history-waivers":
         forwarded_args = [args.history]
         for waiver in args.waiver:
@@ -976,6 +995,8 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.extend(["--policy", args.policy])
         for waiver in args.waiver:
             forwarded_args.extend(["--waiver", waiver])
+        for gate_waiver in args.gate_waiver:
+            forwarded_args.extend(["--gate-waiver", gate_waiver])
         if args.output_dir:
             forwarded_args.extend(["--output-dir", args.output_dir])
         if args.target_root:

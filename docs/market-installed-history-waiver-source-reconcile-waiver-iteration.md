@@ -4,11 +4,11 @@ This temporary note tracks the next installed-state history waiver source-reconc
 
 ## Goals
 
-- [ ] Add reusable waivers for source-reconcile gate findings so teams can temporarily accept known drift or blocked states without rewriting policy profiles
-- [ ] Expose the source-reconcile-waiver workflow through the unified CLI, README/docs, and smoke pipeline
-- [ ] Run validation, then delete this note after the iteration is fully complete
+- [x] Add reusable waivers for source-reconcile gate findings so teams can temporarily accept known drift or blocked states without rewriting policy profiles
+- [x] Expose the source-reconcile-waiver workflow through the unified CLI, README/docs, and smoke pipeline
+- [x] Run validation, then delete this note after the iteration is fully complete
 
 ## Current Status
 
-- The client can now audit waiver source drift, build reconcile artifacts, execute reviewed repairs, verify staged or written results, aggregate the workflow into a single report pack, enforce it with a reusable gate, and select behavior through named policy profiles.
-- The next gap is exception handling: teams still need a way to approve temporary source-reconcile findings for specific workflows without weakening an entire policy profile, so the repo needs source-reconcile gate waivers.
+- Completed on 2026-03-26: the repo now ships reusable source-reconcile gate waivers, a dedicated waiver listing CLI, governance validation for waiver assets, synchronized README/docs guidance, and smoke coverage showing a strict release gate passing only when an approved gate waiver is supplied.
+- The next gap is waiver lifecycle governance: once source-reconcile gate waivers exist, the repo needs an audit flow to surface expired, unmatched, or stale source-reconcile gate waivers before they silently accumulate.

@@ -258,7 +258,9 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `verify-installed-history-waiver-source-reconcile` 会在 source-reconcile execute 之后复核 staged 或 written 结果，确认治理源镜像仍然和 reviewed reconcile target 一致
 - `report-installed-history-waiver-source-reconcile` 会把 source-audit、source-reconcile、execute、verify 四步聚合成一份交接报告，适合 reviewer 一次看完整条修复链路
 - `list-installed-history-waiver-source-reconcile-policies` 会先列出内置的 source-reconcile gate profile
+- `list-installed-history-waiver-source-reconcile-waivers` 会列出可复用的 source-reconcile gate waiver 例外
 - `gate-installed-history-waiver-source-reconcile --policy ...` 会把这份 report 直接转成可复用 gate，默认推荐走命名 policy 而不是手写一串状态规则
+- `gate-installed-history-waiver-source-reconcile --gate-waiver ...` 可以只豁免某个已知 finding 组合，而不是放宽整条 policy
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver
 - `retire_or_replace` 适合 stale waiver
@@ -288,7 +290,9 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `verify-installed-history-waiver-source-reconcile` 可以在 source-reconcile execute 之后继续核验 staged 或 written 结果，适合把恢复后的治理镜像再做一次 gate
 - `report-installed-history-waiver-source-reconcile` 可以把当前 source drift、reconcile plan、execution 结果和 verify 状态汇总成一份 review pack，适合 handoff 和审计归档
 - `list-installed-history-waiver-source-reconcile-policies` 可以先列出 `release-gate` 和 `review-handoff` 这类内置 profile
+- `list-installed-history-waiver-source-reconcile-waivers` 可以先看有哪些已批准的 source-reconcile 例外可复用
 - `gate-installed-history-waiver-source-reconcile --policy source-reconcile-release-gate` 适合严格 release/CI
+- `gate-installed-history-waiver-source-reconcile --policy source-reconcile-release-gate --gate-waiver approved-expired-release-downsize-source-drift` 适合严格 gate 下临时接受一个已知 demo drift
 - `gate-installed-history-waiver-source-reconcile --policy source-reconcile-review-handoff` 适合 review/handoff 阶段，只要求策略里声明的条件成立
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线

@@ -1,0 +1,29 @@
+{
+  "waiver_version": 1,
+  "id": "approved-expired-release-downsize-source-drift",
+  "title": "Approved Expired Release Downsize Source Drift",
+  "description": "Temporarily accept the demo source-reconcile drift for the expired release downsize waiver while reviewers validate the restore workflow without weakening the strict release gate.",
+  "policy_id": "source-reconcile-release-gate",
+  "match": {
+    "finding_codes": [
+      "disallowed_report_state",
+      "verification_drift"
+    ],
+    "report_states": [
+      "drifted"
+    ],
+    "target_root_suffix": "waiver-execute-write-updates-root",
+    "action_waiver_ids": [
+      "expired-release-downsize"
+    ],
+    "action_codes": [
+      "renew_or_remove"
+    ]
+  },
+  "approval": {
+    "approved_by": "Moyuan Governance Review",
+    "approved_at": "2026-03-26",
+    "reason": "The smoke workflow intentionally leaves the expired release downsize source drifted after write so maintainers can exercise the source-reconcile recovery flow without weakening the release-oriented gate for every run."
+  },
+  "expires_on": "2026-12-31"
+}
