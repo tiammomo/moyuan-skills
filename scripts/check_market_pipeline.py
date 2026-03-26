@@ -941,6 +941,138 @@ def main(argv: list[str] | None = None) -> int:
     if "approved-release-engineering-downsize" not in history_waiver_output:
         print("ERROR: list-installed-history-waivers should expose the approved release-engineering waiver")
         return 1
+    history_waiver_audit_json = output_root / "snapshots" / "history-waiver-audit.json"
+    history_waiver_audit_markdown = output_root / "snapshots" / "history-waiver-audit.md"
+    require_success(
+        "audit installed baseline history waivers",
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waivers",
+            repo_relative_path(promotion_history_json),
+            "--output-path",
+            repo_relative_path(history_waiver_audit_json),
+            "--markdown-path",
+            repo_relative_path(history_waiver_audit_markdown),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_audit_payload = load_json(history_waiver_audit_json)
+    if history_waiver_audit_payload.get("passes") is not True or history_waiver_audit_payload.get("finding_count") != 0:
+        print("ERROR: waiver audit should pass when all configured waivers are active and still match current alerts")
+        return 1
+    if history_waiver_audit_payload.get("waiver_count") != 1:
+        print("ERROR: waiver audit should include the single reusable waiver before smoke adds temporary fixtures")
+        return 1
+    if "Installed Baseline History Waiver Audit" not in history_waiver_audit_markdown.read_text(encoding="utf-8"):
+        print("ERROR: waiver audit Markdown output should contain the audit heading")
+        return 1
+    waiver_temp_dir = output_root / "waivers"
+    waiver_temp_dir.mkdir(parents=True, exist_ok=True)
+    expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
+    expired_history_waiver_path.write_text(
+        json.dumps(
+            {
+                "waiver_version": 1,
+                "id": "expired-release-downsize",
+                "title": "Expired Release Downsize",
+                "description": "An old approval record kept only to verify that waiver audit can flag expired exceptions.",
+                "policy_id": "latest-release-gate",
+                "match": {
+                    "before_entry": 1,
+                    "after_entry": 2,
+                    "after_target_root_suffix": "bundle-installed",
+                    "metrics": [
+                        "removed_skills"
+                    ],
+                    "removed_skill_ids": [
+                        "moyuan.issue-triage-report"
+                    ]
+                },
+                "approval": {
+                    "approved_by": "Moyuan Release Review",
+                    "approved_at": "2026-03-20",
+                    "reason": "This expired fixture exists only so the smoke test can confirm that waiver audit catches old approvals."
+                },
+                "expires_on": "2026-03-21"
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    stale_history_waiver_path = waiver_temp_dir / "stale-added-skills.json"
+    stale_history_waiver_path.write_text(
+        json.dumps(
+            {
+                "waiver_version": 1,
+                "id": "stale-added-skills",
+                "title": "Stale Added Skills Waiver",
+                "description": "A stale approval record that still points at the retained transition but no longer matches any active alert metric.",
+                "policy_id": "latest-release-gate",
+                "match": {
+                    "before_entry": 1,
+                    "after_entry": 2,
+                    "after_target_root_suffix": "bundle-installed",
+                    "metrics": [
+                        "added_skills"
+                    ]
+                },
+                "approval": {
+                    "approved_by": "Moyuan Release Review",
+                    "approved_at": "2026-03-26",
+                    "reason": "This fixture exists only so the smoke test can confirm that waiver audit catches stale approvals."
+                },
+                "expires_on": "2026-12-31"
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    history_waiver_audit_findings_json = output_root / "snapshots" / "history-waiver-audit-findings.json"
+    history_waiver_audit_findings_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waivers",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-path",
+            repo_relative_path(history_waiver_audit_findings_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_audit_findings_result.returncode == 0:
+        print("ERROR: waiver audit should fail in strict mode when expired or stale waiver records are supplied")
+        if history_waiver_audit_findings_result.stdout.strip():
+            print(history_waiver_audit_findings_result.stdout.strip())
+        if history_waiver_audit_findings_result.stderr.strip():
+            print(history_waiver_audit_findings_result.stderr.strip())
+        return 1
+    history_waiver_audit_findings_payload = load_json(history_waiver_audit_findings_json)
+    if history_waiver_audit_findings_payload.get("expired_count") != 1 or history_waiver_audit_findings_payload.get("stale_count") != 1:
+        print("ERROR: waiver audit should separately classify expired and stale waiver findings")
+        return 1
+    if history_waiver_audit_findings_payload.get("unmatched_count") != 0:
+        print("ERROR: pre-prune waiver audit should not report unmatched waivers for the temporary fixtures")
+        return 1
+    waiver_findings_by_id = {
+        item.get("id"): {finding.get("code") for finding in item.get("findings", []) if isinstance(finding, dict)}
+        for item in history_waiver_audit_findings_payload.get("waivers", [])
+        if isinstance(item, dict)
+    }
+    if waiver_findings_by_id.get("expired-release-downsize") != {"expired"}:
+        print("ERROR: expired waiver fixture should report only the expired finding code")
+        return 1
+    if waiver_findings_by_id.get("stale-added-skills") != {"stale"}:
+        print("ERROR: stale waiver fixture should report only the stale finding code")
+        return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
     history_alert_result = run_python(
@@ -1245,6 +1377,29 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if post_prune_history_alert.get("policy_id") != "latest-release-gate":
         print("ERROR: post-prune history alert should keep reporting the applied policy id")
+        return 1
+    post_prune_history_waiver_audit_json = output_root / "snapshots" / "history-waiver-audit-post-prune.json"
+    post_prune_history_waiver_audit_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waivers",
+            repo_relative_path(promotion_history_json),
+            "--output-path",
+            repo_relative_path(post_prune_history_waiver_audit_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if post_prune_history_waiver_audit_result.returncode == 0:
+        print("ERROR: waiver audit should fail after prune when the retained history no longer matches the built-in waiver")
+        if post_prune_history_waiver_audit_result.stdout.strip():
+            print(post_prune_history_waiver_audit_result.stdout.strip())
+        if post_prune_history_waiver_audit_result.stderr.strip():
+            print(post_prune_history_waiver_audit_result.stderr.strip())
+        return 1
+    post_prune_history_waiver_audit = load_json(post_prune_history_waiver_audit_json)
+    if post_prune_history_waiver_audit.get("unmatched_count") != 1 or post_prune_history_waiver_audit.get("stale_count") != 0:
+        print("ERROR: waiver audit should classify the built-in waiver as unmatched after prune removes its retained transition")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",

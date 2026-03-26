@@ -271,6 +271,7 @@ python scripts/skills_market.py list-installed-baseline-history dist/installed-s
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
+python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json 1 --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -290,6 +291,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - retained history 能否被直接汇总成 timeline/report，而不用人工整理多次 promotion
 - retained history policy profile 能否被直接列出并复用，而不是每次都手敲一整组 threshold flag
 - retained history waiver record 能否被直接列出并复用，而不是把已批准例外继续留在口头约定里
+- retained history waiver record 能否被直接审计，而不是等它们过期或失效后还继续留在治理目录里
 - retained transition 能否按阈值或 policy 直接触发 alert/gate，而不是只靠人工目检 report
 - 已批准的大变更能否在 waiver 落地后被重新视为通过，而不是让 gate 永远失败
 - baseline promotion 能否被保留成 history 和 archive，而不是只有最后一个文件版本

@@ -304,6 +304,7 @@ python scripts/skills_market.py list-installed-baseline-history dist/installed-s
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
+python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -325,6 +326,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - retained history transition 也可以直接做 alert/gate，适合 client-side 的大变更筛查和运维门禁
 - 这些 alert/gate 现在还可以复用 `governance/history-alert-policies/` 里的 policy profile，而不是每次都重复写 threshold 参数
 - 已审批的大变更也可以复用 `governance/history-alert-waivers/` 里的 waiver record，而不是让本地 gate 永远被同一类例外阻塞
+- waiver record 也可以被主动 audit，及时发现 expired、unmatched、stale 的例外记录，避免 client-side 治理目录慢慢积累失效资产
 - 当 drift 被接受之后，baseline 也可以被刷新，同时保留 transition diff 作为 client-side baseline history
 - baseline promotion 本身也会留下独立 history 和 archive，变成可查询、可恢复的 client-side baseline audit trail
 - 当历史积累起来之后，client 侧也可以主动 prune 旧 history 和 archive，保留可维护的 retention 边界
@@ -347,6 +349,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - [../scripts/update_installed_skill.py](../scripts/update_installed_skill.py)
 - [../scripts/remove_skill.py](../scripts/remove_skill.py)
 - [../scripts/list_installed_baseline_history_waivers.py](../scripts/list_installed_baseline_history_waivers.py)
+- [../scripts/audit_installed_baseline_history_waivers.py](../scripts/audit_installed_baseline_history_waivers.py)
 - [../scripts/list_skill_bundles.py](../scripts/list_skill_bundles.py)
 - [../scripts/install_skill_bundle.py](../scripts/install_skill_bundle.py)
 - [../scripts/list_installed_bundles.py](../scripts/list_installed_bundles.py)

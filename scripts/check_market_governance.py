@@ -18,6 +18,11 @@ def main() -> int:
     history_alert_policies, history_alert_policy_errors = check_installed_baseline_history_alerts.load_policy_profiles()
     history_alert_waivers, history_alert_waiver_errors = check_installed_baseline_history_alerts.load_waiver_profiles()
     errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors, *history_alert_waiver_errors]
+    known_history_policy_ids = {
+        str(policy.get("id", "")).strip()
+        for policy in history_alert_policies
+        if isinstance(policy, dict)
+    }
 
     known_skill_ids = {manifest["id"] for manifest in manifests}
     valid_policy_count = 0
@@ -27,6 +32,14 @@ def main() -> int:
             errors.extend(policy_errors)
             continue
         valid_policy_count += 1
+
+    for waiver in history_alert_waivers:
+        waiver_id = str(waiver.get("id", "")).strip()
+        policy_id = str(waiver.get("policy_id", "")).strip()
+        if policy_id and policy_id not in known_history_policy_ids:
+            errors.append(
+                f"history alert waiver '{waiver_id}' references unknown policy id '{policy_id}'"
+            )
 
     if errors:
         for error in errors:

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 
+import audit_installed_baseline_history_waivers
 import build_federation_feed
 import build_market_catalog
 import build_market_index
@@ -185,6 +186,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     history_waiver_parser = subparsers.add_parser("list-installed-history-waivers", help="List reusable installed baseline history alert waivers.")
     history_waiver_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    audit_history_waivers_parser = subparsers.add_parser(
+        "audit-installed-history-waivers",
+        help="Audit installed baseline history waivers for expired, unmatched, or stale records.",
+    )
+    audit_history_waivers_parser.add_argument("history", help="Baseline history JSON file.")
+    audit_history_waivers_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to audit. Defaults to all known waivers.",
+    )
+    audit_history_waivers_parser.add_argument("--output-path", help="Optional JSON audit output path.")
+    audit_history_waivers_parser.add_argument("--markdown-path", help="Optional Markdown audit output path.")
+    audit_history_waivers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    audit_history_waivers_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when findings are present.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -503,6 +520,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             forwarded_args.append("--json")
         return list_installed_baseline_history_waivers.main(forwarded_args)
+
+    if args.command == "audit-installed-history-waivers":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return audit_installed_baseline_history_waivers.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]

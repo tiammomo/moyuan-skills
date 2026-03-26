@@ -163,6 +163,7 @@ python scripts/skills_market.py list-installed-baseline-history dist/installed-s
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
+python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -229,6 +230,13 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `alert-installed-baseline-history --waiver ...` 会把匹配到的 alert 标记成 approved exception
 - 这样 `passes` 会按未豁免的 active alert 来判断，而不是把所有历史大变更一律当成失败
 
+如果团队已经开始积累 waiver，当前也应该把它们当成需要巡检的治理资产，而不是只会新增不会回收：
+
+- `audit-installed-history-waivers` 会主动检查 expired、unmatched、stale waiver
+- `expired` 表示这份批准记录已经过期
+- `unmatched` 表示它已经匹配不到任何 retained transition，通常说明对应历史已经被 prune 或条件写错
+- `stale` 表示它还能对上 retained transition，但已经对不上任何 active alert，通常说明这份例外已经没有继续保留的必要
+
 如果 drift 已经被 review 通过，当前也可以直接把 live state 提升成新的 baseline：
 
 - `promote-installed-baseline` 会重写 baseline snapshot 和对应 Markdown 摘要
@@ -241,6 +249,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `report-installed-baseline-history` 会把 retained history 汇总成一份 timeline/report，适合例行 review 和运维归档
 - `list-installed-history-policies` 可以先列出当前可复用的 alert policy profile
 - `list-installed-history-waivers` 可以先列出当前已经批准的 waiver record
+- `audit-installed-history-waivers` 可以先把 waiver 做一轮健康检查，再决定哪些该续期、哪些该清理
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”

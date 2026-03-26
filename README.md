@@ -320,6 +320,7 @@ python scripts/skills_market.py list-installed-baseline-history dist/installed-s
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
+python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -342,6 +343,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 会在 retained transition 超过阈值时直接给出 alert/gate 信号，方便把大变更接进 review 或本地门禁
 - 会把常用的 history alert 阈值沉淀成可复用 policy profile，避免每次都手敲一整组 threshold flags
 - 会把已审批的大变更留成明确的 waiver record，让团队能区分“已接受例外”和“意外漂移”
+- 会周期性 audit waiver record，主动识别 expired、unmatched、stale 的例外记录，避免治理资产悄悄失效
 
 如果你想直接生成静态 market catalog，可以跑：
 

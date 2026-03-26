@@ -512,8 +512,14 @@ def normalized_suffix_match(actual: str, suffix: str) -> bool:
     return normalized_actual.endswith(normalized_suffix)
 
 
-def waiver_matches_alert(waiver: dict, policy_id: str | None, transition: dict, alert: dict) -> bool:
-    if not is_waiver_active(waiver):
+def waiver_matches_transition_scope(
+    waiver: dict,
+    policy_id: str | None,
+    transition: dict,
+    *,
+    require_active: bool = True,
+) -> bool:
+    if require_active and not is_waiver_active(waiver):
         return False
     waiver_policy_id = str(waiver.get("policy_id", "")).strip()
     if waiver_policy_id and waiver_policy_id != str(policy_id or "").strip():
@@ -521,10 +527,6 @@ def waiver_matches_alert(waiver: dict, policy_id: str | None, transition: dict, 
 
     match = waiver.get("match", {})
     if not isinstance(match, dict):
-        return False
-
-    metrics = [str(item).strip() for item in match.get("metrics", []) if str(item).strip()]
-    if metrics and alert.get("metric") not in metrics:
         return False
 
     before_entry = match.get("before_entry")
@@ -561,6 +563,33 @@ def waiver_matches_alert(waiver: dict, policy_id: str | None, transition: dict, 
         if isinstance(item, str) and item.strip()
     ]
     if removed_bundle_ids and not set(removed_bundle_ids).issubset(set(transition.get("removed_bundle_ids", []))):
+        return False
+
+    return True
+
+
+def waiver_matches_alert(
+    waiver: dict,
+    policy_id: str | None,
+    transition: dict,
+    alert: dict,
+    *,
+    require_active: bool = True,
+) -> bool:
+    if not waiver_matches_transition_scope(
+        waiver,
+        policy_id,
+        transition,
+        require_active=require_active,
+    ):
+        return False
+
+    match = waiver.get("match", {})
+    if not isinstance(match, dict):
+        return False
+
+    metrics = [str(item).strip() for item in match.get("metrics", []) if str(item).strip()]
+    if metrics and alert.get("metric") not in metrics:
         return False
 
     return True
