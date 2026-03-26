@@ -83,7 +83,7 @@
 - 现在 docs center 还补上了统一的搜索和文档类型筛选，可以在 skill、teaching、project 三类文档之间直接联动浏览。
 - 现在 skill、teaching、project 三类详情页也都补上了 related navigation，读者可以从当前文档继续跳到相邻或相关材料。
 - 现在 skill、teaching、project 三类详情页还补上了 context panels，用来展示安装入口、学习路径位置和文档来源路径等下一步信息。
-- 现在 skill、teaching、project 三类详情页也都补上了 action panels，直接给出 repo 命令、顺序化 runbook 提示、复制按钮和下一步动作，不需要先跳回命令索引再查。
+- 现在 skill、teaching、project 三类详情页也都补上了 action panels，直接给出 repo 命令、顺序化 runbook 提示、expected outcome 提示、复制按钮和下一步动作，不需要先跳回命令索引再查。
 
 ## Teaching 目录
 

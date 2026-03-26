@@ -29,6 +29,16 @@ function getCopyTestId(testId?: string): string | undefined {
   return `${testId}-copy`;
 }
 
+function getOutcomeTestId(testId?: string): string | undefined {
+  if (!testId) {
+    return undefined;
+  }
+  if (testId.startsWith('doc-action-')) {
+    return testId.replace('doc-action-', 'doc-action-outcome-');
+  }
+  return `${testId}-outcome`;
+}
+
 async function copyCommandText(value: string): Promise<void> {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
@@ -172,6 +182,15 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
               >
                 <code>{command.command}</code>
               </pre>
+              {command.expectedOutcome && (
+                <div
+                  className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3"
+                  data-testid={getOutcomeTestId(command.testId)}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Expected outcome</p>
+                  <p className="mt-1 text-xs leading-6 text-ink">{command.expectedOutcome}</p>
+                </div>
+              )}
             </div>
           );
         })}
