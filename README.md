@@ -158,6 +158,8 @@
 
 ```text
 .
+|- backend/
+|- frontend/
 |- docs/
 |  `- teaching/
 |- examples/
@@ -186,6 +188,9 @@
 - `python scripts/check_progressive_skills.py`
 - `python scripts/check_docs_links.py`
 - `python scripts/check_harness_prototypes.py`
+- `python scripts/check_python_market_backend.py`
+- `npm run build --prefix frontend`
+- `npm run e2e --prefix frontend`
 - `python skills/build-skills/scripts/check_build_skills.py`
 - `python skills/progressive-disclosure/scripts/check_progressive_disclosure.py`
 - `python skills/harness-engineering/scripts/check_harness_engineering.py`
@@ -224,6 +229,7 @@
 - [docs/market-registry.md](./docs/market-registry.md)
 - [docs/publisher-guide.md](./docs/publisher-guide.md)
 - [docs/consumer-guide.md](./docs/consumer-guide.md)
+- [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 
 当前本地已经跑通的最小 market 执行闭环是：
 
@@ -391,6 +397,7 @@ python scripts/skills_market.py org-index governance/orgs/moyuan-internal.json
 python scripts/skills_market.py catalog --org-policy governance/orgs/moyuan-internal.json
 python scripts/skills_market.py recommend --org-policy governance/orgs/moyuan-internal.json
 python scripts/skills_market.py federation-feed --org-policy governance/orgs/moyuan-internal.json
+python scripts/skills_market.py audit-installed-history-waiver-source-reconcile-waiver-apply-waivers dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --apply-gate-waiver approved-expired-source-reconcile-gate-waiver-apply-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --source-reconcile-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --apply-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-execute-summary.json --strict
 ```
 
 这也是本仓库同时保留 `build-skills`、`progressive-disclosure` 和 `harness-engineering` 三个教学入口的原因。

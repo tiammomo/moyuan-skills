@@ -1,0 +1,144 @@
+# Frontend / Backend Integration
+
+## Goal
+
+Make the existing `frontend/` skills market UI run in two modes without changing the route structure:
+
+- local filesystem mode for static repo browsing
+- Python backend API mode for real front/back integration
+
+The repo now supports both.
+
+## Current implementation
+
+### Python backend
+
+The backend lives under `backend/` and exposes repo-backed API payloads through FastAPI.
+
+Core endpoints:
+
+- `GET /health`
+- `GET /api/v1/market/index`
+- `GET /api/v1/market/channels/{channel}`
+- `GET /api/v1/market/skills`
+- `GET /api/v1/market/skills/{name}`
+- `GET /api/v1/market/skills/{name}/install-spec`
+- `GET /api/v1/market/skills/{name}/doc`
+- `GET /api/v1/market/categories`
+- `GET /api/v1/market/tags`
+- `GET /api/v1/market/bundles`
+- `GET /api/v1/market/bundles/{bundle_id}`
+- `GET /api/v1/docs/catalog`
+
+The repository layer reads these real assets directly:
+
+- `dist/market/index.json`
+- `dist/market/channels/*.json`
+- `dist/market/install/*.json`
+- `skills/*/market/skill.json`
+- `docs/*.md`
+- `docs/teaching/*.md`
+- `bundles/*.json`
+
+### Frontend data layer
+
+`frontend/lib/data.ts` is now the single integration point for the UI.
+
+It supports:
+
+- filesystem mode when `SKILLS_MARKET_API_BASE_URL` is unset
+- API mode when `SKILLS_MARKET_API_BASE_URL` points at the FastAPI backend
+
+This keeps the UI components stable while letting Playwright validate a true front/back path.
+
+### Real repo-backed pages
+
+The frontend is no longer limited to file placeholders for the main market flows.
+
+Pages now consume live bundle/docs payloads through the shared data layer:
+
+- `frontend/app/page.tsx`
+- `frontend/app/skills/page.tsx`
+- `frontend/app/skills/[name]/page.tsx`
+- `frontend/app/channels/[channel]/page.tsx`
+- `frontend/app/bundles/page.tsx`
+- `frontend/app/bundles/[id]/page.tsx`
+- `frontend/app/docs/page.tsx`
+- `frontend/app/docs/[skill]/page.tsx`
+
+## Local run
+
+### Backend
+
+```text
+pip install -r backend/requirements.txt
+set MOYUAN_SKILLS_REPO_ROOT=D:\moyuan\moyuan-skills
+set MOYUAN_SKILLS_API_CORS=http://127.0.0.1:3000
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000
+```
+
+### Frontend in API mode
+
+```text
+set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:8000
+npm run dev --prefix frontend -- --hostname 127.0.0.1 --port 3000
+```
+
+### Frontend in filesystem mode
+
+```text
+npm run dev --prefix frontend -- --hostname 127.0.0.1 --port 3000
+```
+
+## Playwright full-stack verification
+
+The repo now includes Playwright coverage for the combined flow.
+
+Artifacts:
+
+- config: `frontend/playwright.config.ts`
+- spec: `frontend/tests/e2e/full-stack.spec.ts`
+
+The test starts:
+
+- FastAPI on a dedicated backend port
+- Next.js on a dedicated frontend port
+
+Then it validates:
+
+- homepage loads against the API-backed frontend
+- skills search works
+- skill detail pages render install metadata
+- bundle pages render real bundle data
+- docs pages render real skill docs
+
+Run:
+
+```text
+npx playwright install chromium --prefix frontend
+npm run build --prefix frontend
+npm run e2e --prefix frontend
+```
+
+## Validation commands
+
+Recommended minimum verification for this integration:
+
+```text
+python scripts/check_python_market_backend.py
+python -m compileall backend
+python scripts/check_docs_links.py
+npm run build --prefix frontend
+npm run e2e --prefix frontend
+```
+
+## Current status
+
+This integration path is no longer just a plan.
+
+It is now implemented as:
+
+- a repo-backed Python API
+- a dual-mode frontend data layer
+- real bundle and docs pages
+- Playwright end-to-end coverage for the core market path

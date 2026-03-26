@@ -95,6 +95,16 @@ python scripts/run_harness_stub.py automation examples/harness-prototypes/automa
 python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml
 ```
 
+## Frontend / Backend 联调验证
+
+```text
+python scripts/check_python_market_backend.py
+npm run build --prefix frontend
+npm run e2e --prefix frontend
+```
+
+其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend 和 Next.js frontend，验证首页、skills、bundle 和 docs 这几条核心前后端链路。
+
 ## Skills Market 草案脚本
 
 验证所有 `skills/*/market/skill.json`：
@@ -296,6 +306,7 @@ python scripts/skills_market.py verify-installed-history-waiver-source-reconcile
 python scripts/skills_market.py report-installed-history-waiver-source-reconcile-waiver-apply dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --source-reconcile-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --apply-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-execute-summary.json --output-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-report.json --markdown-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-report.md
 python scripts/skills_market.py list-installed-history-waiver-source-reconcile-waiver-apply-policies
 python scripts/skills_market.py list-installed-history-waiver-source-reconcile-waiver-apply-waivers
+python scripts/skills_market.py audit-installed-history-waiver-source-reconcile-waiver-apply-waivers dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --apply-gate-waiver approved-expired-source-reconcile-gate-waiver-apply-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --source-reconcile-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --apply-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-execute-summary.json --strict
 python scripts/skills_market.py gate-installed-history-waiver-source-reconcile-waiver-apply dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-waiver-apply-release-gate --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --source-reconcile-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --apply-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-execute-summary.json --strict
 python scripts/skills_market.py gate-installed-history-waiver-source-reconcile-waiver-apply dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-waiver-apply-release-gate --gate-waiver approved-expired-release-downsize-source-drift --apply-gate-waiver approved-expired-source-reconcile-gate-waiver-apply-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --source-reconcile-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --apply-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-execute-summary.json --strict
 python scripts/skills_market.py gate-installed-history-waiver-source-reconcile-waiver-apply dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-waiver-apply-review-handoff --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --source-reconcile-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --apply-execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-gate-waiver-apply-execute-summary.json --strict

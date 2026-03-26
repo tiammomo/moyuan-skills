@@ -75,6 +75,9 @@
   skill 作者如何补齐 market manifest、打包、校验并发布
 - [consumer-guide.md](./consumer-guide.md)
   使用者如何搜索、安装、更新、回滚 skill，以及如何判断可信度
+- [frontend-backend-integration.md](./frontend-backend-integration.md)
+  说明如何把当前 `frontend/` 适配到一个 Python backend，并把现有 skills/market 资产映射成前端可直接消费的 API
+- 当前这条链路已经补到双模式数据层和 Playwright 联调验证，文档里同时记录了 API 模式切换方式与前后端整体回归命令。
 
 ## Teaching 目录
 
