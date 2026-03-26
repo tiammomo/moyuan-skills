@@ -1068,6 +1068,31 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Apply Pack" not in healthy_apply_summary_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver apply Markdown output should contain the apply heading")
         return 1
+    history_waiver_execute_dir = output_root / "waiver-execute-healthy"
+    history_waiver_execute_output = require_success(
+        "execute installed baseline history waiver apply pack",
+        [
+            "scripts/skills_market.py",
+            "execute-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_execute_payload = json.loads(history_waiver_execute_output)
+    if history_waiver_execute_payload.get("passes") is not True or history_waiver_execute_payload.get("action_count") != 0:
+        print("ERROR: healthy waiver execute should report zero execution actions")
+        return 1
+    healthy_execute_summary_json = history_waiver_execute_dir / "execute-summary.json"
+    healthy_execute_summary_markdown = history_waiver_execute_dir / "execute-summary.md"
+    if not healthy_execute_summary_json.is_file() or not healthy_execute_summary_markdown.is_file():
+        print("ERROR: healthy waiver execute should write summary artifacts when an output dir is requested")
+        return 1
+    if "Installed Baseline History Waiver Apply Execution" not in healthy_execute_summary_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver execute Markdown output should contain the execution heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1383,6 +1408,47 @@ def main(argv: list[str] | None = None) -> int:
     combined_apply_patch_text = combined_apply_patch.read_text(encoding="utf-8")
     if "expires_on" not in combined_apply_patch_text or "removed_skills" not in combined_apply_patch_text:
         print("ERROR: combined apply patch should include both the renewal and replacement edits")
+        return 1
+    history_waiver_execute_findings_dir = output_root / "waiver-execute-findings"
+    history_waiver_execute_stage_dir = history_waiver_execute_findings_dir / "staged-root"
+    history_waiver_execute_findings_output = require_success(
+        "execute installed baseline history waiver apply pack with staging",
+        [
+            "scripts/skills_market.py",
+            "execute-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_findings_dir),
+            "--stage-dir",
+            repo_relative_path(history_waiver_execute_stage_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_execute_findings_payload = json.loads(history_waiver_execute_findings_output)
+    if history_waiver_execute_findings_payload.get("staged_update_count") != 2 or history_waiver_execute_findings_payload.get("written_update_count") != 0:
+        print("ERROR: waiver execute staging should stage two update actions without writing source files")
+        return 1
+    if history_waiver_execute_findings_payload.get("blocked_action_count") != 0:
+        print("ERROR: waiver execute staging should not block healthy reviewed apply packs")
+        return 1
+    staged_expired_path = history_waiver_execute_stage_dir / expired_history_waiver_path.relative_to(ROOT)
+    staged_stale_path = history_waiver_execute_stage_dir / stale_history_waiver_path.relative_to(ROOT)
+    if not staged_expired_path.is_file() or not staged_stale_path.is_file():
+        print("ERROR: waiver execute staging should materialize staged update files under the staging root")
+        return 1
+    if load_json(staged_expired_path).get("expires_on", "") <= "2026-03-21":
+        print("ERROR: staged expired waiver file should preserve the renewed expiry date")
+        return 1
+    staged_stale_metrics = set(load_json(staged_stale_path).get("match", {}).get("metrics", []))
+    if "added_skills" in staged_stale_metrics or "removed_skills" not in staged_stale_metrics:
+        print("ERROR: staged stale waiver file should preserve the replacement metric set")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -1850,6 +1916,37 @@ def main(argv: list[str] | None = None) -> int:
     post_prune_apply_patch_text = post_prune_apply_patch.read_text(encoding="utf-8")
     if "/dev/null" not in post_prune_apply_patch_text:
         print("ERROR: post-prune delete patch should target /dev/null")
+        return 1
+    post_prune_execute_write_root = output_root / "waiver-execute-write-root"
+    shutil.copytree(ROOT / "governance", post_prune_execute_write_root / "governance")
+    post_prune_history_waiver_execute_dir = output_root / "waiver-execute-post-prune"
+    post_prune_history_waiver_execute_output = require_success(
+        "execute installed baseline history waiver apply pack with write mode",
+        [
+            "scripts/skills_market.py",
+            "execute-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execute_dir),
+            "--target-root",
+            repo_relative_path(post_prune_execute_write_root),
+            "--write",
+            "--json",
+            "--strict",
+        ],
+    )
+    post_prune_history_waiver_execute_payload = json.loads(post_prune_history_waiver_execute_output)
+    if post_prune_history_waiver_execute_payload.get("written_delete_count") != 1 or post_prune_history_waiver_execute_payload.get("blocked_action_count") != 0:
+        print("ERROR: post-prune waiver execute should write one delete action without safety-check failures")
+        return 1
+    executed_delete_target = (
+        post_prune_execute_write_root
+        / "governance"
+        / "history-alert-waivers"
+        / "approved-release-engineering-downsize.json"
+    )
+    if executed_delete_target.exists():
+        print("ERROR: post-prune write execution should delete the mirrored waiver source file")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",

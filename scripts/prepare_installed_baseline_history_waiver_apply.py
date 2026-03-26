@@ -10,7 +10,7 @@ import shutil
 from pathlib import Path
 
 import preview_installed_baseline_history_waiver_execution
-from market_utils import ROOT, load_json, repo_relative_path
+from market_utils import ROOT, load_json, repo_relative_path, sha256_for_bytes, sha256_for_file
 
 
 DEFAULT_OUTPUT_DIR = ROOT / "dist" / "installed-history-waiver-apply"
@@ -95,6 +95,8 @@ def build_update_apply_action(action_preview: dict, output_dir: Path) -> tuple[d
     target_payload = preview_installed_baseline_history_waiver_execution.normalize_compare_payload(draft_payload)
     target_text = render_json_payload(target_payload)
     source_text = source_path.read_text(encoding="utf-8")
+    source_sha256 = sha256_for_file(source_path)
+    target_sha256 = sha256_for_bytes(target_text.encode("utf-8"))
     patch_text = unified_patch(source_path, source_text, target_text)
     return (
         {
@@ -107,6 +109,8 @@ def build_update_apply_action(action_preview: dict, output_dir: Path) -> tuple[d
             "target_path": "",
             "patch_path": "",
             "change_count": action_preview.get("change_count", 0),
+            "source_sha256": source_sha256,
+            "target_sha256": target_sha256,
             "candidate_transition": action_preview.get("candidate_transition"),
             "candidate_metrics": action_preview.get("candidate_metrics", []),
             "draft_strategy": action_preview.get("draft_strategy"),
@@ -119,6 +123,7 @@ def build_update_apply_action(action_preview: dict, output_dir: Path) -> tuple[d
 def build_delete_apply_action(action_preview: dict) -> tuple[dict, str | None, str]:
     source_path = Path(str(action_preview.get("source_path", "")))
     source_text = source_path.read_text(encoding="utf-8")
+    source_sha256 = sha256_for_file(source_path)
     patch_text = unified_patch(source_path, source_text, None)
     return (
         {
@@ -131,6 +136,8 @@ def build_delete_apply_action(action_preview: dict) -> tuple[dict, str | None, s
             "target_path": "",
             "patch_path": "",
             "change_count": action_preview.get("change_count", 0),
+            "source_sha256": source_sha256,
+            "target_sha256": "",
             "candidate_transition": action_preview.get("candidate_transition"),
             "candidate_metrics": action_preview.get("candidate_metrics", []),
             "review_steps": action_preview.get("review_steps", []),
@@ -152,6 +159,8 @@ def build_manual_apply_action(action_preview: dict) -> tuple[dict, str | None, s
             "target_path": "",
             "patch_path": "",
             "change_count": action_preview.get("change_count", 0),
+            "source_sha256": "",
+            "target_sha256": "",
             "candidate_transition": action_preview.get("candidate_transition"),
             "candidate_metrics": action_preview.get("candidate_metrics", []),
             "review_steps": action_preview.get("review_steps", []),

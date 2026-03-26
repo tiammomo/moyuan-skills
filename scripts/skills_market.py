@@ -19,6 +19,7 @@ import check_market_pipeline
 import diff_installed_history_baselines
 import diff_installed_market_snapshots
 import draft_installed_baseline_history_waiver_execution
+import execute_installed_baseline_history_waiver_apply
 import install_skill_bundle
 import install_skill
 import list_installed_baseline_history
@@ -273,6 +274,26 @@ def build_parser() -> argparse.ArgumentParser:
     apply_history_execution_parser.add_argument("--markdown-path", help="Optional Markdown apply summary output path.")
     apply_history_execution_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     apply_history_execution_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when apply follow-up is required.")
+
+    execute_history_apply_parser = subparsers.add_parser(
+        "execute-installed-history-waiver-apply",
+        help="Stage or write reviewed installed baseline history waiver apply packs safely.",
+    )
+    execute_history_apply_parser.add_argument("history", help="Baseline history JSON file.")
+    execute_history_apply_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to execute. Defaults to all known waivers.",
+    )
+    execute_history_apply_parser.add_argument("--output-dir", help="Directory containing or receiving apply-pack artifacts.")
+    execute_history_apply_parser.add_argument("--stage-dir", help="Optional staging directory for rendered file changes.")
+    execute_history_apply_parser.add_argument("--target-root", help="Optional repo-root mirror used for --write mode.")
+    execute_history_apply_parser.add_argument("--write", action="store_true", help="Write approved changes into the target root.")
+    execute_history_apply_parser.add_argument("--output-path", help="Optional JSON execution summary output path.")
+    execute_history_apply_parser.add_argument("--markdown-path", help="Optional Markdown execution summary output path.")
+    execute_history_apply_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    execute_history_apply_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when safety checks block execution.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -667,6 +688,28 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return prepare_installed_baseline_history_waiver_apply.main(forwarded_args)
+
+    if args.command == "execute-installed-history-waiver-apply":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.stage_dir:
+            forwarded_args.extend(["--stage-dir", args.stage_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.write:
+            forwarded_args.append("--write")
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return execute_installed_baseline_history_waiver_apply.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]
