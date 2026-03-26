@@ -273,6 +273,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `list-installed-history-waiver-source-reconcile-waiver-apply-waivers` 可以先列出已经批准的 apply-gate 例外，避免把“临时例外”误当成默认 policy
 - `gate-installed-history-waiver-source-reconcile-waiver-apply --policy source-reconcile-waiver-apply-release-gate` 适合做严格 release 门禁
 - `gate-installed-history-waiver-source-reconcile-waiver-apply --apply-gate-waiver ...` 适合在 strict release policy 不变的前提下，只豁免某个已经审批过的 apply-gate finding 组合
+- `audit-installed-history-waiver-source-reconcile-waiver-apply-waivers` 适合周期性巡检 apply-gate waiver 是否已经过期、失配、陈旧，或者挂在了错误的 policy profile 上
 - `gate-installed-history-waiver-source-reconcile-waiver-apply --policy source-reconcile-waiver-apply-review-handoff` 适合把 drifted 或待跟进 workflow 固化成 review handoff，而不是直接拦死
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver

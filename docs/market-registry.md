@@ -387,6 +387,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - [../scripts/list_installed_baseline_history_waiver_source_reconcile_policies.py](../scripts/list_installed_baseline_history_waiver_source_reconcile_policies.py)
 - [../scripts/list_installed_baseline_history_waiver_source_reconcile_waivers.py](../scripts/list_installed_baseline_history_waiver_source_reconcile_waivers.py)
 - [../scripts/audit_installed_baseline_history_waiver_source_reconcile_waivers.py](../scripts/audit_installed_baseline_history_waiver_source_reconcile_waivers.py)
+- [../scripts/audit_source_reconcile_gate_waiver_apply_waivers.py](../scripts/audit_source_reconcile_gate_waiver_apply_waivers.py)
 - [../scripts/remediate_installed_baseline_history_waiver_source_reconcile_waivers.py](../scripts/remediate_installed_baseline_history_waiver_source_reconcile_waivers.py)
 - [../scripts/reconcile_installed_baseline_history_waiver_sources.py](../scripts/reconcile_installed_baseline_history_waiver_sources.py)
 - [../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py](../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py)
