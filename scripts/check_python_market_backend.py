@@ -48,6 +48,14 @@ def main() -> int:
     if not docs_catalog.get("skill_docs") or not docs_catalog.get("teaching_docs") or not docs_catalog.get("project_docs"):
         print("ERROR: docs catalog should include skill docs, teaching docs, and project docs")
         return 1
+    expected_doc_count = (
+        len(docs_catalog.get("skill_docs", []))
+        + len(docs_catalog.get("teaching_docs", []))
+        + len(docs_catalog.get("project_docs", []))
+    )
+    if len(docs_catalog.get("all_docs", [])) != expected_doc_count:
+        print("ERROR: docs catalog all_docs should match the combined doc-family counts")
+        return 1
 
     first_teaching = docs_catalog["teaching_docs"][0]["id"]
     teaching_doc = repository.get_teaching_doc(first_teaching)

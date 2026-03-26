@@ -308,10 +308,16 @@ class MarketRepository:
                 }
             )
 
+        all_docs = sorted(
+            [*skill_docs, *teaching_docs, *root_docs],
+            key=lambda item: (str(item.get("title", "")).lower(), str(item.get("id", "")).lower()),
+        )
+
         return {
             "skill_docs": skill_docs,
             "teaching_docs": teaching_docs,
             "project_docs": root_docs,
+            "all_docs": all_docs,
         }
 
     def get_repo_snapshot(self) -> dict[str, Any]:

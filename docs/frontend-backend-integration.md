@@ -32,6 +32,8 @@ Core endpoints:
 - `GET /api/v1/docs/teaching/{doc_id}`
 - `GET /api/v1/docs/project/{doc_id}`
 
+The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
+
 The repository layer reads these real assets directly:
 
 - `dist/market/index.json`
@@ -122,6 +124,7 @@ Then it validates:
 - skills search works
 - skill detail pages render install metadata
 - bundle pages render real bundle data
+- docs center search/filter works across doc kinds
 - docs pages render real skill docs
 - teaching pages render real teaching markdown content
 - project doc pages render real project markdown content
@@ -155,4 +158,5 @@ It is now implemented as:
 - a repo-backed Python API
 - a dual-mode frontend data layer
 - real bundle, docs, teaching, and project-doc pages
+- a searchable docs-center explorer across all doc kinds
 - Playwright end-to-end coverage for the core market path

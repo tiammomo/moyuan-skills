@@ -390,6 +390,9 @@ export async function getDocsCatalog(): Promise<DocsCatalog> {
     skill_docs: skillDocs,
     teaching_docs: teachingDocs,
     project_docs: projectDocs,
+    all_docs: [...skillDocs, ...teachingDocs, ...projectDocs].sort((a, b) =>
+      a.title.localeCompare(b.title) || a.id.localeCompare(b.id)
+    ),
   };
 }
 

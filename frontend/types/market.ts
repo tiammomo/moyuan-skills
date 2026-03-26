@@ -139,6 +139,7 @@ export interface DocsCatalog {
   skill_docs: DocsCatalogEntry[];
   teaching_docs: DocsCatalogEntry[];
   project_docs: DocsCatalogEntry[];
+  all_docs: DocsCatalogEntry[];
 }
 
 export interface TeachingDocPayload extends DocsCatalogEntry {

@@ -196,7 +196,7 @@ set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
 npm run dev:local --prefix frontend
 ```
 
-当前前端已经能直接消费真实后端数据的页面包括首页、skills、channels、bundles、docs，以及 `docs/teaching` 和 `docs/project` 的列表/详情页。
+当前前端已经能直接消费真实后端数据的页面包括首页、skills、channels、bundles、docs，以及 `docs/teaching` 和 `docs/project` 的列表/详情页；同时 docs center 也已经支持跨三类文档的统一搜索和筛选。
 
 ## 校验命令
 

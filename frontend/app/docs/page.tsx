@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getDocsCatalog } from '@/lib/data';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocsExplorer } from './DocsExplorer';
 
 export const revalidate = 300;
 
@@ -13,11 +14,13 @@ export default async function DocsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-ink mb-2">Documentation Center</h1>
         <p className="text-muted">
-          Browse live repo-backed skill docs, teaching materials, and project references.
+          Browse live repo-backed skill docs, teaching materials, and project references from one searchable surface.
         </p>
       </div>
 
-      <section className="mb-8 animate-fade-in">
+      <DocsExplorer docsCatalog={docsCatalog} />
+
+      <section className="mb-8 animate-fade-in-delay-1">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Teaching</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {docsCatalog.teaching_docs.slice(0, 6).map((doc) => (
@@ -47,7 +50,7 @@ export default async function DocsPage() {
         </div>
       </section>
 
-      <section className="mb-8 animate-fade-in-delay-1">
+      <section className="mb-8 animate-fade-in-delay-2">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Skill docs</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {docsCatalog.skill_docs.map((doc) => (
@@ -70,7 +73,7 @@ export default async function DocsPage() {
         </div>
       </section>
 
-      <section className="animate-fade-in-delay-2">
+      <section className="animate-fade-in-delay-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Project references</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {docsCatalog.project_docs.slice(0, 6).map((doc) => (

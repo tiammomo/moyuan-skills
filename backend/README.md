@@ -20,7 +20,7 @@ The current frontend already has a clear information architecture:
 - skills pages need search/filterable skill summaries
 - skill detail pages need manifest + install spec + markdown docs
 - bundle pages need real bundle composition + install metadata
-- docs pages need a catalog of teaching, skill, and project docs
+- docs pages need a catalog of teaching, skill, and project docs, plus a unified searchable doc list
 
 This backend keeps those shapes stable while moving file access out of the frontend.
 
@@ -61,6 +61,8 @@ GET /api/v1/market/bundles/{bundle_id}
 GET /api/v1/docs/catalog
 GET /api/v1/docs/teaching/{doc_id}
 GET /api/v1/docs/project/{doc_id}
+
+`GET /api/v1/docs/catalog` now returns per-family doc arrays plus a flattened `all_docs` list for frontend filtering.
 ```
 
 ## Suggested frontend mapping
@@ -97,7 +99,7 @@ Recommended local ports:
 
 ## Playwright end-to-end verification
 
-The repo now includes a Playwright flow that starts this FastAPI backend and the Next.js frontend together, then validates homepage, skills, bundle, docs, teaching, and project-doc flows against the real API:
+The repo now includes a Playwright flow that starts this FastAPI backend and the Next.js frontend together, then validates homepage, skills, bundle, docs search/filter, teaching, and project-doc flows against the real API:
 
 ```text
 npx playwright install chromium --prefix frontend
