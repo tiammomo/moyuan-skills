@@ -162,7 +162,9 @@ python scripts/skills_market.py promote-installed-baseline dist/installed-skills
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py list-installed-history-policies
+python scripts/skills_market.py list-installed-history-waivers
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -220,6 +222,13 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `--policy latest-release-gate --strict` 适合接在最新一次 accepted baseline 之后，作为本地 gate 或 review 提醒
 - 如果团队需要临时覆盖某个阈值，也可以在 `--policy` 之外继续叠加单独的 threshold flag
 
+如果某次大变更已经被 review 接受，当前也可以把它落成明确 waiver，而不是让团队一直口头记忆：
+
+- `list-installed-history-waivers` 会列出当前可复用的 waiver record
+- 这些 waiver 位于 `governance/history-alert-waivers/`，并由 `schemas/installed-history-alert-waiver.schema.json` 约束
+- `alert-installed-baseline-history --waiver ...` 会把匹配到的 alert 标记成 approved exception
+- 这样 `passes` 会按未豁免的 active alert 来判断，而不是把所有历史大变更一律当成失败
+
 如果 drift 已经被 review 通过，当前也可以直接把 live state 提升成新的 baseline：
 
 - `promote-installed-baseline` 会重写 baseline snapshot 和对应 Markdown 摘要
@@ -231,6 +240,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `list-installed-baseline-history` 会列出每次 promotion 的时间、目标安装根目录、摘要计数和归档位置
 - `report-installed-baseline-history` 会把 retained history 汇总成一份 timeline/report，适合例行 review 和运维归档
 - `list-installed-history-policies` 可以先列出当前可复用的 alert policy profile
+- `list-installed-history-waivers` 可以先列出当前已经批准的 waiver record
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”

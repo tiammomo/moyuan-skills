@@ -16,7 +16,8 @@ def main() -> int:
     manifests, manifest_errors = collect_valid_manifests()
     publisher_profiles, publisher_errors = load_publisher_profiles()
     history_alert_policies, history_alert_policy_errors = check_installed_baseline_history_alerts.load_policy_profiles()
-    errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors]
+    history_alert_waivers, history_alert_waiver_errors = check_installed_baseline_history_alerts.load_waiver_profiles()
+    errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors, *history_alert_waiver_errors]
 
     known_skill_ids = {manifest["id"] for manifest in manifests}
     valid_policy_count = 0
@@ -36,7 +37,8 @@ def main() -> int:
         "Market governance check passed for "
         f"{len(publisher_profiles)} publisher profile(s), "
         f"{valid_policy_count} org policy file(s), and "
-        f"{len(history_alert_policies)} history alert policy file(s)."
+        f"{len(history_alert_policies)} history alert policy file(s), and "
+        f"{len(history_alert_waivers)} history alert waiver file(s)."
     )
     return 0
 

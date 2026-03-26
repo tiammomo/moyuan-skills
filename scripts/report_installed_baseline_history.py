@@ -42,6 +42,8 @@ def summarize_transition(history_path: Path, before_entry: dict, after_entry: di
         "after_entry": diff_payload.get("after_entry"),
         "before_promoted_at": before_entry.get("promoted_at", ""),
         "after_promoted_at": after_entry.get("promoted_at", ""),
+        "before_target_root": before_entry.get("target_root", ""),
+        "after_target_root": after_entry.get("target_root", ""),
         "summary_delta": diff_payload.get("summary_delta", {}),
         "added_skill_ids": [item.get("skill_id") for item in diff_payload.get("skills", {}).get("added", []) if isinstance(item, dict)],
         "removed_skill_ids": [item.get("skill_id") for item in diff_payload.get("skills", {}).get("removed", []) if isinstance(item, dict)],

@@ -1,0 +1,31 @@
+{
+  "waiver_version": 1,
+  "id": "approved-release-engineering-downsize",
+  "title": "Approved Release Engineering Downsize",
+  "description": "Accept the reviewed removal of release-engineering bundle-only skills when the local demo refreshes the latest accepted baseline.",
+  "policy_id": "latest-release-gate",
+  "match": {
+    "before_entry": 1,
+    "after_entry": 2,
+    "after_target_root_suffix": "bundle-installed",
+    "metrics": [
+      "installed_delta",
+      "bundle_delta",
+      "removed_skills",
+      "removed_bundles"
+    ],
+    "removed_skill_ids": [
+      "moyuan.issue-triage-report",
+      "moyuan.api-change-risk-review"
+    ],
+    "removed_bundle_ids": [
+      "release-engineering-starter"
+    ]
+  },
+  "approval": {
+    "approved_by": "Moyuan Release Review",
+    "approved_at": "2026-03-26",
+    "reason": "The bundle demo intentionally drops bundle-only skills after direct ownership is retained, so this transition is expected and should not fail the latest release gate."
+  },
+  "expires_on": "2026-12-31"
+}

@@ -931,6 +931,16 @@ def main(argv: list[str] | None = None) -> int:
     if "latest-release-gate" not in history_policy_output or "history-audit" not in history_policy_output:
         print("ERROR: list-installed-history-policies should expose both reusable history alert profiles")
         return 1
+    history_waiver_output = require_success(
+        "list installed baseline history waivers",
+        [
+            "scripts/skills_market.py",
+            "list-installed-history-waivers",
+        ],
+    )
+    if "approved-release-engineering-downsize" not in history_waiver_output:
+        print("ERROR: list-installed-history-waivers should expose the approved release-engineering waiver")
+        return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
     history_alert_result = run_python(
@@ -962,6 +972,9 @@ def main(argv: list[str] | None = None) -> int:
     if history_alert_payload.get("passes") is not False or history_alert_payload.get("alert_count", 0) < 1:
         print("ERROR: alert-installed-baseline-history should report alert findings for oversized transitions")
         return 1
+    if history_alert_payload.get("active_alert_count", 0) < 1 or history_alert_payload.get("waived_alert_count", 0) != 0:
+        print("ERROR: unwaived history alert should preserve active findings and report zero waived alerts")
+        return 1
     if history_alert_payload.get("policy_id") != "latest-release-gate" or history_alert_payload.get("latest_only") is not True:
         print("ERROR: history alert policy should resolve latest-release-gate with latest_only defaults")
         return 1
@@ -975,6 +988,48 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if "Installed Baseline History Alerts" not in history_alert_markdown.read_text(encoding="utf-8"):
         print("ERROR: history alert Markdown output should contain the alert heading")
+        return 1
+    waived_history_alert_json = output_root / "snapshots" / "history-alerts-waived.json"
+    waived_history_alert_markdown = output_root / "snapshots" / "history-alerts-waived.md"
+    require_success(
+        "alert installed baseline history with waiver",
+        [
+            "scripts/skills_market.py",
+            "alert-installed-baseline-history",
+            repo_relative_path(promotion_history_json),
+            "--policy",
+            "latest-release-gate",
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--output-path",
+            repo_relative_path(waived_history_alert_json),
+            "--markdown-path",
+            repo_relative_path(waived_history_alert_markdown),
+            "--json",
+            "--strict",
+        ],
+    )
+    waived_history_alert_payload = load_json(waived_history_alert_json)
+    if waived_history_alert_payload.get("passes") is not True:
+        print("ERROR: history alert should pass when all findings are covered by an approved waiver")
+        return 1
+    if waived_history_alert_payload.get("active_alert_count") != 0 or waived_history_alert_payload.get("waived_alert_count", 0) < 1:
+        print("ERROR: waived history alert should move findings out of the active gate result")
+        return 1
+    if waived_history_alert_payload.get("matched_waiver_count") != 1:
+        print("ERROR: waived history alert should report the matched waiver count")
+        return 1
+    waived_alerts = waived_history_alert_payload.get("transitions", [])[0].get("alerts", [])
+    waived_ids = {
+        alert.get("waiver_id")
+        for alert in waived_alerts
+        if isinstance(alert, dict) and alert.get("waived") is True
+    }
+    if waived_ids != {"approved-release-engineering-downsize"}:
+        print("ERROR: waived history alerts should record the matched waiver id on each waived alert")
+        return 1
+    if "approved-release-engineering-downsize" not in waived_history_alert_markdown.read_text(encoding="utf-8"):
+        print("ERROR: waived history alert Markdown output should surface the applied waiver id")
         return 1
     require_success(
         "restore original installed baseline",

@@ -270,7 +270,9 @@ python scripts/skills_market.py promote-installed-baseline dist/installed-skills
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
 python scripts/skills_market.py list-installed-history-policies
+python scripts/skills_market.py list-installed-history-waivers
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json 1 --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -287,7 +289,9 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - 两个历史归档 baseline 能否被直接拿来做 diff，而不用手动来回复制旧文件
 - retained history 能否被直接汇总成 timeline/report，而不用人工整理多次 promotion
 - retained history policy profile 能否被直接列出并复用，而不是每次都手敲一整组 threshold flag
+- retained history waiver record 能否被直接列出并复用，而不是把已批准例外继续留在口头约定里
 - retained transition 能否按阈值或 policy 直接触发 alert/gate，而不是只靠人工目检 report
+- 已批准的大变更能否在 waiver 落地后被重新视为通过，而不是让 gate 永远失败
 - baseline promotion 能否被保留成 history 和 archive，而不是只有最后一个文件版本
 - 历史 baseline 能否被恢复成当前运维基线，支撑回放和问题复盘
 - 过旧的 baseline history / archive 能否被安全裁剪，而不是持续堆积

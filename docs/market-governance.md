@@ -4,7 +4,7 @@
 
 ## 当前治理对象
 
-仓库现在有 4 类治理资产：
+仓库现在有 5 类治理资产：
 
 1. `publisher profile`
    位置：`publishers/*.json`
@@ -12,7 +12,9 @@
    位置：`governance/orgs/*.json`
 3. `installed history alert policy`
    位置：`governance/history-alert-policies/*.json`
-4. `governance checker`
+4. `installed history alert waiver`
+   位置：`governance/history-alert-waivers/*.json`
+5. `governance checker`
    位置：`scripts/check_market_governance.py`
 
 ## Publisher Profile
@@ -70,6 +72,22 @@ installed history alert policy 当前回答这些问题：
 - [../schemas/installed-history-alert-policy.schema.json](../schemas/installed-history-alert-policy.schema.json)
 
 这类 policy 会被 `scripts/check_market_governance.py` 一起校验，也会进入本地 client 的 installed baseline history alert 工作流。
+
+## Installed History Alert Waiver
+
+installed history alert waiver 当前回答这些问题：
+
+- 哪个已 review 的大变更可以被视为 approved exception
+- 它对应哪条 policy gate
+- 它匹配哪次 transition、哪些 metric，以及哪些 removed ids
+- 这份例外是谁批准的、为什么批准、何时失效
+
+当前参考：
+
+- [../governance/history-alert-waivers/approved-release-engineering-downsize.json](../governance/history-alert-waivers/approved-release-engineering-downsize.json)
+- [../schemas/installed-history-alert-waiver.schema.json](../schemas/installed-history-alert-waiver.schema.json)
+
+这类 waiver 也会被 `scripts/check_market_governance.py` 一起校验，并在本地 client 的 history alert 工作流里把匹配到的 finding 转成 approved exception。
 
 ## 当前治理信号已经进入哪里
 
@@ -140,6 +158,13 @@ python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 ```
 
+### 6. 应用 installed history alert waiver
+
+```text
+python scripts/skills_market.py list-installed-history-waivers
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -150,3 +175,4 @@ python scripts/skills_market.py alert-installed-baseline-history dist/installed-
 - [../scripts/build_market_recommendations.py](../scripts/build_market_recommendations.py)
 - [../scripts/build_federation_feed.py](../scripts/build_federation_feed.py)
 - [../scripts/list_installed_baseline_history_policies.py](../scripts/list_installed_baseline_history_policies.py)
+- [../scripts/list_installed_baseline_history_waivers.py](../scripts/list_installed_baseline_history_waivers.py)
