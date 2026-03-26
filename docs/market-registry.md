@@ -308,6 +308,7 @@ python scripts/skills_market.py audit-installed-history-waivers dist/installed-s
 python scripts/skills_market.py remediate-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py draft-installed-history-waiver-execution dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-execution --strict
 python scripts/skills_market.py preview-installed-history-waiver-execution dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-preview --strict
+python scripts/skills_market.py prepare-installed-history-waiver-apply dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -357,6 +358,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - [../scripts/remediate_installed_baseline_history_waivers.py](../scripts/remediate_installed_baseline_history_waivers.py)
 - [../scripts/draft_installed_baseline_history_waiver_execution.py](../scripts/draft_installed_baseline_history_waiver_execution.py)
 - [../scripts/preview_installed_baseline_history_waiver_execution.py](../scripts/preview_installed_baseline_history_waiver_execution.py)
+- [../scripts/prepare_installed_baseline_history_waiver_apply.py](../scripts/prepare_installed_baseline_history_waiver_apply.py)
 - [../scripts/list_skill_bundles.py](../scripts/list_skill_bundles.py)
 - [../scripts/install_skill_bundle.py](../scripts/install_skill_bundle.py)
 - [../scripts/list_installed_bundles.py](../scripts/list_installed_bundles.py)

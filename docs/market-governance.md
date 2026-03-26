@@ -191,6 +191,12 @@ python scripts/skills_market.py draft-installed-history-waiver-execution dist/in
 python scripts/skills_market.py preview-installed-history-waiver-execution dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-preview --strict
 ```
 
+### 11. 生成 installed history waiver apply pack
+
+```text
+python scripts/skills_market.py prepare-installed-history-waiver-apply dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -206,3 +212,4 @@ python scripts/skills_market.py preview-installed-history-waiver-execution dist/
 - [../scripts/remediate_installed_baseline_history_waivers.py](../scripts/remediate_installed_baseline_history_waivers.py)
 - [../scripts/draft_installed_baseline_history_waiver_execution.py](../scripts/draft_installed_baseline_history_waiver_execution.py)
 - [../scripts/preview_installed_baseline_history_waiver_execution.py](../scripts/preview_installed_baseline_history_waiver_execution.py)
+- [../scripts/prepare_installed_baseline_history_waiver_apply.py](../scripts/prepare_installed_baseline_history_waiver_apply.py)

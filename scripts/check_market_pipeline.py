@@ -1043,6 +1043,31 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Preview" not in healthy_preview_summary_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver preview Markdown output should contain the preview heading")
         return 1
+    history_waiver_apply_dir = output_root / "waiver-apply-healthy"
+    history_waiver_apply_output = require_success(
+        "prepare installed baseline history waiver apply pack",
+        [
+            "scripts/skills_market.py",
+            "prepare-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_apply_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_apply_payload = json.loads(history_waiver_apply_output)
+    if history_waiver_apply_payload.get("passes") is not True or history_waiver_apply_payload.get("action_count") != 0:
+        print("ERROR: healthy waiver apply pack should report zero apply actions")
+        return 1
+    healthy_apply_summary_json = history_waiver_apply_dir / "apply-summary.json"
+    healthy_apply_summary_markdown = history_waiver_apply_dir / "apply-summary.md"
+    if not healthy_apply_summary_json.is_file() or not healthy_apply_summary_markdown.is_file():
+        print("ERROR: healthy waiver apply pack should write summary artifacts when an output dir is requested")
+        return 1
+    if "Installed Baseline History Waiver Apply Pack" not in healthy_apply_summary_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver apply Markdown output should contain the apply heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1299,6 +1324,65 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if "match.metrics" not in stale_changed_paths:
         print("ERROR: stale waiver preview should show the metric replacement in the generated draft")
+        return 1
+    history_waiver_apply_findings_dir = output_root / "waiver-apply-findings"
+    history_waiver_apply_findings_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "prepare-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_apply_findings_dir),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_apply_findings_result.returncode == 0:
+        print("ERROR: waiver apply pack should fail in strict mode when apply actions are present")
+        if history_waiver_apply_findings_result.stdout.strip():
+            print(history_waiver_apply_findings_result.stdout.strip())
+        if history_waiver_apply_findings_result.stderr.strip():
+            print(history_waiver_apply_findings_result.stderr.strip())
+        return 1
+    history_waiver_apply_findings_payload = json.loads(history_waiver_apply_findings_result.stdout)
+    if history_waiver_apply_findings_payload.get("action_count") != 2 or history_waiver_apply_findings_payload.get("patch_count") != 2:
+        print("ERROR: waiver apply pack should emit two patch actions for the failing temporary waivers")
+        return 1
+    if history_waiver_apply_findings_payload.get("update_patch_count") != 2 or history_waiver_apply_findings_payload.get("delete_patch_count") != 0:
+        print("ERROR: pre-prune waiver apply pack should only generate update patches")
+        return 1
+    expired_apply_target = history_waiver_apply_findings_dir / "waivers" / "expired-release-downsize" / "apply-action-01.target.json"
+    stale_apply_target = history_waiver_apply_findings_dir / "waivers" / "stale-added-skills" / "apply-action-01.target.json"
+    expired_apply_patch = history_waiver_apply_findings_dir / "waivers" / "expired-release-downsize" / "apply-action-01.patch"
+    stale_apply_patch = history_waiver_apply_findings_dir / "waivers" / "stale-added-skills" / "apply-action-01.patch"
+    if not all(path.is_file() for path in [expired_apply_target, stale_apply_target, expired_apply_patch, stale_apply_patch]):
+        print("ERROR: waiver apply pack should emit per-waiver target and patch artifacts for the failing temporary waivers")
+        return 1
+    expired_apply_payload = load_json(expired_apply_target)
+    stale_apply_payload = load_json(stale_apply_target)
+    if "_draft" in expired_apply_payload or "_draft" in stale_apply_payload:
+        print("ERROR: apply target payloads should strip draft-only metadata before generating patches")
+        return 1
+    if expired_apply_payload.get("expires_on", "") <= "2026-03-21":
+        print("ERROR: expired waiver apply target should keep the renewed expiry date from the execution draft")
+        return 1
+    stale_apply_metrics = set(stale_apply_payload.get("match", {}).get("metrics", []))
+    if "added_skills" in stale_apply_metrics or "removed_skills" not in stale_apply_metrics:
+        print("ERROR: stale waiver apply target should preserve the replacement metric set")
+        return 1
+    combined_apply_patch = history_waiver_apply_findings_dir / "apply.patch"
+    if not combined_apply_patch.is_file():
+        print("ERROR: waiver apply pack should emit a combined patch when patch actions exist")
+        return 1
+    combined_apply_patch_text = combined_apply_patch.read_text(encoding="utf-8")
+    if "expires_on" not in combined_apply_patch_text or "removed_skills" not in combined_apply_patch_text:
+        print("ERROR: combined apply patch should include both the renewal and replacement edits")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -1727,6 +1811,45 @@ def main(argv: list[str] | None = None) -> int:
     )
     if post_prune_preview_payload.get("action_previews", [])[0].get("mode") != "remove_review":
         print("ERROR: post-prune waiver preview should surface the remove-review action mode")
+        return 1
+    post_prune_history_waiver_apply_dir = output_root / "waiver-apply-post-prune"
+    post_prune_history_waiver_apply_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "prepare-installed-history-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_apply_dir),
+            "--json",
+            "--strict",
+        ]
+    )
+    if post_prune_history_waiver_apply_result.returncode == 0:
+        print("ERROR: post-prune waiver apply pack should fail in strict mode when cleanup patches are required")
+        if post_prune_history_waiver_apply_result.stdout.strip():
+            print(post_prune_history_waiver_apply_result.stdout.strip())
+        if post_prune_history_waiver_apply_result.stderr.strip():
+            print(post_prune_history_waiver_apply_result.stderr.strip())
+        return 1
+    post_prune_history_waiver_apply = json.loads(post_prune_history_waiver_apply_result.stdout)
+    if post_prune_history_waiver_apply.get("action_count") != 1 or post_prune_history_waiver_apply.get("delete_patch_count") != 1:
+        print("ERROR: post-prune waiver apply pack should emit one delete patch for the unmatched built-in waiver")
+        return 1
+    if post_prune_history_waiver_apply.get("update_patch_count") != 0 or post_prune_history_waiver_apply.get("manual_review_count") != 0:
+        print("ERROR: post-prune waiver apply pack should only emit a delete patch, not update or manual-review actions")
+        return 1
+    post_prune_apply_patch = (
+        post_prune_history_waiver_apply_dir
+        / "waivers"
+        / "approved-release-engineering-downsize"
+        / "apply-action-01.patch"
+    )
+    if not post_prune_apply_patch.is_file():
+        print("ERROR: post-prune waiver apply pack should emit a delete patch artifact for the built-in waiver")
+        return 1
+    post_prune_apply_patch_text = post_prune_apply_patch.read_text(encoding="utf-8")
+    if "/dev/null" not in post_prune_apply_patch_text:
+        print("ERROR: post-prune delete patch should target /dev/null")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",
