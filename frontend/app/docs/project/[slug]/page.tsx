@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocsCatalog, getProjectDoc } from '@/lib/data';
+import { getDocsCatalog, getProjectDoc, getRelatedDocs } from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { RelatedDocs } from '../../RelatedDocs';
 
 export const revalidate = 300;
 
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function ProjectDocPage({ params }: Props) {
   const { slug } = await params;
-  const doc = await getProjectDoc(slug);
+  const [doc, docsCatalog] = await Promise.all([getProjectDoc(slug), getDocsCatalog()]);
 
   if (!doc) {
     notFound();
@@ -41,6 +42,15 @@ export default async function ProjectDocPage({ params }: Props) {
   const { content: markdownContent } = parseMarkdown(doc.markdown);
   const headings = extractHeadings(markdownContent);
   const renderedContent = renderMarkdown(markdownContent);
+  const currentDoc =
+    docsCatalog.project_docs.find((entry) => entry.id === slug) ?? {
+      id: doc.id,
+      kind: 'project' as const,
+      title: doc.title,
+      summary: doc.summary,
+      path: doc.path,
+    };
+  const relatedDocs = await getRelatedDocs(currentDoc);
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -76,6 +86,7 @@ export default async function ProjectDocPage({ params }: Props) {
             <h1 className="text-2xl sm:text-3xl font-bold text-ink mb-6">{doc.title}</h1>
             <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderedContent }} />
           </Card>
+          <RelatedDocs currentKind={currentDoc.kind} docs={relatedDocs} />
         </div>
 
         {headings.length > 0 && (

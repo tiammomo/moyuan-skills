@@ -81,6 +81,7 @@
 - 现在 teaching 目录也已经接入真实后端数据，并支持从前端直接打开 repo-backed teaching markdown 详情页。
 - 现在 project docs 也已经接入真实后端数据，并支持从 docs center 直接打开 repo-backed 项目文档详情页。
 - 现在 docs center 还补上了统一的搜索和文档类型筛选，可以在 skill、teaching、project 三类文档之间直接联动浏览。
+- 现在 skill、teaching、project 三类详情页也都补上了 related navigation，读者可以从当前文档继续跳到相邻或相关材料。
 
 ## Teaching 目录
 

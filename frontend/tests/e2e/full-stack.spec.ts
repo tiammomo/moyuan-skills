@@ -24,6 +24,13 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('docs-results-count')).toContainText('Showing 1');
   await page.getByTestId('docs-result-project-frontend-backend-integration').click();
   await expect(page.getByRole('heading', { name: /frontend \/ backend integration/i }).first()).toBeVisible();
+  const firstRelatedDoc = page.locator('[data-testid^="related-doc-link-"]').first();
+  await expect(firstRelatedDoc).toBeVisible();
+  const relatedHref = await firstRelatedDoc.getAttribute('href');
+  expect(relatedHref).toBeTruthy();
+  await firstRelatedDoc.click();
+  await expect(page).toHaveURL(new RegExp((relatedHref ?? '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  await expect(page.locator('h1').first()).toBeVisible();
 
   await page.goto('/docs');
   await expect(page.getByTestId('skill-doc-card-release-note-writer')).toBeVisible();

@@ -33,6 +33,7 @@ Core endpoints:
 - `GET /api/v1/docs/project/{doc_id}`
 
 The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
+That same shared payload now also supports detail-page related navigation without requiring a separate recommendations endpoint.
 
 The repository layer reads these real assets directly:
 
@@ -128,6 +129,7 @@ Then it validates:
 - docs pages render real skill docs
 - teaching pages render real teaching markdown content
 - project doc pages render real project markdown content
+- doc detail pages can continue into related docs from the same front/back data flow
 
 Run:
 
@@ -159,4 +161,5 @@ It is now implemented as:
 - a dual-mode frontend data layer
 - real bundle, docs, teaching, and project-doc pages
 - a searchable docs-center explorer across all doc kinds
+- shared related-doc navigation on detail pages
 - Playwright end-to-end coverage for the core market path

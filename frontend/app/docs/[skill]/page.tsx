@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocsCatalog, getSkillDetail } from '@/lib/data';
+import { getDocsCatalog, getRelatedDocs, getSkillDetail } from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { RelatedDocs } from '../RelatedDocs';
 
 export const revalidate = 300;
 
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: Props) {
 
 export default async function SkillDocPage({ params }: Props) {
   const { skill } = await params;
-  const detail = await getSkillDetail(skill);
+  const [detail, docsCatalog] = await Promise.all([getSkillDetail(skill), getDocsCatalog()]);
   const docContent = detail?.doc_markdown;
 
   if (!docContent) {
@@ -40,6 +41,17 @@ export default async function SkillDocPage({ params }: Props) {
   const headings = extractHeadings(markdownContent);
   const renderedContent = renderMarkdown(markdownContent);
   const title = detail?.manifest.title || skill;
+  const currentDoc =
+    docsCatalog.skill_docs.find((doc) => doc.id === skill) ?? {
+      id: skill,
+      kind: 'skill' as const,
+      title,
+      summary: `${title} documentation`,
+      path: `docs/${skill}.md`,
+    };
+  const relatedDocs = await getRelatedDocs(currentDoc, {
+    preferredIds: detail?.related_skills.map((relatedSkill) => relatedSkill.name) ?? [],
+  });
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -65,6 +77,7 @@ export default async function SkillDocPage({ params }: Props) {
             <h1 className="text-2xl sm:text-3xl font-bold text-ink mb-6">{title}</h1>
             <div className="markdown-content" dangerouslySetInnerHTML={{ __html: renderedContent }} />
           </Card>
+          <RelatedDocs currentKind={currentDoc.kind} docs={relatedDocs} />
         </div>
 
         {headings.length > 0 && (

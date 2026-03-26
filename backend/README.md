@@ -24,6 +24,8 @@ The current frontend already has a clear information architecture:
 
 This backend keeps those shapes stable while moving file access out of the frontend.
 
+The shared frontend data layer now also derives related-doc navigation from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing a separate recommendations API.
+
 ## Run
 
 ```text

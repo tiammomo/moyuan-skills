@@ -19,6 +19,31 @@ import type {
 const DATA_ROOT = path.join(process.cwd(), '..');
 const API_BASE_URL = process.env.SKILLS_MARKET_API_BASE_URL?.replace(/\/+$/, '');
 const REVALIDATE_SECONDS = 300;
+const DOC_STOPWORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'docs',
+  'doc',
+  'documentation',
+  'for',
+  'from',
+  'guide',
+  'how',
+  'in',
+  'into',
+  'market',
+  'moyuan',
+  'of',
+  'project',
+  'repo',
+  'skill',
+  'skills',
+  'teaching',
+  'the',
+  'to',
+  'with',
+]);
 
 type BundleFilePayload = {
   id: string;
@@ -109,6 +134,92 @@ function firstParagraph(markdown: string): string {
 
 function isInternalIterationDoc(id: string): boolean {
   return id.endsWith('-iteration');
+}
+
+function normalizeDocSearchText(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function tokenizeDocSearchText(value: string): string[] {
+  return normalizeDocSearchText(value)
+    .split(/\s+/)
+    .filter((token) => token.length > 2 && !DOC_STOPWORDS.has(token));
+}
+
+function docSearchText(doc: DocsCatalogEntry): string {
+  return `${doc.title} ${doc.summary} ${doc.path} ${doc.kind}`;
+}
+
+function getDocFamilyDocs(docsCatalog: DocsCatalog, kind: DocsCatalogEntry['kind']): DocsCatalogEntry[] {
+  if (kind === 'skill') {
+    return docsCatalog.skill_docs;
+  }
+  if (kind === 'teaching') {
+    return docsCatalog.teaching_docs;
+  }
+  return docsCatalog.project_docs;
+}
+
+function getFallbackNeighborDocs(currentDoc: DocsCatalogEntry, docsCatalog: DocsCatalog): DocsCatalogEntry[] {
+  const familyDocs = getDocFamilyDocs(docsCatalog, currentDoc.kind);
+  const currentIndex = familyDocs.findIndex((doc) => doc.id === currentDoc.id);
+
+  if (currentIndex === -1) {
+    return [];
+  }
+
+  const neighbors: DocsCatalogEntry[] = [];
+  for (let offset = 1; offset < familyDocs.length; offset += 1) {
+    const nextDoc = familyDocs[currentIndex + offset];
+    const previousDoc = familyDocs[currentIndex - offset];
+
+    if (nextDoc) {
+      neighbors.push(nextDoc);
+    }
+    if (previousDoc) {
+      neighbors.push(previousDoc);
+    }
+  }
+
+  return neighbors;
+}
+
+function scoreRelatedDoc(
+  currentDoc: DocsCatalogEntry,
+  candidate: DocsCatalogEntry,
+  currentTokens: Set<string>,
+  preferredIds: Set<string>
+): number {
+  let score = 0;
+
+  if (preferredIds.has(candidate.id) && candidate.kind === 'skill') {
+    score += 100;
+  }
+
+  if (candidate.kind === currentDoc.kind) {
+    score += 20;
+  }
+
+  const candidateTokens = tokenizeDocSearchText(docSearchText(candidate));
+  let sharedTokenCount = 0;
+  for (const token of candidateTokens) {
+    if (currentTokens.has(token)) {
+      sharedTokenCount += 1;
+    }
+  }
+  score += sharedTokenCount * 5;
+
+  return score;
+}
+
+export function getDocHref(doc: DocsCatalogEntry): string {
+  if (doc.kind === 'skill') {
+    return `/docs/${doc.id}`;
+  }
+  if (doc.kind === 'teaching') {
+    return `/docs/teaching/${doc.id}`;
+  }
+  return `/docs/project/${doc.id}`;
 }
 
 export async function getMarketIndex(): Promise<MarketIndex> {
@@ -448,4 +559,63 @@ export async function getProjectDoc(docId: string): Promise<ProjectDocPayload | 
   } catch {
     return null;
   }
+}
+
+export async function getRelatedDocs(
+  currentDoc: DocsCatalogEntry,
+  options?: { limit?: number; preferredIds?: string[] }
+): Promise<DocsCatalogEntry[]> {
+  const limit = options?.limit ?? 4;
+  const preferredIds = new Set(options?.preferredIds ?? []);
+  const docsCatalog = await getDocsCatalog();
+  const currentTokens = new Set(tokenizeDocSearchText(docSearchText(currentDoc)));
+  const selected = new Set<string>();
+  const results: DocsCatalogEntry[] = [];
+
+  const scoredDocs = docsCatalog.all_docs
+    .filter((doc) => !(doc.kind === currentDoc.kind && doc.id === currentDoc.id))
+    .map((doc) => ({
+      doc,
+      score: scoreRelatedDoc(currentDoc, doc, currentTokens, preferredIds),
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score || a.doc.title.localeCompare(b.doc.title) || a.doc.id.localeCompare(b.doc.id));
+
+  for (const item of scoredDocs) {
+    const key = `${item.doc.kind}:${item.doc.id}`;
+    if (selected.has(key)) {
+      continue;
+    }
+    selected.add(key);
+    results.push(item.doc);
+    if (results.length >= limit) {
+      return results;
+    }
+  }
+
+  for (const doc of getFallbackNeighborDocs(currentDoc, docsCatalog)) {
+    const key = `${doc.kind}:${doc.id}`;
+    if (selected.has(key)) {
+      continue;
+    }
+    selected.add(key);
+    results.push(doc);
+    if (results.length >= limit) {
+      return results;
+    }
+  }
+
+  for (const doc of docsCatalog.all_docs) {
+    const key = `${doc.kind}:${doc.id}`;
+    if ((doc.kind === currentDoc.kind && doc.id === currentDoc.id) || selected.has(key)) {
+      continue;
+    }
+    selected.add(key);
+    results.push(doc);
+    if (results.length >= limit) {
+      break;
+    }
+  }
+
+  return results;
 }
