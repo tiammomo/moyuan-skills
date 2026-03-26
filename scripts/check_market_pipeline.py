@@ -2996,6 +2996,47 @@ def main(argv: list[str] | None = None) -> int:
     if "# Installed Baseline History Waiver Source Reconcile Gate Waiver Apply Report" not in source_reconcile_gate_waiver_apply_report_markdown.read_text(encoding="utf-8"):
         print("ERROR: source-reconcile gate waiver apply report Markdown output should contain the report heading")
         return 1
+    source_reconcile_gate_waiver_apply_release_gate_output = require_success(
+        "gate healthy source-reconcile gate waiver apply workflow with release policy",
+        [
+            "scripts/skills_market.py",
+            "gate-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--policy",
+            "source-reconcile-waiver-apply-release-gate",
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(source_reconcile_gate_waiver_apply_write_root),
+            "--source-reconcile-execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--apply-execute-summary-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_execute_write_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    source_reconcile_gate_waiver_apply_release_gate_payload = json.loads(source_reconcile_gate_waiver_apply_release_gate_output)
+    if source_reconcile_gate_waiver_apply_release_gate_payload.get("passes") is not True or source_reconcile_gate_waiver_apply_release_gate_payload.get("report_state") != "verified":
+        print("ERROR: release apply gate should pass for the healthy written workflow and keep report_state=verified")
+        return 1
+    if source_reconcile_gate_waiver_apply_release_gate_payload.get("finding_count") != 0:
+        print("ERROR: release apply gate should not emit findings for the healthy written workflow")
+        return 1
     tampered_source_reconcile_gate_apply_source = source_reconcile_gate_waiver_apply_write_root / expired_source_reconcile_gate_waiver_path.relative_to(ROOT)
     tampered_source_reconcile_gate_apply_source.write_text(
         tampered_source_reconcile_gate_apply_source.read_text(encoding="utf-8").replace(
@@ -3046,6 +3087,47 @@ def main(argv: list[str] | None = None) -> int:
     source_reconcile_gate_waiver_apply_verify_tampered_payload = json.loads(source_reconcile_gate_waiver_apply_verify_tampered_result.stdout)
     if source_reconcile_gate_waiver_apply_verify_tampered_payload.get("drift_count") != 1:
         print("ERROR: source-reconcile gate waiver apply verification should report one drift finding after the mirrored source is tampered")
+        return 1
+    source_reconcile_gate_waiver_apply_review_handoff_gate_output = require_success(
+        "gate tampered source-reconcile gate waiver apply workflow with review-handoff policy",
+        [
+            "scripts/skills_market.py",
+            "gate-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--policy",
+            "source-reconcile-waiver-apply-review-handoff",
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(source_reconcile_gate_waiver_apply_write_root),
+            "--source-reconcile-execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--apply-execute-summary-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_execute_write_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    source_reconcile_gate_waiver_apply_review_handoff_gate_payload = json.loads(source_reconcile_gate_waiver_apply_review_handoff_gate_output)
+    if source_reconcile_gate_waiver_apply_review_handoff_gate_payload.get("passes") is not True or source_reconcile_gate_waiver_apply_review_handoff_gate_payload.get("report_state") != "drifted":
+        print("ERROR: review-handoff apply gate should allow the tampered workflow to pass while preserving report_state=drifted")
+        return 1
+    if source_reconcile_gate_waiver_apply_review_handoff_gate_payload.get("finding_count") != 0:
+        print("ERROR: review-handoff apply gate should not emit findings for the tampered workflow")
         return 1
     history_waiver_source_reconcile_handoff_gate_output = require_success(
         "gate installed baseline history waiver source reconcile with review-handoff policy",

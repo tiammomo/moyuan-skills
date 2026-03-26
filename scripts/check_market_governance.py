@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import check_installed_baseline_history_alerts
 import check_installed_baseline_history_waiver_source_reconcile_gate
+import check_source_reconcile_gate_waiver_apply_gate
 from market_utils import (
     collect_valid_manifests,
     iter_org_policy_paths,
@@ -20,6 +21,7 @@ def main() -> int:
     history_alert_waivers, history_alert_waiver_errors = check_installed_baseline_history_alerts.load_waiver_profiles()
     source_reconcile_gate_policies, source_reconcile_gate_policy_errors = check_installed_baseline_history_waiver_source_reconcile_gate.load_policy_profiles()
     source_reconcile_gate_waivers, source_reconcile_gate_waiver_errors = check_installed_baseline_history_waiver_source_reconcile_gate.load_waiver_profiles()
+    source_reconcile_apply_gate_policies, source_reconcile_apply_gate_policy_errors = check_source_reconcile_gate_waiver_apply_gate.load_policy_profiles()
     errors = [
         *manifest_errors,
         *publisher_errors,
@@ -27,6 +29,7 @@ def main() -> int:
         *history_alert_waiver_errors,
         *source_reconcile_gate_policy_errors,
         *source_reconcile_gate_waiver_errors,
+        *source_reconcile_apply_gate_policy_errors,
     ]
     known_history_policy_ids = {
         str(policy.get("id", "")).strip()
@@ -75,7 +78,8 @@ def main() -> int:
         f"{len(history_alert_policies)} history alert policy file(s), "
         f"{len(history_alert_waivers)} history alert waiver file(s), and "
         f"{len(source_reconcile_gate_policies)} source-reconcile gate policy file(s), and "
-        f"{len(source_reconcile_gate_waivers)} source-reconcile gate waiver file(s)."
+        f"{len(source_reconcile_gate_waivers)} source-reconcile gate waiver file(s), and "
+        f"{len(source_reconcile_apply_gate_policies)} source-reconcile gate waiver apply policy file(s)."
     )
     return 0
 

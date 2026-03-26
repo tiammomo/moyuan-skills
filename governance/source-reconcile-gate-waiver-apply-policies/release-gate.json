@@ -1,0 +1,17 @@
+{
+  "policy_version": 1,
+  "id": "source-reconcile-waiver-apply-release-gate",
+  "title": "Source Reconcile Waiver Apply Release Gate",
+  "description": "A strict release-oriented apply gate that only passes fully verified or no-op apply workflows and fails on blocked execution or any verification drift.",
+  "defaults": {
+    "allowed_states": [
+      "verified",
+      "no_apply_actions"
+    ],
+    "require_report_complete": true,
+    "fail_on_blocked_execution": true,
+    "fail_on_pending_verification": true,
+    "fail_on_blocked_verification": true,
+    "fail_on_verification_drift": true
+  }
+}
