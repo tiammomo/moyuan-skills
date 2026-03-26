@@ -1194,6 +1194,26 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Source Reconcile Verification" not in healthy_source_reconcile_verify_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver source reconcile verify Markdown output should contain the verification heading")
         return 1
+    source_reconcile_policy_list_output = require_success(
+        "list installed history waiver source reconcile policies",
+        [
+            "scripts/skills_market.py",
+            "list-installed-history-waiver-source-reconcile-policies",
+            "--json",
+        ],
+    )
+    source_reconcile_policy_list_payload = json.loads(source_reconcile_policy_list_output)
+    if source_reconcile_policy_list_payload.get("count") != 2:
+        print("ERROR: source reconcile policy list should expose two built-in policy profiles")
+        return 1
+    source_reconcile_policy_ids = {
+        item.get("id")
+        for item in source_reconcile_policy_list_payload.get("policies", [])
+        if isinstance(item, dict)
+    }
+    if source_reconcile_policy_ids != {"source-reconcile-release-gate", "source-reconcile-review-handoff"}:
+        print("ERROR: source reconcile policy list should expose the expected built-in policy ids")
+        return 1
     history_waiver_source_reconcile_gate_output = require_success(
         "gate installed baseline history waiver source reconcile for healthy workflow",
         [
@@ -1202,6 +1222,8 @@ def main(argv: list[str] | None = None) -> int:
             repo_relative_path(promotion_history_json),
             "--output-dir",
             repo_relative_path(history_waiver_execute_dir),
+            "--policy",
+            "source-reconcile-release-gate",
             "--json",
             "--strict",
         ],
@@ -2039,6 +2061,8 @@ def main(argv: list[str] | None = None) -> int:
             repo_relative_path(stale_history_waiver_path),
             "--output-dir",
             repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--policy",
+            "source-reconcile-release-gate",
             "--target-root",
             repo_relative_path(history_waiver_execute_write_updates_root),
             "--execute-summary-path",
@@ -2069,6 +2093,37 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if "Installed Baseline History Waiver Source Reconcile Gate" not in source_reconcile_gate_markdown.read_text(encoding="utf-8"):
         print("ERROR: tampered source reconcile gate Markdown output should contain the gate heading")
+        return 1
+    history_waiver_source_reconcile_handoff_gate_output = require_success(
+        "gate installed baseline history waiver source reconcile with review-handoff policy",
+        [
+            "scripts/skills_market.py",
+            "gate-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--policy",
+            "source-reconcile-review-handoff",
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_handoff_gate_payload = json.loads(history_waiver_source_reconcile_handoff_gate_output)
+    if history_waiver_source_reconcile_handoff_gate_payload.get("passes") is not True or history_waiver_source_reconcile_handoff_gate_payload.get("report_state") != "drifted":
+        print("ERROR: review-handoff source reconcile policy should allow the tampered workflow to pass while preserving report_state=drifted")
+        return 1
+    if history_waiver_source_reconcile_handoff_gate_payload.get("finding_count") != 0:
+        print("ERROR: review-handoff source reconcile policy should not emit gate findings for the tampered workflow")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"

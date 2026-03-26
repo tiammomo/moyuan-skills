@@ -28,6 +28,7 @@ import install_skill
 import list_installed_baseline_history
 import list_installed_baseline_history_policies
 import list_installed_baseline_history_waivers
+import list_installed_baseline_history_waiver_source_reconcile_policies
 import list_installed_bundles
 import list_skill_bundles
 import list_installed_skills
@@ -197,6 +198,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     history_waiver_parser = subparsers.add_parser("list-installed-history-waivers", help="List reusable installed baseline history alert waivers.")
     history_waiver_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
+    source_reconcile_policy_parser = subparsers.add_parser(
+        "list-installed-history-waiver-source-reconcile-policies",
+        help="List reusable installed history waiver source-reconcile gate policies.",
+    )
+    source_reconcile_policy_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     audit_history_waivers_parser = subparsers.add_parser(
         "audit-installed-history-waivers",
@@ -416,6 +423,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Evaluate source-reconcile report artifacts as a reusable gate.",
     )
     gate_reconcile_history_source_parser.add_argument("history", help="Baseline history JSON file.")
+    gate_reconcile_history_source_parser.add_argument("--policy", help="Named policy id or JSON file path for reusable source-reconcile gate rules.")
     gate_reconcile_history_source_parser.add_argument(
         "--waiver",
         action="append",
@@ -758,6 +766,12 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.append("--json")
         return list_installed_baseline_history_waivers.main(forwarded_args)
 
+    if args.command == "list-installed-history-waiver-source-reconcile-policies":
+        forwarded_args = []
+        if args.json:
+            forwarded_args.append("--json")
+        return list_installed_baseline_history_waiver_source_reconcile_policies.main(forwarded_args)
+
     if args.command == "audit-installed-history-waivers":
         forwarded_args = [args.history]
         for waiver in args.waiver:
@@ -958,6 +972,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "gate-installed-history-waiver-source-reconcile":
         forwarded_args = [args.history]
+        if args.policy:
+            forwarded_args.extend(["--policy", args.policy])
         for waiver in args.waiver:
             forwarded_args.extend(["--waiver", waiver])
         if args.output_dir:

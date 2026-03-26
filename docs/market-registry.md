@@ -315,7 +315,8 @@ python scripts/skills_market.py reconcile-installed-history-waiver-sources dist/
 python scripts/skills_market.py execute-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --stage-dir dist/installed-skills/snapshots/waiver-source-reconcile-stage --strict
 python scripts/skills_market.py verify-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
 python scripts/skills_market.py report-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root
-python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
+python scripts/skills_market.py list-installed-history-waiver-source-reconcile-policies --json
+python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-release-gate --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -368,6 +369,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - [../scripts/verify_installed_baseline_history_waiver_source_reconcile.py](../scripts/verify_installed_baseline_history_waiver_source_reconcile.py)
 - [../scripts/report_installed_baseline_history_waiver_source_reconcile.py](../scripts/report_installed_baseline_history_waiver_source_reconcile.py)
 - [../scripts/check_installed_baseline_history_waiver_source_reconcile_gate.py](../scripts/check_installed_baseline_history_waiver_source_reconcile_gate.py)
+- [../scripts/list_installed_baseline_history_waiver_source_reconcile_policies.py](../scripts/list_installed_baseline_history_waiver_source_reconcile_policies.py)
 - [../scripts/reconcile_installed_baseline_history_waiver_sources.py](../scripts/reconcile_installed_baseline_history_waiver_sources.py)
 - [../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py](../scripts/execute_reconcile_installed_baseline_history_waiver_sources.py)
 - [../scripts/draft_installed_baseline_history_waiver_execution.py](../scripts/draft_installed_baseline_history_waiver_execution.py)

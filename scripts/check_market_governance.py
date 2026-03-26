@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import check_installed_baseline_history_alerts
+import check_installed_baseline_history_waiver_source_reconcile_gate
 from market_utils import (
     collect_valid_manifests,
     iter_org_policy_paths,
@@ -17,7 +18,8 @@ def main() -> int:
     publisher_profiles, publisher_errors = load_publisher_profiles()
     history_alert_policies, history_alert_policy_errors = check_installed_baseline_history_alerts.load_policy_profiles()
     history_alert_waivers, history_alert_waiver_errors = check_installed_baseline_history_alerts.load_waiver_profiles()
-    errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors, *history_alert_waiver_errors]
+    source_reconcile_gate_policies, source_reconcile_gate_policy_errors = check_installed_baseline_history_waiver_source_reconcile_gate.load_policy_profiles()
+    errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors, *history_alert_waiver_errors, *source_reconcile_gate_policy_errors]
     known_history_policy_ids = {
         str(policy.get("id", "")).strip()
         for policy in history_alert_policies
@@ -50,8 +52,9 @@ def main() -> int:
         "Market governance check passed for "
         f"{len(publisher_profiles)} publisher profile(s), "
         f"{valid_policy_count} org policy file(s), and "
-        f"{len(history_alert_policies)} history alert policy file(s), and "
-        f"{len(history_alert_waivers)} history alert waiver file(s)."
+        f"{len(history_alert_policies)} history alert policy file(s), "
+        f"{len(history_alert_waivers)} history alert waiver file(s), and "
+        f"{len(source_reconcile_gate_policies)} source-reconcile gate policy file(s)."
     )
     return 0
 

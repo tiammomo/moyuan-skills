@@ -12,6 +12,102 @@ from market_utils import ROOT, repo_relative_path
 
 
 DEFAULT_ALLOWED_STATES = ("verified", "no_reconcile_actions")
+SOURCE_RECONCILE_GATE_POLICIES_DIR = ROOT / "governance" / "source-reconcile-gate-policies"
+
+
+def iter_policy_paths() -> list[Path]:
+    return sorted(SOURCE_RECONCILE_GATE_POLICIES_DIR.glob("*.json"))
+
+
+def validate_policy_payload(path: Path) -> tuple[dict, list[str]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    errors: list[str] = []
+    label = path.relative_to(ROOT).as_posix()
+    if not isinstance(payload, dict):
+        return {}, [f"{label}: JSON root must be an object"]
+
+    policy_version = payload.get("policy_version")
+    if not isinstance(policy_version, int) or policy_version < 1:
+        errors.append(f"{label}: 'policy_version' must be an integer >= 1")
+    policy_id = payload.get("id")
+    if not isinstance(policy_id, str) or len(policy_id.strip()) < 3:
+        errors.append(f"{label}: 'id' must be a non-empty string")
+    title = payload.get("title")
+    if not isinstance(title, str) or len(title.strip()) < 3:
+        errors.append(f"{label}: 'title' must be a non-empty string")
+    description = payload.get("description")
+    if not isinstance(description, str) or len(description.strip()) < 20:
+        errors.append(f"{label}: 'description' must be a descriptive string")
+
+    defaults = payload.get("defaults")
+    if not isinstance(defaults, dict):
+        errors.append(f"{label}: 'defaults' must be an object")
+        return payload, errors
+
+    allowed_states = defaults.get("allowed_states")
+    if (
+        not isinstance(allowed_states, list)
+        or not allowed_states
+        or not all(isinstance(item, str) and item.strip() for item in allowed_states)
+    ):
+        errors.append(f"{label}: 'defaults.allowed_states' must be a non-empty list of strings")
+
+    expected_default_keys = {
+        "allowed_states",
+        "require_report_complete",
+        "fail_on_blocked_execution",
+        "fail_on_pending_verification",
+        "fail_on_blocked_verification",
+        "fail_on_verification_drift",
+    }
+    for key in expected_default_keys - {"allowed_states"}:
+        if not isinstance(defaults.get(key), bool):
+            errors.append(f"{label}: 'defaults.{key}' must be a boolean")
+    unexpected = sorted(set(defaults) - expected_default_keys)
+    if unexpected:
+        errors.append(f"{label}: unsupported default keys: {', '.join(unexpected)}")
+
+    return payload, errors
+
+
+def load_policy_profiles() -> tuple[list[dict], list[str]]:
+    policies: list[dict] = []
+    errors: list[str] = []
+    seen_ids: set[str] = set()
+
+    for path in iter_policy_paths():
+        payload, policy_errors = validate_policy_payload(path)
+        if policy_errors:
+            errors.extend(policy_errors)
+            continue
+        policy_id = str(payload.get("id", "")).strip()
+        if policy_id in seen_ids:
+            errors.append(f"{path.relative_to(ROOT).as_posix()}: duplicate policy id '{policy_id}'")
+            continue
+        seen_ids.add(policy_id)
+        payload["_path"] = str(path)
+        policies.append(payload)
+
+    policies.sort(key=lambda item: str(item.get("title", "")).lower())
+    return policies, errors
+
+
+def resolve_policy_reference(token: str) -> tuple[dict, Path]:
+    candidate_path = resolve_repo_path(Path(token))
+    if candidate_path.is_file():
+        payload, errors = validate_policy_payload(candidate_path)
+        if errors:
+            raise SystemExit("\n".join(errors))
+        payload["_path"] = str(candidate_path)
+        return payload, candidate_path
+
+    policies, errors = load_policy_profiles()
+    if errors:
+        raise SystemExit("\n".join(errors))
+    for policy in policies:
+        if str(policy.get("id", "")).strip().lower() == token.strip().lower():
+            return policy, Path(str(policy.get("_path", "")))
+    raise SystemExit(f"installed history waiver source-reconcile gate policy not found: {token}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,6 +115,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="Evaluate source-reconcile report artifacts as a reusable gate."
     )
     parser.add_argument("history", type=Path, help="Baseline history JSON file.")
+    parser.add_argument("--policy", help="Named policy id or JSON file path for reusable source-reconcile gate rules.")
     parser.add_argument(
         "--waiver",
         action="append",
@@ -68,6 +165,34 @@ def normalize_allowed_states(values: list[str]) -> list[str]:
     return normalized or list(DEFAULT_ALLOWED_STATES)
 
 
+def policy_defaults(policy_payload: dict | None = None) -> dict:
+    defaults = {
+        "allowed_states": list(DEFAULT_ALLOWED_STATES),
+        "require_report_complete": True,
+        "fail_on_blocked_execution": True,
+        "fail_on_pending_verification": True,
+        "fail_on_blocked_verification": True,
+        "fail_on_verification_drift": True,
+    }
+    if isinstance(policy_payload, dict):
+        configured = policy_payload.get("defaults", {})
+        if isinstance(configured, dict):
+            allowed_states = configured.get("allowed_states")
+            if isinstance(allowed_states, list) and allowed_states and all(isinstance(item, str) and item.strip() for item in allowed_states):
+                defaults["allowed_states"] = [item.strip() for item in allowed_states]
+            for key in (
+                "require_report_complete",
+                "fail_on_blocked_execution",
+                "fail_on_pending_verification",
+                "fail_on_blocked_verification",
+                "fail_on_verification_drift",
+            ):
+                value = configured.get(key)
+                if isinstance(value, bool):
+                    defaults[key] = value
+    return defaults
+
+
 def build_gate_payload(
     history_path: Path,
     waiver_tokens: list[str],
@@ -76,6 +201,8 @@ def build_gate_payload(
     target_root: Path | None,
     stage_dir: Path | None,
     execute_summary_path: Path | None,
+    policy_payload: dict | None,
+    policy_path: Path | None,
     allowed_states: list[str],
 ) -> dict:
     report_payload = report_installed_baseline_history_waiver_source_reconcile.build_report_payload(
@@ -87,8 +214,9 @@ def build_gate_payload(
         execute_summary_path=execute_summary_path,
     )
 
+    defaults = policy_defaults(policy_payload)
     findings: list[dict] = []
-    if report_payload.get("report_complete") is not True:
+    if defaults["require_report_complete"] and report_payload.get("report_complete") is not True:
         findings.append(
             {
                 "code": "incomplete_report",
@@ -106,7 +234,7 @@ def build_gate_payload(
         )
 
     execution_summary = report_payload.get("source_reconcile_execution", {})
-    if execution_summary.get("blocked_action_count", 0) > 0:
+    if defaults["fail_on_blocked_execution"] and execution_summary.get("blocked_action_count", 0) > 0:
         findings.append(
             {
                 "code": "blocked_execution",
@@ -115,21 +243,21 @@ def build_gate_payload(
         )
 
     verification_summary = report_payload.get("source_reconcile_verification", {})
-    if verification_summary.get("pending_count", 0) > 0:
+    if defaults["fail_on_pending_verification"] and verification_summary.get("pending_count", 0) > 0:
         findings.append(
             {
                 "code": "pending_verification",
                 "message": "source-reconcile verification still has pending actions and cannot be treated as complete",
             }
         )
-    if verification_summary.get("blocked_count", 0) > 0:
+    if defaults["fail_on_blocked_verification"] and verification_summary.get("blocked_count", 0) > 0:
         findings.append(
             {
                 "code": "blocked_verification",
                 "message": "source-reconcile verification contains blocked actions and requires follow-up",
             }
         )
-    if verification_summary.get("drift_count", 0) > 0:
+    if defaults["fail_on_verification_drift"] and verification_summary.get("drift_count", 0) > 0:
         findings.append(
             {
                 "code": "verification_drift",
@@ -143,6 +271,10 @@ def build_gate_payload(
         "output_dir": display_path(output_dir),
         "target_root": report_payload.get("target_root", ""),
         "stage_dir": report_payload.get("stage_dir", ""),
+        "policy_id": policy_payload.get("id") if isinstance(policy_payload, dict) else None,
+        "policy_title": policy_payload.get("title") if isinstance(policy_payload, dict) else None,
+        "policy_path": str(policy_path) if policy_path is not None else None,
+        "policy_defaults": defaults,
         "allowed_states": allowed_states,
         "report_state": report_state,
         "report_complete": report_payload.get("report_complete", False),
@@ -164,6 +296,7 @@ def render_markdown(payload: dict) -> str:
         f"- Output dir: `{payload.get('output_dir', '')}`",
         f"- Target root: `{payload.get('target_root', '')}`",
         f"- Stage dir: `{payload.get('stage_dir', '')}`",
+        f"- Policy id: `{payload.get('policy_id', '')}`",
         f"- Allowed states: `{', '.join(payload.get('allowed_states', []))}`",
         f"- Report state: `{payload.get('report_state', '')}`",
         f"- Report complete: `{payload.get('report_complete', False)}`",
@@ -191,7 +324,12 @@ def main(argv: list[str] | None = None) -> int:
     target_root = resolve_repo_path(args.target_root) if args.target_root else None
     stage_dir = resolve_repo_path(args.stage_dir) if args.stage_dir else None
     execute_summary_path = resolve_repo_path(args.execute_summary_path) if args.execute_summary_path else None
-    allowed_states = normalize_allowed_states(args.allow_state)
+    policy_payload: dict | None = None
+    policy_path: Path | None = None
+    if args.policy:
+        policy_payload, policy_path = resolve_policy_reference(args.policy)
+    defaults = policy_defaults(policy_payload)
+    allowed_states = normalize_allowed_states(args.allow_state or defaults["allowed_states"])
 
     payload = build_gate_payload(
         args.history,
@@ -200,6 +338,8 @@ def main(argv: list[str] | None = None) -> int:
         target_root=target_root,
         stage_dir=stage_dir,
         execute_summary_path=execute_summary_path,
+        policy_payload=policy_payload,
+        policy_path=policy_path,
         allowed_states=allowed_states,
     )
 

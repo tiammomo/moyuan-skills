@@ -1,0 +1,21 @@
+{
+  "policy_version": 1,
+  "id": "source-reconcile-review-handoff",
+  "title": "Source Reconcile Review Handoff",
+  "description": "A review-oriented source-reconcile profile that treats report generation as the main gate and allows drifted or pre-execution states to pass so reviewers can hand off the full workflow without extra CLI flags.",
+  "defaults": {
+    "allowed_states": [
+      "verified",
+      "no_reconcile_actions",
+      "needs_execution",
+      "needs_verification_followup",
+      "drifted",
+      "review_required"
+    ],
+    "require_report_complete": false,
+    "fail_on_blocked_execution": false,
+    "fail_on_pending_verification": false,
+    "fail_on_blocked_verification": false,
+    "fail_on_verification_drift": false
+  }
+}

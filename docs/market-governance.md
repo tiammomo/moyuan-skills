@@ -242,8 +242,9 @@ python scripts/skills_market.py report-installed-history-waiver-source-reconcile
 ### 18. 对 installed history waiver source reconcile 执行 gate
 
 ```text
-python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
-python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --strict
+python scripts/skills_market.py list-installed-history-waiver-source-reconcile-policies --json
+python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-release-gate --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
+python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-review-handoff --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --strict
 ```
 
 ## 相关文件
@@ -269,3 +270,5 @@ python scripts/skills_market.py gate-installed-history-waiver-source-reconcile d
 - [../scripts/verify_installed_baseline_history_waiver_source_reconcile.py](../scripts/verify_installed_baseline_history_waiver_source_reconcile.py)
 - [../scripts/report_installed_baseline_history_waiver_source_reconcile.py](../scripts/report_installed_baseline_history_waiver_source_reconcile.py)
 - [../scripts/check_installed_baseline_history_waiver_source_reconcile_gate.py](../scripts/check_installed_baseline_history_waiver_source_reconcile_gate.py)
+- [../scripts/list_installed_baseline_history_waiver_source_reconcile_policies.py](../scripts/list_installed_baseline_history_waiver_source_reconcile_policies.py)
+- [../schemas/installed-history-waiver-source-reconcile-policy.schema.json](../schemas/installed-history-waiver-source-reconcile-policy.schema.json)
