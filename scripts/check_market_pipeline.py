@@ -2627,6 +2627,98 @@ def main(argv: list[str] | None = None) -> int:
     if "# Installed Baseline History Waiver Source Reconcile Gate Waiver Preview" not in source_reconcile_gate_waiver_preview_markdown.read_text(encoding="utf-8"):
         print("ERROR: source-reconcile gate waiver preview Markdown output should contain the preview heading")
         return 1
+    source_reconcile_gate_waiver_apply_json = output_root / "snapshots" / "source-reconcile-gate-waiver-apply.json"
+    source_reconcile_gate_waiver_apply_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "prepare-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(policy_mismatch_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--output-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if source_reconcile_gate_waiver_apply_result.returncode == 0:
+        print("ERROR: source-reconcile gate waiver apply pack should fail in strict mode when apply actions exist")
+        if source_reconcile_gate_waiver_apply_result.stdout.strip():
+            print(source_reconcile_gate_waiver_apply_result.stdout.strip())
+        if source_reconcile_gate_waiver_apply_result.stderr.strip():
+            print(source_reconcile_gate_waiver_apply_result.stderr.strip())
+        return 1
+    source_reconcile_gate_waiver_apply_payload = load_json(source_reconcile_gate_waiver_apply_json)
+    if source_reconcile_gate_waiver_apply_payload.get("action_count") != 4:
+        print("ERROR: source-reconcile gate waiver apply pack should emit one apply action for each preview action")
+        return 1
+    if source_reconcile_gate_waiver_apply_payload.get("patch_count") != 3:
+        print("ERROR: source-reconcile gate waiver apply pack should emit three patch files for the draft-backed waivers")
+        return 1
+    if source_reconcile_gate_waiver_apply_payload.get("update_patch_count") != 3:
+        print("ERROR: source-reconcile gate waiver apply pack should classify the three generated patches as update patches")
+        return 1
+    if source_reconcile_gate_waiver_apply_payload.get("manual_review_count") != 1:
+        print("ERROR: source-reconcile gate waiver apply pack should keep the policy-mismatch follow-up as manual review")
+        return 1
+    combined_source_reconcile_apply_patch = str(source_reconcile_gate_waiver_apply_payload.get("combined_patch_path", "")).strip()
+    if not combined_source_reconcile_apply_patch or not (ROOT / combined_source_reconcile_apply_patch).is_file():
+        print("ERROR: source-reconcile gate waiver apply pack should materialize a combined patch bundle")
+        return 1
+    source_reconcile_gate_waiver_apply_by_id = {
+        item.get("id"): item
+        for item in source_reconcile_gate_waiver_apply_payload.get("waivers", [])
+        if isinstance(item, dict)
+    }
+    for waiver_id in ("expired-source-drift", "stale-blocked-execution", "unmatched-drift"):
+        waiver_apply = source_reconcile_gate_waiver_apply_by_id.get(waiver_id, {})
+        apply_actions = waiver_apply.get("apply_actions", [])
+        if len(apply_actions) != 1:
+            print("ERROR: each draft-backed source-reconcile gate waiver should expose exactly one apply action in the smoke workflow")
+            return 1
+        action = apply_actions[0]
+        if not str(action.get("target_path", "")).strip() or not (ROOT / str(action.get("target_path", "")).strip()).is_file():
+            print("ERROR: source-reconcile gate waiver apply updates should materialize target JSON artifacts")
+            return 1
+        if not str(action.get("patch_path", "")).strip() or not (ROOT / str(action.get("patch_path", "")).strip()).is_file():
+            print("ERROR: source-reconcile gate waiver apply updates should materialize patch artifacts")
+            return 1
+    policy_mismatch_apply_actions = source_reconcile_gate_waiver_apply_by_id.get("policy-mismatch-drift", {}).get("apply_actions", [])
+    if len(policy_mismatch_apply_actions) != 1:
+        print("ERROR: policy-mismatch source-reconcile gate waiver should expose exactly one apply action in the smoke workflow")
+        return 1
+    policy_mismatch_apply_action = policy_mismatch_apply_actions[0]
+    if str(policy_mismatch_apply_action.get("patch_path", "")).strip():
+        print("ERROR: policy-mismatch source-reconcile gate waiver should stay review-only and not emit a patch file")
+        return 1
+    review_artifact_path = str(policy_mismatch_apply_action.get("review_artifact_path", "")).strip()
+    if not review_artifact_path or not (ROOT / review_artifact_path).is_file():
+        print("ERROR: policy-mismatch source-reconcile gate waiver should materialize a manual review artifact")
+        return 1
+    source_reconcile_gate_waiver_apply_markdown = history_waiver_execute_write_updates_dir / "source-reconcile-gate-waiver-apply-summary.md"
+    if "# Installed Baseline History Waiver Source Reconcile Gate Waiver Apply Pack" not in source_reconcile_gate_waiver_apply_markdown.read_text(encoding="utf-8"):
+        print("ERROR: source-reconcile gate waiver apply Markdown output should contain the apply heading")
+        return 1
     history_waiver_source_reconcile_handoff_gate_output = require_success(
         "gate installed baseline history waiver source reconcile with review-handoff policy",
         [
