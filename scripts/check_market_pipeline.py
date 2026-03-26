@@ -2937,6 +2937,65 @@ def main(argv: list[str] | None = None) -> int:
     if source_reconcile_gate_waiver_apply_verify_write_payload.get("written_target_match_count") != 3 or source_reconcile_gate_waiver_apply_verify_write_payload.get("drift_count") != 0:
         print("ERROR: written source-reconcile gate waiver apply verification should confirm three written targets and no drift")
         return 1
+    source_reconcile_gate_waiver_apply_report_json = output_root / "snapshots" / "source-reconcile-gate-waiver-apply-report.json"
+    source_reconcile_gate_waiver_apply_report_markdown = output_root / "snapshots" / "source-reconcile-gate-waiver-apply-report.md"
+    source_reconcile_gate_waiver_apply_report_output = require_success(
+        "report source-reconcile gate waiver apply workflow",
+        [
+            "scripts/skills_market.py",
+            "report-installed-history-waiver-source-reconcile-waiver-apply",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(source_reconcile_gate_waiver_apply_write_root),
+            "--source-reconcile-execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--apply-execute-summary-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_execute_write_json),
+            "--output-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_report_json),
+            "--markdown-path",
+            repo_relative_path(source_reconcile_gate_waiver_apply_report_markdown),
+            "--json",
+        ],
+    )
+    source_reconcile_gate_waiver_apply_report_payload = json.loads(source_reconcile_gate_waiver_apply_report_output)
+    if source_reconcile_gate_waiver_apply_report_payload.get("report_complete") is not True:
+        print("ERROR: source-reconcile gate waiver apply report should mark the healthy workflow as complete")
+        return 1
+    if source_reconcile_gate_waiver_apply_report_payload.get("report_state") != "verified":
+        print("ERROR: source-reconcile gate waiver apply report should classify the healthy workflow as verified")
+        return 1
+    if source_reconcile_gate_waiver_apply_report_payload.get("action_count") != 3:
+        print("ERROR: source-reconcile gate waiver apply report should summarize the three apply-ready waiver actions")
+        return 1
+    if source_reconcile_gate_waiver_apply_report_payload.get("apply", {}).get("action_count") != 3:
+        print("ERROR: source-reconcile gate waiver apply report should expose the apply-pack action count")
+        return 1
+    if source_reconcile_gate_waiver_apply_report_payload.get("apply_execution", {}).get("written_update_count") != 3:
+        print("ERROR: source-reconcile gate waiver apply report should expose the three written update actions")
+        return 1
+    if source_reconcile_gate_waiver_apply_report_payload.get("apply_verification", {}).get("written_target_match_count") != 3:
+        print("ERROR: source-reconcile gate waiver apply report should expose the three verified written targets")
+        return 1
+    if "# Installed Baseline History Waiver Source Reconcile Gate Waiver Apply Report" not in source_reconcile_gate_waiver_apply_report_markdown.read_text(encoding="utf-8"):
+        print("ERROR: source-reconcile gate waiver apply report Markdown output should contain the report heading")
+        return 1
     tampered_source_reconcile_gate_apply_source = source_reconcile_gate_waiver_apply_write_root / expired_source_reconcile_gate_waiver_path.relative_to(ROOT)
     tampered_source_reconcile_gate_apply_source.write_text(
         tampered_source_reconcile_gate_apply_source.read_text(encoding="utf-8").replace(
