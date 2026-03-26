@@ -4,11 +4,11 @@ This temporary note tracks the next installed-state history waiver source-reconc
 
 ## Goals
 
-- [ ] Audit reusable source-reconcile gate waivers for expired, unmatched, stale, or policy-mismatch cases
-- [ ] Expose the source-reconcile-waiver-audit workflow through the unified CLI, README/docs, and smoke pipeline
-- [ ] Run validation, then delete this note after the iteration is fully complete
+- [x] Audit reusable source-reconcile gate waivers for expired, unmatched, stale, or policy-mismatch cases
+- [x] Expose the source-reconcile-waiver-audit workflow through the unified CLI, README/docs, and smoke pipeline
+- [x] Run validation, then delete this note after the iteration is fully complete
 
 ## Current Status
 
-- The client can now apply named source-reconcile gate policies and approved gate waivers, so strict release flows can accept a scoped exception without weakening the whole policy profile.
-- The next gap is governance hygiene: once source-reconcile gate waivers exist, the repo needs an audit workflow that shows when those waivers are expired, no longer match current source-reconcile reports, or reference the wrong policy.
+- Completed on 2026-03-26: the repo now audits source-reconcile gate waivers for expired, unmatched, stale, and policy-mismatch cases, exposes the workflow through the unified CLI, and covers the lifecycle through README/docs plus smoke validation.
+- The next gap is remediation: once audit findings exist, the repo needs a follow-up workflow that turns those source-reconcile waiver audit results into concrete renewal, replacement, or removal actions.

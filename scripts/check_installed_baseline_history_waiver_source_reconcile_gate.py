@@ -402,17 +402,13 @@ def normalized_suffix_match(actual: str, suffix: str) -> bool:
     return normalized_actual.endswith(normalized_suffix)
 
 
-def waiver_matches_report_scope(
+def waiver_selectors_match_report(
     waiver: dict,
-    policy_id: str | None,
     payload: dict,
     *,
     require_active: bool = True,
 ) -> bool:
     if require_active and not is_waiver_active(waiver):
-        return False
-    waiver_policy_id = str(waiver.get("policy_id", "")).strip()
-    if waiver_policy_id and waiver_policy_id != str(policy_id or "").strip():
         return False
 
     match = waiver.get("match", {})
@@ -474,6 +470,35 @@ def waiver_matches_report_scope(
     return True
 
 
+def waiver_matches_report_scope(
+    waiver: dict,
+    policy_id: str | None,
+    payload: dict,
+    *,
+    require_active: bool = True,
+) -> bool:
+    waiver_policy_id = str(waiver.get("policy_id", "")).strip()
+    if waiver_policy_id and waiver_policy_id != str(policy_id or "").strip():
+        return False
+    return waiver_selectors_match_report(
+        waiver,
+        payload,
+        require_active=require_active,
+    )
+
+
+def finding_codes_match_waiver(waiver: dict, finding: dict) -> bool:
+    match = waiver.get("match", {})
+    if not isinstance(match, dict):
+        return False
+    finding_codes = [
+        str(item).strip()
+        for item in match.get("finding_codes", [])
+        if isinstance(item, str) and item.strip()
+    ]
+    return str(finding.get("code", "")).strip() in finding_codes
+
+
 def waiver_matches_finding(
     waiver: dict,
     policy_id: str | None,
@@ -484,15 +509,7 @@ def waiver_matches_finding(
 ) -> bool:
     if not waiver_matches_report_scope(waiver, policy_id, payload, require_active=require_active):
         return False
-    match = waiver.get("match", {})
-    if not isinstance(match, dict):
-        return False
-    finding_codes = [
-        str(item).strip()
-        for item in match.get("finding_codes", [])
-        if isinstance(item, str) and item.strip()
-    ]
-    return str(finding.get("code", "")).strip() in finding_codes
+    return finding_codes_match_waiver(waiver, finding)
 
 
 def apply_waivers_to_findings(

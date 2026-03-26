@@ -2153,6 +2153,220 @@ def main(argv: list[str] | None = None) -> int:
     if history_waiver_source_reconcile_waived_gate_payload.get("matched_gate_waiver_count") != 1:
         print("ERROR: source reconcile gate waiver run should match exactly one gate waiver")
         return 1
+    source_reconcile_gate_waiver_temp_dir = output_root / "source-reconcile-gate-waivers"
+    source_reconcile_gate_waiver_temp_dir.mkdir(parents=True, exist_ok=True)
+    expired_source_reconcile_gate_waiver_path = source_reconcile_gate_waiver_temp_dir / "expired-source-drift.json"
+    expired_source_reconcile_gate_waiver_path.write_text(
+        json.dumps(
+            {
+                "waiver_version": 1,
+                "id": "expired-source-drift",
+                "title": "Expired Source Drift Gate Waiver",
+                "description": "An expired source-reconcile gate waiver kept only so the smoke test can confirm audit catches old source drift approvals.",
+                "policy_id": "source-reconcile-release-gate",
+                "match": {
+                    "finding_codes": [
+                        "disallowed_report_state",
+                        "verification_drift"
+                    ],
+                    "report_states": [
+                        "drifted"
+                    ],
+                    "target_root_suffix": "waiver-execute-write-updates-root",
+                    "action_waiver_ids": [
+                        "expired-release-downsize"
+                    ],
+                    "action_codes": [
+                        "renew_or_remove"
+                    ]
+                },
+                "approval": {
+                    "approved_by": "Moyuan Governance Review",
+                    "approved_at": "2026-03-20",
+                    "reason": "This expired fixture exists only so the smoke test can confirm that source-reconcile gate waiver audit catches old approvals."
+                },
+                "expires_on": "2026-03-21"
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    stale_source_reconcile_gate_waiver_path = source_reconcile_gate_waiver_temp_dir / "stale-blocked-execution.json"
+    stale_source_reconcile_gate_waiver_path.write_text(
+        json.dumps(
+            {
+                "waiver_version": 1,
+                "id": "stale-blocked-execution",
+                "title": "Stale Blocked Execution Gate Waiver",
+                "description": "A stale source-reconcile gate waiver that still points at the report scope but no longer matches any active finding code.",
+                "policy_id": "source-reconcile-release-gate",
+                "match": {
+                    "finding_codes": [
+                        "blocked_execution"
+                    ],
+                    "report_states": [
+                        "drifted"
+                    ],
+                    "target_root_suffix": "waiver-execute-write-updates-root",
+                    "action_waiver_ids": [
+                        "expired-release-downsize"
+                    ],
+                    "action_codes": [
+                        "renew_or_remove"
+                    ]
+                },
+                "approval": {
+                    "approved_by": "Moyuan Governance Review",
+                    "approved_at": "2026-03-26",
+                    "reason": "This fixture exists only so the smoke test can confirm that source-reconcile gate waiver audit catches stale approvals."
+                },
+                "expires_on": "2026-12-31"
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    unmatched_source_reconcile_gate_waiver_path = source_reconcile_gate_waiver_temp_dir / "unmatched-drift.json"
+    unmatched_source_reconcile_gate_waiver_path.write_text(
+        json.dumps(
+            {
+                "waiver_version": 1,
+                "id": "unmatched-drift",
+                "title": "Unmatched Drift Gate Waiver",
+                "description": "A source-reconcile gate waiver that no longer matches the current report scope because it points at the wrong target root suffix.",
+                "policy_id": "source-reconcile-release-gate",
+                "match": {
+                    "finding_codes": [
+                        "disallowed_report_state",
+                        "verification_drift"
+                    ],
+                    "report_states": [
+                        "drifted"
+                    ],
+                    "target_root_suffix": "does-not-match",
+                    "action_waiver_ids": [
+                        "expired-release-downsize"
+                    ],
+                    "action_codes": [
+                        "renew_or_remove"
+                    ]
+                },
+                "approval": {
+                    "approved_by": "Moyuan Governance Review",
+                    "approved_at": "2026-03-26",
+                    "reason": "This fixture exists only so the smoke test can confirm that source-reconcile gate waiver audit catches unmatched approvals."
+                },
+                "expires_on": "2026-12-31"
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    policy_mismatch_source_reconcile_gate_waiver_path = source_reconcile_gate_waiver_temp_dir / "policy-mismatch-drift.json"
+    policy_mismatch_source_reconcile_gate_waiver_path.write_text(
+        json.dumps(
+            {
+                "waiver_version": 1,
+                "id": "policy-mismatch-drift",
+                "title": "Policy Mismatch Drift Gate Waiver",
+                "description": "A source-reconcile gate waiver that should match the strict release gate but is intentionally pointed at the review handoff policy for audit coverage.",
+                "policy_id": "source-reconcile-review-handoff",
+                "match": {
+                    "finding_codes": [
+                        "disallowed_report_state",
+                        "verification_drift"
+                    ],
+                    "report_states": [
+                        "drifted"
+                    ],
+                    "target_root_suffix": "waiver-execute-write-updates-root",
+                    "action_waiver_ids": [
+                        "expired-release-downsize"
+                    ],
+                    "action_codes": [
+                        "renew_or_remove"
+                    ]
+                },
+                "approval": {
+                    "approved_by": "Moyuan Governance Review",
+                    "approved_at": "2026-03-26",
+                    "reason": "This fixture exists only so the smoke test can confirm that source-reconcile gate waiver audit catches policy mismatches without changing the strict release gate profile."
+                },
+                "expires_on": "2026-12-31"
+            },
+            indent=2,
+            ensure_ascii=False,
+        ) + "\n",
+        encoding="utf-8",
+    )
+    source_reconcile_gate_waiver_audit_json = output_root / "snapshots" / "source-reconcile-gate-waiver-audit.json"
+    source_reconcile_gate_waiver_audit_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "audit-installed-history-waiver-source-reconcile-waivers",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--gate-waiver",
+            "approved-expired-release-downsize-source-drift",
+            "--gate-waiver",
+            repo_relative_path(expired_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(stale_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(unmatched_source_reconcile_gate_waiver_path),
+            "--gate-waiver",
+            repo_relative_path(policy_mismatch_source_reconcile_gate_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--output-path",
+            repo_relative_path(source_reconcile_gate_waiver_audit_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if source_reconcile_gate_waiver_audit_result.returncode == 0:
+        print("ERROR: source-reconcile gate waiver audit should fail in strict mode when expired, unmatched, stale, or policy-mismatch records are supplied")
+        if source_reconcile_gate_waiver_audit_result.stdout.strip():
+            print(source_reconcile_gate_waiver_audit_result.stdout.strip())
+        if source_reconcile_gate_waiver_audit_result.stderr.strip():
+            print(source_reconcile_gate_waiver_audit_result.stderr.strip())
+        return 1
+    source_reconcile_gate_waiver_audit_payload = load_json(source_reconcile_gate_waiver_audit_json)
+    if source_reconcile_gate_waiver_audit_payload.get("expired_count") != 1 or source_reconcile_gate_waiver_audit_payload.get("unmatched_count") != 1 or source_reconcile_gate_waiver_audit_payload.get("stale_count") != 1 or source_reconcile_gate_waiver_audit_payload.get("policy_mismatch_count") != 1:
+        print("ERROR: source-reconcile gate waiver audit should separately classify expired, unmatched, stale, and policy-mismatch findings")
+        return 1
+    source_reconcile_gate_waiver_findings_by_id = {
+        item.get("id"): {finding.get("code") for finding in item.get("findings", []) if isinstance(finding, dict)}
+        for item in source_reconcile_gate_waiver_audit_payload.get("waivers", [])
+        if isinstance(item, dict)
+    }
+    if source_reconcile_gate_waiver_findings_by_id.get("approved-expired-release-downsize-source-drift") not in (set(), None):
+        print("ERROR: built-in source-reconcile gate waiver should pass audit for the tampered smoke workflow")
+        return 1
+    if source_reconcile_gate_waiver_findings_by_id.get("expired-source-drift") != {"expired"}:
+        print("ERROR: expired source-reconcile gate waiver fixture should report only the expired finding code")
+        return 1
+    if source_reconcile_gate_waiver_findings_by_id.get("stale-blocked-execution") != {"stale"}:
+        print("ERROR: stale source-reconcile gate waiver fixture should report only the stale finding code")
+        return 1
+    if source_reconcile_gate_waiver_findings_by_id.get("unmatched-drift") != {"unmatched"}:
+        print("ERROR: unmatched source-reconcile gate waiver fixture should report only the unmatched finding code")
+        return 1
+    if source_reconcile_gate_waiver_findings_by_id.get("policy-mismatch-drift") != {"policy_mismatch"}:
+        print("ERROR: policy-mismatch source-reconcile gate waiver fixture should report only the policy_mismatch finding code")
+        return 1
     history_waiver_source_reconcile_handoff_gate_output = require_success(
         "gate installed baseline history waiver source reconcile with review-handoff policy",
         [

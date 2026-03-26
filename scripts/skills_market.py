@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 
 import audit_installed_baseline_history_waivers
+import audit_installed_baseline_history_waiver_source_reconcile_waivers
 import build_federation_feed
 import build_market_catalog
 import build_market_index
@@ -227,6 +228,32 @@ def build_parser() -> argparse.ArgumentParser:
     audit_history_waivers_parser.add_argument("--markdown-path", help="Optional Markdown audit output path.")
     audit_history_waivers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     audit_history_waivers_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when findings are present.")
+
+    audit_source_reconcile_waivers_parser = subparsers.add_parser(
+        "audit-installed-history-waiver-source-reconcile-waivers",
+        help="Audit source-reconcile gate waivers for expired, unmatched, stale, or policy-mismatch records.",
+    )
+    audit_source_reconcile_waivers_parser.add_argument("history", help="Baseline history JSON file.")
+    audit_source_reconcile_waivers_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named installed-history waiver id or JSON file path used to build the source-reconcile report context.",
+    )
+    audit_source_reconcile_waivers_parser.add_argument(
+        "--gate-waiver",
+        action="append",
+        default=[],
+        help="Named source-reconcile gate waiver id or JSON file path to audit. Defaults to all known gate waivers.",
+    )
+    audit_source_reconcile_waivers_parser.add_argument("--output-dir", help="Directory containing source-reconcile artifacts and receiving audit summaries.")
+    audit_source_reconcile_waivers_parser.add_argument("--target-root", help="Optional repo-root mirror used for source audits and verification.")
+    audit_source_reconcile_waivers_parser.add_argument("--stage-dir", help="Optional staging directory used for staged verification.")
+    audit_source_reconcile_waivers_parser.add_argument("--execute-summary-path", help="Optional source-reconcile execution summary JSON path.")
+    audit_source_reconcile_waivers_parser.add_argument("--output-path", help="Optional JSON audit output path.")
+    audit_source_reconcile_waivers_parser.add_argument("--markdown-path", help="Optional Markdown audit output path.")
+    audit_source_reconcile_waivers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    audit_source_reconcile_waivers_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when findings are present.")
 
     remediate_history_waivers_parser = subparsers.add_parser(
         "remediate-installed-history-waivers",
@@ -804,6 +831,30 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return audit_installed_baseline_history_waivers.main(forwarded_args)
+
+    if args.command == "audit-installed-history-waiver-source-reconcile-waivers":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        for gate_waiver in args.gate_waiver:
+            forwarded_args.extend(["--gate-waiver", gate_waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.stage_dir:
+            forwarded_args.extend(["--stage-dir", args.stage_dir])
+        if args.execute_summary_path:
+            forwarded_args.extend(["--execute-summary-path", args.execute_summary_path])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return audit_installed_baseline_history_waiver_source_reconcile_waivers.main(forwarded_args)
 
     if args.command == "remediate-installed-history-waivers":
         forwarded_args = [args.history]
