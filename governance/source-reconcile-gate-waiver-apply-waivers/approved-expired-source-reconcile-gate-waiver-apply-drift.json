@@ -1,0 +1,29 @@
+{
+  "waiver_version": 1,
+  "id": "approved-expired-source-reconcile-gate-waiver-apply-drift",
+  "title": "Approved Expired Source Reconcile Gate Waiver Apply Drift",
+  "description": "Temporarily accept the demo apply drift for the expired source-reconcile gate waiver while reviewers validate the apply restore workflow without weakening the strict release-oriented apply gate.",
+  "policy_id": "source-reconcile-waiver-apply-release-gate",
+  "match": {
+    "finding_codes": [
+      "disallowed_report_state",
+      "verification_drift"
+    ],
+    "report_states": [
+      "drifted"
+    ],
+    "target_root_suffix": "source-reconcile-gate-waiver-apply-write-root",
+    "action_waiver_ids": [
+      "expired-source-drift"
+    ],
+    "action_codes": [
+      "renew_or_remove"
+    ]
+  },
+  "approval": {
+    "approved_by": "Moyuan Governance Review",
+    "approved_at": "2026-03-27",
+    "reason": "The smoke workflow intentionally leaves the expired source-reconcile gate waiver apply target drifted after write so maintainers can exercise the apply-gate recovery flow without downgrading the strict release gate for every run."
+  },
+  "expires_on": "2026-12-31"
+}

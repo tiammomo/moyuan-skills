@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from datetime import date
 from pathlib import Path
 
 import report_source_reconcile_gate_waiver_apply
@@ -13,6 +14,7 @@ from market_utils import ROOT, repo_relative_path
 
 DEFAULT_ALLOWED_STATES = ("verified", "no_apply_actions")
 APPLY_GATE_POLICIES_DIR = ROOT / "governance" / "source-reconcile-gate-waiver-apply-policies"
+APPLY_GATE_WAIVERS_DIR = ROOT / "governance" / "source-reconcile-gate-waiver-apply-waivers"
 APPLY_REPORT_STATES = (
     "needs_execution",
     "drifted",
@@ -21,10 +23,35 @@ APPLY_REPORT_STATES = (
     "no_apply_actions",
     "review_required",
 )
+APPLY_GATE_FINDING_CODES = (
+    "incomplete_report",
+    "disallowed_report_state",
+    "blocked_execution",
+    "pending_verification",
+    "blocked_verification",
+    "verification_drift",
+)
 
 
 def iter_policy_paths() -> list[Path]:
     return sorted(APPLY_GATE_POLICIES_DIR.glob("*.json"))
+
+
+def iter_waiver_paths() -> list[Path]:
+    return sorted(APPLY_GATE_WAIVERS_DIR.glob("*.json"))
+
+
+def parse_iso_date(value: object, label: str, errors: list[str]) -> str:
+    if not isinstance(value, str) or not value.strip():
+        errors.append(f"{label} must be a non-empty YYYY-MM-DD string")
+        return ""
+    normalized = value.strip()
+    try:
+        date.fromisoformat(normalized)
+    except ValueError:
+        errors.append(f"{label} must use YYYY-MM-DD format")
+        return ""
+    return normalized
 
 
 def validate_policy_payload(path: Path) -> tuple[dict, list[str]]:
@@ -84,6 +111,104 @@ def validate_policy_payload(path: Path) -> tuple[dict, list[str]]:
     return payload, errors
 
 
+def validate_waiver_payload(path: Path) -> tuple[dict, list[str]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    errors: list[str] = []
+    label = path.relative_to(ROOT).as_posix()
+    if not isinstance(payload, dict):
+        return {}, [f"{label}: JSON root must be an object"]
+
+    waiver_version = payload.get("waiver_version")
+    if not isinstance(waiver_version, int) or waiver_version < 1:
+        errors.append(f"{label}: 'waiver_version' must be an integer >= 1")
+    waiver_id = payload.get("id")
+    if not isinstance(waiver_id, str) or len(waiver_id.strip()) < 3:
+        errors.append(f"{label}: 'id' must be a non-empty string")
+    title = payload.get("title")
+    if not isinstance(title, str) or len(title.strip()) < 3:
+        errors.append(f"{label}: 'title' must be a non-empty string")
+    description = payload.get("description")
+    if not isinstance(description, str) or len(description.strip()) < 20:
+        errors.append(f"{label}: 'description' must be a descriptive string")
+    policy_id = payload.get("policy_id")
+    if not isinstance(policy_id, str) or len(policy_id.strip()) < 3:
+        errors.append(f"{label}: 'policy_id' must be a non-empty string")
+
+    match = payload.get("match")
+    selectors_present = False
+    if not isinstance(match, dict):
+        errors.append(f"{label}: 'match' must be an object")
+    else:
+        finding_codes = match.get("finding_codes")
+        if (
+            not isinstance(finding_codes, list)
+            or not finding_codes
+            or not all(isinstance(item, str) and item.strip() for item in finding_codes)
+        ):
+            errors.append(f"{label}: 'match.finding_codes' must be a non-empty list of strings")
+        else:
+            invalid_codes = sorted(
+                {item.strip() for item in finding_codes if item.strip() not in APPLY_GATE_FINDING_CODES}
+            )
+            if invalid_codes:
+                errors.append(f"{label}: unsupported finding codes: {', '.join(invalid_codes)}")
+
+        report_states = match.get("report_states")
+        if report_states is not None:
+            selectors_present = True
+            if (
+                not isinstance(report_states, list)
+                or not report_states
+                or not all(isinstance(item, str) and item.strip() for item in report_states)
+            ):
+                errors.append(f"{label}: 'match.report_states' must be a non-empty list of strings")
+            else:
+                invalid_states = sorted(
+                    {item.strip() for item in report_states if item.strip() not in APPLY_REPORT_STATES}
+                )
+                if invalid_states:
+                    errors.append(f"{label}: unsupported report states: {', '.join(invalid_states)}")
+
+        for key in ("target_root_suffix", "stage_dir_suffix"):
+            value = match.get(key)
+            if value is None:
+                continue
+            selectors_present = True
+            if not isinstance(value, str) or not value.strip():
+                errors.append(f"{label}: 'match.{key}' must be a non-empty string")
+
+        for key in ("action_waiver_ids", "action_codes"):
+            value = match.get(key)
+            if value is None:
+                continue
+            selectors_present = True
+            if not isinstance(value, list) or not value or not all(isinstance(item, str) and item.strip() for item in value):
+                errors.append(f"{label}: 'match.{key}' must be a non-empty list of strings")
+
+        if not selectors_present:
+            errors.append(
+                f"{label}: 'match' must include at least one selector such as report_states, target_root_suffix, stage_dir_suffix, or action selectors"
+            )
+
+    approval = payload.get("approval")
+    if not isinstance(approval, dict):
+        errors.append(f"{label}: 'approval' must be an object")
+    else:
+        approved_by = approval.get("approved_by")
+        if not isinstance(approved_by, str) or len(approved_by.strip()) < 3:
+            errors.append(f"{label}: 'approval.approved_by' must be a non-empty string")
+        parse_iso_date(approval.get("approved_at"), f"{label}: 'approval.approved_at'", errors)
+        reason = approval.get("reason")
+        if not isinstance(reason, str) or len(reason.strip()) < 20:
+            errors.append(f"{label}: 'approval.reason' must be a descriptive string")
+
+    expires_on = payload.get("expires_on")
+    if expires_on not in ("", None):
+        parse_iso_date(expires_on, f"{label}: 'expires_on'", errors)
+
+    return payload, errors
+
+
 def load_policy_profiles() -> tuple[list[dict], list[str]]:
     policies: list[dict] = []
     errors: list[str] = []
@@ -106,6 +231,28 @@ def load_policy_profiles() -> tuple[list[dict], list[str]]:
     return policies, errors
 
 
+def load_waiver_profiles() -> tuple[list[dict], list[str]]:
+    waivers: list[dict] = []
+    errors: list[str] = []
+    seen_ids: set[str] = set()
+
+    for path in iter_waiver_paths():
+        payload, waiver_errors = validate_waiver_payload(path)
+        if waiver_errors:
+            errors.extend(waiver_errors)
+            continue
+        waiver_id = str(payload.get("id", "")).strip()
+        if waiver_id in seen_ids:
+            errors.append(f"{path.relative_to(ROOT).as_posix()}: duplicate waiver id '{waiver_id}'")
+            continue
+        seen_ids.add(waiver_id)
+        payload["_path"] = str(path)
+        waivers.append(payload)
+
+    waivers.sort(key=lambda item: str(item.get("title", "")).lower())
+    return waivers, errors
+
+
 def resolve_policy_reference(token: str) -> tuple[dict, Path]:
     candidate_path = resolve_repo_path(Path(token))
     if candidate_path.is_file():
@@ -124,6 +271,38 @@ def resolve_policy_reference(token: str) -> tuple[dict, Path]:
     raise SystemExit(f"source-reconcile gate waiver apply policy not found: {token}")
 
 
+def resolve_waiver_reference(token: str) -> tuple[dict, Path]:
+    candidate_path = resolve_repo_path(Path(token))
+    if candidate_path.is_file():
+        payload, errors = validate_waiver_payload(candidate_path)
+        if errors:
+            raise SystemExit("\n".join(errors))
+        payload["_path"] = str(candidate_path)
+        return payload, candidate_path
+
+    waivers, errors = load_waiver_profiles()
+    if errors:
+        raise SystemExit("\n".join(errors))
+    for waiver in waivers:
+        if str(waiver.get("id", "")).strip().lower() == token.strip().lower():
+            return waiver, Path(str(waiver.get("_path", "")))
+    raise SystemExit(f"source-reconcile gate waiver apply waiver not found: {token}")
+
+
+def resolve_requested_waivers(tokens: list[str]) -> list[dict]:
+    resolved: list[dict] = []
+    seen_ids: set[str] = set()
+    for token in tokens:
+        payload, path = resolve_waiver_reference(token)
+        waiver_id = str(payload.get("id", "")).strip()
+        if waiver_id in seen_ids:
+            continue
+        seen_ids.add(waiver_id)
+        payload["_path"] = str(path)
+        resolved.append(payload)
+    return resolved
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Evaluate source-reconcile gate waiver apply reports as a reusable gate."
@@ -140,7 +319,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--gate-waiver",
         action="append",
         default=[],
-        help="Named source-reconcile gate waiver id or JSON file path. May be used more than once.",
+        help="Named source-reconcile gate waiver id or JSON file path used when building the apply report context.",
+    )
+    parser.add_argument(
+        "--apply-gate-waiver",
+        action="append",
+        default=[],
+        help="Named source-reconcile gate waiver apply waiver id or JSON file path. May be used more than once.",
     )
     parser.add_argument("--output-dir", type=Path, help="Directory containing apply artifacts and receiving gate summaries.")
     parser.add_argument("--target-root", type=Path, help="Optional repo-root mirror used for write verification.")
@@ -218,6 +403,189 @@ def policy_defaults(policy_payload: dict | None = None) -> dict:
     return defaults
 
 
+def is_waiver_active(waiver: dict) -> bool:
+    expires_on = str(waiver.get("expires_on", "")).strip()
+    if not expires_on:
+        return True
+    try:
+        return date.today() <= date.fromisoformat(expires_on)
+    except ValueError:
+        return False
+
+
+def normalized_suffix_match(actual: str, suffix: str) -> bool:
+    normalized_actual = actual.replace("\\", "/").lower()
+    normalized_suffix = suffix.replace("\\", "/").lower()
+    return normalized_actual.endswith(normalized_suffix)
+
+
+def waiver_selectors_match_report(
+    waiver: dict,
+    payload: dict,
+    *,
+    require_active: bool = True,
+) -> bool:
+    if require_active and not is_waiver_active(waiver):
+        return False
+
+    match = waiver.get("match", {})
+    if not isinstance(match, dict):
+        return False
+
+    report_states = [
+        str(item).strip()
+        for item in match.get("report_states", [])
+        if isinstance(item, str) and item.strip()
+    ]
+    if report_states and str(payload.get("report_state", "")).strip() not in report_states:
+        return False
+
+    target_root_suffix = str(match.get("target_root_suffix", "")).strip()
+    if target_root_suffix and not normalized_suffix_match(
+        str(payload.get("target_root", "")),
+        target_root_suffix,
+    ):
+        return False
+
+    stage_dir_suffix = str(match.get("stage_dir_suffix", "")).strip()
+    if stage_dir_suffix and not normalized_suffix_match(
+        str(payload.get("stage_dir", "")),
+        stage_dir_suffix,
+    ):
+        return False
+
+    actions = payload.get("report", {}).get("actions", [])
+    if not isinstance(actions, list):
+        actions = []
+    action_waiver_ids = {
+        str(item.get("waiver_id", "")).strip()
+        for item in actions
+        if isinstance(item, dict) and str(item.get("waiver_id", "")).strip()
+    }
+    action_codes = {
+        str(item.get("action_code", "")).strip()
+        for item in actions
+        if isinstance(item, dict) and str(item.get("action_code", "")).strip()
+    }
+
+    expected_action_waiver_ids = [
+        str(item).strip()
+        for item in match.get("action_waiver_ids", [])
+        if isinstance(item, str) and item.strip()
+    ]
+    if expected_action_waiver_ids and not set(expected_action_waiver_ids).issubset(action_waiver_ids):
+        return False
+
+    expected_action_codes = [
+        str(item).strip()
+        for item in match.get("action_codes", [])
+        if isinstance(item, str) and item.strip()
+    ]
+    if expected_action_codes and not set(expected_action_codes).issubset(action_codes):
+        return False
+
+    return True
+
+
+def waiver_matches_report_scope(
+    waiver: dict,
+    policy_id: str | None,
+    payload: dict,
+    *,
+    require_active: bool = True,
+) -> bool:
+    waiver_policy_id = str(waiver.get("policy_id", "")).strip()
+    if waiver_policy_id and waiver_policy_id != str(policy_id or "").strip():
+        return False
+    return waiver_selectors_match_report(
+        waiver,
+        payload,
+        require_active=require_active,
+    )
+
+
+def finding_codes_match_waiver(waiver: dict, finding: dict) -> bool:
+    match = waiver.get("match", {})
+    if not isinstance(match, dict):
+        return False
+    finding_codes = [
+        str(item).strip()
+        for item in match.get("finding_codes", [])
+        if isinstance(item, str) and item.strip()
+    ]
+    return str(finding.get("code", "")).strip() in finding_codes
+
+
+def waiver_matches_finding(
+    waiver: dict,
+    policy_id: str | None,
+    payload: dict,
+    finding: dict,
+    *,
+    require_active: bool = True,
+) -> bool:
+    if not waiver_matches_report_scope(waiver, policy_id, payload, require_active=require_active):
+        return False
+    return finding_codes_match_waiver(waiver, finding)
+
+
+def apply_waivers_to_findings(
+    payload: dict,
+    waivers: list[dict],
+    policy_id: str | None,
+) -> tuple[int, int, list[dict]]:
+    waived_finding_count = 0
+    active_finding_count = 0
+    waiver_summaries = [
+        {
+            "id": waiver.get("id"),
+            "title": waiver.get("title"),
+            "policy_id": waiver.get("policy_id"),
+            "path": waiver.get("_path"),
+            "expires_on": waiver.get("expires_on", ""),
+            "active": is_waiver_active(waiver),
+            "matched": False,
+        }
+        for waiver in waivers
+    ]
+    summary_by_id = {
+        str(item.get("id", "")).strip(): item
+        for item in waiver_summaries
+        if isinstance(item.get("id"), str)
+    }
+
+    findings = payload.get("findings", [])
+    if not isinstance(findings, list):
+        return 0, 0, waiver_summaries
+
+    for finding in findings:
+        if not isinstance(finding, dict):
+            active_finding_count += 1
+            continue
+        matched_waiver: dict | None = None
+        for waiver in waivers:
+            if waiver_matches_finding(waiver, policy_id, payload, finding):
+                matched_waiver = waiver
+                break
+
+        if matched_waiver is None:
+            finding["waived"] = False
+            active_finding_count += 1
+            continue
+
+        waiver_id = str(matched_waiver.get("id", "")).strip()
+        finding["waived"] = True
+        finding["waiver_id"] = waiver_id
+        finding["waiver_title"] = matched_waiver.get("title")
+        finding["waiver_path"] = matched_waiver.get("_path")
+        waived_finding_count += 1
+        summary = summary_by_id.get(waiver_id)
+        if summary is not None:
+            summary["matched"] = True
+
+    return active_finding_count, waived_finding_count, waiver_summaries
+
+
 def build_gate_payload(
     history_path: Path,
     source_waiver_tokens: list[str],
@@ -231,6 +599,7 @@ def build_gate_payload(
     policy_payload: dict | None,
     policy_path: Path | None,
     allowed_states: list[str],
+    apply_gate_waiver_tokens: list[str],
 ) -> dict:
     report_payload = report_source_reconcile_gate_waiver_apply.build_report_payload(
         history_path,
@@ -294,7 +663,7 @@ def build_gate_payload(
             }
         )
 
-    return {
+    payload = {
         "history_path": str(resolve_repo_path(history_path)),
         "output_dir": display_path(output_dir),
         "target_root": report_payload.get("target_root", ""),
@@ -312,9 +681,21 @@ def build_gate_payload(
         "apply_verify_summary_path": report_payload.get("apply_verify_summary_path", ""),
         "finding_count": len(findings),
         "findings": findings,
-        "passes": len(findings) == 0,
         "report": report_payload,
     }
+    apply_gate_waivers = resolve_requested_waivers(apply_gate_waiver_tokens)
+    active_finding_count, waived_finding_count, waiver_summaries = apply_waivers_to_findings(
+        payload,
+        apply_gate_waivers,
+        str(policy_payload.get("id")) if isinstance(policy_payload, dict) else None,
+    )
+    payload["apply_gate_waivers"] = waiver_summaries
+    payload["requested_apply_gate_waiver_count"] = len(waiver_summaries)
+    payload["matched_apply_gate_waiver_count"] = sum(1 for item in waiver_summaries if item.get("matched"))
+    payload["active_finding_count"] = active_finding_count
+    payload["waived_finding_count"] = waived_finding_count
+    payload["passes"] = active_finding_count == 0
+    return payload
 
 
 def render_markdown(payload: dict) -> str:
@@ -331,17 +712,38 @@ def render_markdown(payload: dict) -> str:
         f"- Report complete: `{payload.get('report_complete', False)}`",
         f"- Passes: `{payload.get('passes', False)}`",
         f"- Findings: `{payload.get('finding_count', 0)}`",
+        f"- Active findings: `{payload.get('active_finding_count', 0)}`",
+        f"- Waived findings: `{payload.get('waived_finding_count', 0)}`",
         f"- Report summary: `{payload.get('report_summary_path', '')}`",
+        "",
+        "## Apply Gate Waivers",
+        "",
+    ]
+    apply_gate_waivers = payload.get("apply_gate_waivers", [])
+    if not apply_gate_waivers:
+        lines.append("- No apply gate waivers requested.")
+    else:
+        for waiver in apply_gate_waivers:
+            lines.append(
+                f"- `{waiver.get('id', '')}` active=`{waiver.get('active', False)}` matched=`{waiver.get('matched', False)}`"
+            )
+
+    lines.extend([
         "",
         "## Findings",
         "",
-    ]
+    ])
     findings = payload.get("findings", [])
     if not findings:
         lines.append("- Gate passed with no findings.")
     else:
         for finding in findings:
-            lines.append(f"- `{finding.get('code', '')}` {finding.get('message', '')}")
+            if finding.get("waived"):
+                lines.append(
+                    f"- `{finding.get('code', '')}` {finding.get('message', '')} waived_by=`{finding.get('waiver_id', '')}`"
+                )
+            else:
+                lines.append(f"- `{finding.get('code', '')}` {finding.get('message', '')}")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -381,6 +783,7 @@ def main(argv: list[str] | None = None) -> int:
         policy_payload=policy_payload,
         policy_path=policy_path,
         allowed_states=allowed_states,
+        apply_gate_waiver_tokens=args.apply_gate_waiver,
     )
 
     report_summary_json_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.json"
@@ -409,6 +812,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"- Report state: {payload['report_state']}")
         print(f"- Passes: {'yes' if payload['passes'] else 'no'}")
         print(f"- Findings: {payload['finding_count']}")
+        print(f"- Active findings: {payload['active_finding_count']}")
+        print(f"- Waived findings: {payload['waived_finding_count']}")
 
     if args.strict and not payload["passes"]:
         return 1

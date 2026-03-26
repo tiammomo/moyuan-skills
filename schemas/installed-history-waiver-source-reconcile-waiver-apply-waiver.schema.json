@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/installed-history-waiver-source-reconcile-waiver-apply-waiver.schema.json",
+  "title": "Installed History Waiver Source Reconcile Waiver Apply Waiver",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "waiver_version",
+    "id",
+    "title",
+    "description",
+    "policy_id",
+    "match",
+    "approval"
+  ],
+  "properties": {
+    "waiver_version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20
+    },
+    "policy_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "match": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "finding_codes"
+      ],
+      "properties": {
+        "finding_codes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "report_states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "target_root_suffix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage_dir_suffix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "action_waiver_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "action_codes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved_by",
+        "approved_at",
+        "reason"
+      ],
+      "properties": {
+        "approved_by": {
+          "type": "string",
+          "minLength": 3
+        },
+        "approved_at": {
+          "type": "string",
+          "minLength": 10
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 20
+        }
+      }
+    },
+    "expires_on": {
+      "type": "string",
+      "minLength": 10
+    }
+  }
+}
