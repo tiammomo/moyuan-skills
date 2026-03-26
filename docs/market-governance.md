@@ -179,6 +179,12 @@ python scripts/skills_market.py audit-installed-history-waivers dist/installed-s
 python scripts/skills_market.py remediate-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 ```
 
+### 9. 生成 installed history waiver execution draft
+
+```text
+python scripts/skills_market.py draft-installed-history-waiver-execution dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-execution --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -192,3 +198,4 @@ python scripts/skills_market.py remediate-installed-history-waivers dist/install
 - [../scripts/list_installed_baseline_history_waivers.py](../scripts/list_installed_baseline_history_waivers.py)
 - [../scripts/audit_installed_baseline_history_waivers.py](../scripts/audit_installed_baseline_history_waivers.py)
 - [../scripts/remediate_installed_baseline_history_waivers.py](../scripts/remediate_installed_baseline_history_waivers.py)
+- [../scripts/draft_installed_baseline_history_waiver_execution.py](../scripts/draft_installed_baseline_history_waiver_execution.py)

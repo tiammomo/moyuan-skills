@@ -165,6 +165,7 @@ python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
 python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py remediate-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
+python scripts/skills_market.py draft-installed-history-waiver-execution dist/installed-skills/snapshots/baseline-history.json --output-dir dist/installed-skills/snapshots/waiver-execution --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -241,6 +242,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 当 audit 已经告诉你“哪里坏了”之后，当前也可以直接看 remediation 建议，而不是自己再翻译一遍：
 
 - `remediate-installed-history-waivers` 会把 audit finding 转成下一步建议
+- `draft-installed-history-waiver-execution` 会把 remediation 继续落成 execution pack，直接给出 renewal draft、replacement draft 或 cleanup review 草稿
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver
 - `retire_or_replace` 适合 stale waiver
@@ -260,6 +262,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `list-installed-history-waivers` 可以先列出当前已经批准的 waiver record
 - `audit-installed-history-waivers` 可以先把 waiver 做一轮健康检查，再决定哪些该续期、哪些该清理
 - `remediate-installed-history-waivers` 可以把 audit 结果继续翻译成明确的 follow-up action
+- `draft-installed-history-waiver-execution` 可以把 follow-up action 继续变成可 review 的 draft/review artifact
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”

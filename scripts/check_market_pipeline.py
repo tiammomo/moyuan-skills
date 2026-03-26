@@ -990,6 +990,34 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Remediation" not in history_waiver_remediation_markdown.read_text(encoding="utf-8"):
         print("ERROR: waiver remediation Markdown output should contain the remediation heading")
         return 1
+    history_waiver_execution_dir = output_root / "waiver-execution-healthy"
+    history_waiver_execution_output = require_success(
+        "draft installed baseline history waiver execution",
+        [
+            "scripts/skills_market.py",
+            "draft-installed-history-waiver-execution",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_execution_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_execution_payload = json.loads(history_waiver_execution_output)
+    if history_waiver_execution_payload.get("passes") is not True or history_waiver_execution_payload.get("execution_count") != 0:
+        print("ERROR: healthy waiver execution drafting should report zero follow-up actions")
+        return 1
+    if history_waiver_execution_payload.get("draft_count") != 0 or history_waiver_execution_payload.get("review_count") != 0:
+        print("ERROR: healthy waiver execution drafting should not create draft or review actions")
+        return 1
+    healthy_execution_summary_json = history_waiver_execution_dir / "execution-summary.json"
+    healthy_execution_summary_markdown = history_waiver_execution_dir / "execution-summary.md"
+    if not healthy_execution_summary_json.is_file() or not healthy_execution_summary_markdown.is_file():
+        print("ERROR: healthy waiver execution drafting should write summary artifacts when an output dir is requested")
+        return 1
+    if "Installed Baseline History Waiver Execution Drafts" not in healthy_execution_summary_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver execution Markdown output should contain the execution heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1139,6 +1167,55 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if remediation_actions_by_id.get("stale-added-skills") != {"retire_or_replace"}:
         print("ERROR: stale waiver remediation should suggest retiring or replacing the waiver")
+        return 1
+    history_waiver_execution_findings_dir = output_root / "waiver-execution-findings"
+    history_waiver_execution_findings_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "draft-installed-history-waiver-execution",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execution_findings_dir),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_execution_findings_result.returncode == 0:
+        print("ERROR: waiver execution drafting should fail in strict mode when follow-up actions are required")
+        if history_waiver_execution_findings_result.stdout.strip():
+            print(history_waiver_execution_findings_result.stdout.strip())
+        if history_waiver_execution_findings_result.stderr.strip():
+            print(history_waiver_execution_findings_result.stderr.strip())
+        return 1
+    history_waiver_execution_findings_payload = json.loads(history_waiver_execution_findings_result.stdout)
+    if history_waiver_execution_findings_payload.get("execution_count") != 2:
+        print("ERROR: waiver execution drafting should emit one execution action for each failing temporary waiver")
+        return 1
+    if history_waiver_execution_findings_payload.get("draft_count") != 2 or history_waiver_execution_findings_payload.get("review_count") != 0:
+        print("ERROR: expired and stale fixture waivers should both receive draft updates before prune")
+        return 1
+    expired_execution_draft = history_waiver_execution_findings_dir / "waivers" / "expired-release-downsize" / "renewal-draft.json"
+    stale_execution_draft = history_waiver_execution_findings_dir / "waivers" / "stale-added-skills" / "replacement-draft.json"
+    if not expired_execution_draft.is_file() or not stale_execution_draft.is_file():
+        print("ERROR: waiver execution drafting should write renewal and replacement drafts for the temporary failing waivers")
+        return 1
+    expired_execution_payload = load_json(expired_execution_draft)
+    if expired_execution_payload.get("_draft", {}).get("strategy") != "renew":
+        print("ERROR: expired waiver execution draft should be marked as a renewal strategy")
+        return 1
+    if expired_execution_payload.get("expires_on", "") <= "2026-03-21":
+        print("ERROR: expired waiver execution draft should extend the expiry window beyond the stale fixture date")
+        return 1
+    stale_execution_payload = load_json(stale_execution_draft)
+    stale_metrics = set(stale_execution_payload.get("match", {}).get("metrics", []))
+    if "added_skills" in stale_metrics or "removed_skills" not in stale_metrics:
+        print("ERROR: stale waiver execution draft should pivot to the currently active removed-skills alert scope")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -1497,6 +1574,44 @@ def main(argv: list[str] | None = None) -> int:
     }
     if post_prune_actions != {"rescope_or_remove"}:
         print("ERROR: post-prune waiver remediation should suggest rescoping or removing the unmatched waiver")
+        return 1
+    post_prune_history_waiver_execution_dir = output_root / "waiver-execution-post-prune"
+    post_prune_history_waiver_execution_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "draft-installed-history-waiver-execution",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execution_dir),
+            "--json",
+            "--strict",
+        ]
+    )
+    if post_prune_history_waiver_execution_result.returncode == 0:
+        print("ERROR: post-prune waiver execution drafting should fail in strict mode when the built-in waiver needs follow-up")
+        if post_prune_history_waiver_execution_result.stdout.strip():
+            print(post_prune_history_waiver_execution_result.stdout.strip())
+        if post_prune_history_waiver_execution_result.stderr.strip():
+            print(post_prune_history_waiver_execution_result.stderr.strip())
+        return 1
+    post_prune_history_waiver_execution = json.loads(post_prune_history_waiver_execution_result.stdout)
+    if post_prune_history_waiver_execution.get("execution_count") != 1:
+        print("ERROR: post-prune waiver execution drafting should emit one cleanup action for the unmatched built-in waiver")
+        return 1
+    if post_prune_history_waiver_execution.get("draft_count") != 0 or post_prune_history_waiver_execution.get("review_count") != 1:
+        print("ERROR: post-prune waiver execution drafting should fall back to a review-only cleanup action when no retained transition remains")
+        return 1
+    post_prune_remove_review = (
+        post_prune_history_waiver_execution_dir
+        / "waivers"
+        / "approved-release-engineering-downsize"
+        / "remove-review.json"
+    )
+    if not post_prune_remove_review.is_file():
+        print("ERROR: post-prune waiver execution drafting should emit a remove-review artifact for the unmatched built-in waiver")
+        return 1
+    if load_json(post_prune_remove_review).get("mode") != "remove_review":
+        print("ERROR: post-prune remove-review artifact should record the cleanup review mode")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",
