@@ -103,7 +103,7 @@ npm run build --prefix frontend
 npm run e2e --prefix frontend
 ```
 
-其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend 和 Next.js frontend，验证首页、skills、bundle、docs 搜索/筛选、teaching、project docs，以及详情页 related navigation 和 context panel 这几条核心前后端链路。
+其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend 和 Next.js frontend，验证首页、skills、bundle、docs 搜索/筛选、teaching、project docs，以及详情页 related navigation、context panel 和 action panel 这几条核心前后端链路。
 
 标准本地端口约定：
 

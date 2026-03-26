@@ -1,9 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocHref, getDocNeighbors, getDocsCatalog, getRelatedDocs, getSkillDetail } from '@/lib/data';
+import {
+  getDocHref,
+  getDocNeighbors,
+  getDocsCatalog,
+  getRelatedDocs,
+  getSkillDetail,
+  getSkillDocActionPanel,
+} from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocActionPanel } from '../DocActionPanel';
 import { DocContextPanel } from '../DocContextPanel';
 import { RelatedDocs } from '../RelatedDocs';
 
@@ -53,6 +61,9 @@ export default async function SkillDocPage({ params }: Props) {
   const skillNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc, {
     preferredIds: detail?.related_skills.map((relatedSkill) => relatedSkill.name) ?? [],
+  });
+  const actionPanel = getSkillDocActionPanel(skill, detail, {
+    channelHref: `/channels/${detail?.manifest.channel ?? 'stable'}`,
   });
   const contextFacts = [
     {
@@ -116,6 +127,7 @@ export default async function SkillDocPage({ params }: Props) {
         </div>
 
         <div className="space-y-5 self-start mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <DocActionPanel panel={actionPanel} />
           <DocContextPanel
             title="Skill context"
             description="Use the market metadata here to understand where this skill lives, how it installs, and which skill docs to read next."

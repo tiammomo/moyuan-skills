@@ -1,9 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocHref, getDocNeighbors, getDocsCatalog, getRelatedDocs, getTeachingDoc } from '@/lib/data';
+import {
+  getDocHref,
+  getDocNeighbors,
+  getDocsCatalog,
+  getRelatedDocs,
+  getTeachingDoc,
+  getTeachingDocActionPanel,
+} from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocActionPanel } from '../../DocActionPanel';
 import { DocContextPanel } from '../../DocContextPanel';
 import { RelatedDocs } from '../../RelatedDocs';
 
@@ -53,6 +61,7 @@ export default async function TeachingDocPage({ params }: Props) {
     };
   const teachingNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc);
+  const actionPanel = getTeachingDocActionPanel(currentDoc);
   const moduleMatch = currentDoc.id.match(/^(\d+)/);
   const contextFacts = [
     {
@@ -119,6 +128,7 @@ export default async function TeachingDocPage({ params }: Props) {
         </div>
 
         <div className="space-y-5 self-start mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <DocActionPanel panel={actionPanel} />
           <DocContextPanel
             title="Teaching context"
             description="Keep your place in the learning path and use the next-step links here to move through the teaching sequence."

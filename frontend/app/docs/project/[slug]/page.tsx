@@ -1,9 +1,17 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocHref, getDocNeighbors, getDocsCatalog, getProjectDoc, getRelatedDocs } from '@/lib/data';
+import {
+  getDocHref,
+  getDocNeighbors,
+  getDocsCatalog,
+  getProjectDoc,
+  getProjectDocActionPanel,
+  getRelatedDocs,
+} from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocActionPanel } from '../../DocActionPanel';
 import { DocContextPanel } from '../../DocContextPanel';
 import { RelatedDocs } from '../../RelatedDocs';
 
@@ -53,6 +61,7 @@ export default async function ProjectDocPage({ params }: Props) {
     };
   const projectNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc);
+  const actionPanel = getProjectDocActionPanel(currentDoc);
   const contextFacts = [
     {
       label: 'Reference',
@@ -118,6 +127,7 @@ export default async function ProjectDocPage({ params }: Props) {
         </div>
 
         <div className="space-y-5 self-start mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <DocActionPanel panel={actionPanel} />
           <DocContextPanel
             title="Project context"
             description="Use this panel to orient the current reference inside the broader project docs set and jump to the next operational note."

@@ -149,3 +149,22 @@ export interface TeachingDocPayload extends DocsCatalogEntry {
 export interface ProjectDocPayload extends DocsCatalogEntry {
   markdown: string;
 }
+
+export interface DocActionCommand {
+  label: string;
+  command: string;
+  testId?: string;
+}
+
+export interface DocActionLink {
+  label: string;
+  href: string;
+  testId?: string;
+}
+
+export interface DocActionPanelData {
+  title: string;
+  description: string;
+  commands: DocActionCommand[];
+  links: DocActionLink[];
+}

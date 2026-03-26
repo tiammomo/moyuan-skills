@@ -24,6 +24,9 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('docs-results-count')).toContainText('Showing 1');
   await page.getByTestId('docs-result-project-frontend-backend-integration').click();
   await expect(page.getByRole('heading', { name: /frontend \/ backend integration/i }).first()).toBeVisible();
+  await expect(page.getByTestId('doc-action-panel')).toBeVisible();
+  await expect(page.getByTestId('doc-action-project-primary')).toContainText('python scripts/check_python_market_backend.py');
+  await expect(page.getByTestId('doc-action-project-secondary')).toContainText('npm run e2e --prefix frontend');
   await expect(page.getByTestId('doc-context-panel')).toBeVisible();
   await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/frontend-backend-integration.md');
   const firstRelatedDoc = page.locator('[data-testid^="related-doc-link-"]').first();
@@ -42,12 +45,15 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-doc-card-release-note-writer')).toBeVisible();
   await page.getByTestId('skill-doc-card-release-note-writer').click();
   await expect(page.getByRole('heading', { name: /release note writer/i }).first()).toBeVisible();
+  await expect(page.getByTestId('doc-action-skill-install')).toContainText('python scripts/skills_market.py install');
+  await expect(page.getByTestId('doc-action-skill-checker')).toContainText('check_release_note_writer.py');
   await expect(page.getByTestId('doc-context-skill-entrypoint')).toContainText('skills/release-note-writer/SKILL.md');
 
   await page.goto('/docs/teaching');
   await expect(page.getByTestId('teaching-doc-link-14-first-hour-onboarding')).toBeVisible();
   await page.getByTestId('teaching-doc-link-14-first-hour-onboarding').click();
   await expect(page.getByRole('heading', { name: /first hour|onboarding/i }).first()).toBeVisible();
+  await expect(page.getByTestId('doc-action-teaching-primary')).toContainText('python scripts/check_progressive_skills.py');
   await expect(page.getByTestId('doc-context-teaching-position')).toBeVisible();
 
   await page.goto('/docs');

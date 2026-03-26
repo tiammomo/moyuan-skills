@@ -7,6 +7,9 @@ import type {
   ChannelIndex,
   DocsCatalog,
   DocsCatalogEntry,
+  DocActionCommand,
+  DocActionLink,
+  DocActionPanelData,
   InstallSpec,
   MarketIndex,
   ProjectDocPayload,
@@ -148,6 +151,34 @@ function tokenizeDocSearchText(value: string): string[] {
 
 function docSearchText(doc: DocsCatalogEntry): string {
   return `${doc.title} ${doc.summary} ${doc.path} ${doc.kind}`;
+}
+
+function dedupeCommands(commands: DocActionCommand[]): DocActionCommand[] {
+  const seen = new Set<string>();
+  const result: DocActionCommand[] = [];
+  for (const command of commands) {
+    const key = `${command.label}:${command.command}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(command);
+  }
+  return result;
+}
+
+function dedupeLinks(links: DocActionLink[]): DocActionLink[] {
+  const seen = new Set<string>();
+  const result: DocActionLink[] = [];
+  for (const link of links) {
+    const key = `${link.label}:${link.href}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    result.push(link);
+  }
+  return result;
 }
 
 function getDocFamilyDocs(docsCatalog: DocsCatalog, kind: DocsCatalogEntry['kind']): DocsCatalogEntry[] {
@@ -647,4 +678,231 @@ export async function getRelatedDocs(
   }
 
   return results;
+}
+
+export function getSkillDocActionPanel(
+  skillName: string,
+  detail: SkillDetailPayload | null,
+  options?: { channelHref?: string }
+): DocActionPanelData {
+  const version = detail?.manifest.version ?? 'latest';
+  const installSpecPath = `dist/market/install/${skillName}-${version}.json`;
+
+  return {
+    title: 'Run this skill',
+    description:
+      'Use these commands to install, validate, and evaluate the current skill without leaving the doc detail page.',
+    commands: dedupeCommands([
+      {
+        label: 'Install locally',
+        command: `python scripts/skills_market.py install ${installSpecPath} --target-root dist/installed-skills`,
+        testId: 'doc-action-skill-install',
+      },
+      {
+        label: 'Run checker',
+        command: detail?.manifest.quality.checker ?? `python skills/${skillName}/scripts/check_${skillName.replace(/-/g, '_')}.py`,
+        testId: 'doc-action-skill-checker',
+      },
+      {
+        label: 'Run eval',
+        command: detail?.manifest.quality.eval ?? `python scripts/run_eval_harness.py --skills ${skillName}`,
+        testId: 'doc-action-skill-eval',
+      },
+    ]),
+    links: dedupeLinks([
+      { href: '/docs/project/repo-commands', label: 'Open repo command reference', testId: 'doc-action-skill-repo-commands' },
+      { href: `/skills/${skillName}`, label: 'Open market skill page', testId: 'doc-action-skill-market-page' },
+      ...(options?.channelHref ? [{ href: options.channelHref, label: 'Inspect this release channel' }] : []),
+    ]),
+  };
+}
+
+export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanelData {
+  const id = doc.id;
+  const commands: DocActionCommand[] = [];
+
+  if (
+    id.includes('build') ||
+    id.includes('skill-author') ||
+    id.includes('learner') ||
+    id.includes('read-the-repo')
+  ) {
+    commands.push(
+      {
+        label: 'Check progressive structure',
+        command: 'python scripts/check_progressive_skills.py',
+        testId: 'doc-action-teaching-primary',
+      },
+      {
+        label: 'Run build-skills checker',
+        command: 'python skills/build-skills/scripts/check_build_skills.py',
+        testId: 'doc-action-teaching-secondary',
+      }
+    );
+  } else if (id.includes('progressive-disclosure')) {
+    commands.push(
+      {
+        label: 'Check progressive structure',
+        command: 'python scripts/check_progressive_skills.py',
+        testId: 'doc-action-teaching-primary',
+      },
+      {
+        label: 'Run progressive-disclosure checker',
+        command: 'python skills/progressive-disclosure/scripts/check_progressive_disclosure.py',
+        testId: 'doc-action-teaching-secondary',
+      }
+    );
+  } else if (id.includes('harness') || id.includes('evals-and-prototypes')) {
+    commands.push(
+      {
+        label: 'Check harness prototypes',
+        command: 'python scripts/check_harness_prototypes.py',
+        testId: 'doc-action-teaching-primary',
+      },
+      {
+        label: 'Run harness runtime',
+        command:
+          'python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml',
+        testId: 'doc-action-teaching-secondary',
+      }
+    );
+  } else if (id.includes('market') || id.includes('registry') || id.includes('project-learning-roadmap')) {
+    commands.push(
+      {
+        label: 'Run market smoke',
+        command: 'python scripts/check_market_pipeline.py',
+        testId: 'doc-action-teaching-primary',
+      },
+      {
+        label: 'Check frontend/backend integration',
+        command: 'python scripts/check_python_market_backend.py',
+        testId: 'doc-action-teaching-secondary',
+      }
+    );
+  } else {
+    commands.push(
+      {
+        label: 'Check progressive structure',
+        command: 'python scripts/check_progressive_skills.py',
+        testId: 'doc-action-teaching-primary',
+      },
+      {
+        label: 'Check docs links',
+        command: 'python scripts/check_docs_links.py',
+        testId: 'doc-action-teaching-secondary',
+      }
+    );
+  }
+
+  return {
+    title: 'Try the learning step',
+    description:
+      'These commands give you one concrete practice step so the teaching doc turns into a hands-on path instead of a passive note.',
+    commands: dedupeCommands(commands),
+    links: dedupeLinks([
+      { href: '/docs/project/repo-commands', label: 'Open repo command reference', testId: 'doc-action-teaching-repo-commands' },
+      { href: '/docs/teaching', label: 'Back to teaching library', testId: 'doc-action-teaching-library' },
+    ]),
+  };
+}
+
+export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelData {
+  const id = doc.id;
+  const commands: DocActionCommand[] = [];
+
+  if (id === 'frontend-backend-integration') {
+    commands.push(
+      {
+        label: 'Check backend repository layer',
+        command: 'python scripts/check_python_market_backend.py',
+        testId: 'doc-action-project-primary',
+      },
+      {
+        label: 'Run frontend end-to-end check',
+        command: 'npm run e2e --prefix frontend',
+        testId: 'doc-action-project-secondary',
+      }
+    );
+  } else if (id === 'dev-setup') {
+    commands.push(
+      {
+        label: 'Compile backend',
+        command: 'python -m compileall backend',
+        testId: 'doc-action-project-primary',
+      },
+      {
+        label: 'Build frontend',
+        command: 'npm run build --prefix frontend',
+        testId: 'doc-action-project-secondary',
+      }
+    );
+  } else if (id === 'repo-commands') {
+    commands.push(
+      {
+        label: 'Check progressive structure',
+        command: 'python scripts/check_progressive_skills.py',
+        testId: 'doc-action-project-primary',
+      },
+      {
+        label: 'Check docs links',
+        command: 'python scripts/check_docs_links.py',
+        testId: 'doc-action-project-secondary',
+      }
+    );
+  } else if (
+    id.includes('market') ||
+    id.includes('consumer-guide') ||
+    id.includes('publisher-guide')
+  ) {
+    commands.push(
+      {
+        label: 'Validate market manifests',
+        command: 'python scripts/validate_market_manifest.py',
+        testId: 'doc-action-project-primary',
+      },
+      {
+        label: 'Run market smoke',
+        command: 'python scripts/check_market_pipeline.py',
+        testId: 'doc-action-project-secondary',
+      }
+    );
+  } else if (id.includes('harness')) {
+    commands.push(
+      {
+        label: 'Check harness prototypes',
+        command: 'python scripts/check_harness_prototypes.py',
+        testId: 'doc-action-project-primary',
+      },
+      {
+        label: 'Run harness runtime',
+        command:
+          'python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml',
+        testId: 'doc-action-project-secondary',
+      }
+    );
+  } else {
+    commands.push(
+      {
+        label: 'Check docs links',
+        command: 'python scripts/check_docs_links.py',
+        testId: 'doc-action-project-primary',
+      },
+      {
+        label: 'Check progressive structure',
+        command: 'python scripts/check_progressive_skills.py',
+        testId: 'doc-action-project-secondary',
+      }
+    );
+  }
+
+  return {
+    title: 'Take the next step',
+    description:
+      'Use these commands to turn the current project reference into a concrete maintenance or verification action.',
+    commands: dedupeCommands(commands),
+    links: dedupeLinks([
+      { href: '/docs/project/repo-commands', label: 'Open repo command reference', testId: 'doc-action-project-repo-commands' },
+      { href: '/docs', label: 'Back to docs center', testId: 'doc-action-project-docs-center' },
+    ]),
+  };
 }
