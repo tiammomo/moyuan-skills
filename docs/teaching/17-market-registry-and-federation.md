@@ -198,7 +198,8 @@ python scripts/skills_market.py diff-installed-history dist/installed-skills/sna
 python scripts/skills_market.py promote-installed-baseline dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --markdown-path dist/installed-skills/snapshots/baseline.md --diff-output-path dist/installed-skills/snapshots/baseline-transition.json --diff-markdown-path dist/installed-skills/snapshots/baseline-transition.md --history-path dist/installed-skills/snapshots/baseline-history.json --history-markdown-path dist/installed-skills/snapshots/baseline-history.md --archive-dir dist/installed-skills/snapshots/baseline-archive
 python scripts/skills_market.py list-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json
 python scripts/skills_market.py report-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --output-path dist/installed-skills/snapshots/history-report.json --markdown-path dist/installed-skills/snapshots/history-report.md
-python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --latest-only --max-removed-skills 1 --max-removed-bundles 0 --max-installed-delta 1 --strict
+python scripts/skills_market.py list-installed-history-policies
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
 python scripts/skills_market.py prune-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --keep-last 5
 ```
@@ -217,6 +218,6 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 10. 当你需要复盘某个旧基线时，还需要 direct history verify，把“历史可回看”推进到“历史可直接对照和校验”
 11. 当 accepted baseline 继续积累之后，还需要 direct history diff，把“历史可校验”推进到“历史之间也能直接做演进分析”
 12. 当 retained history 足够多之后，还需要 history report，把“历史可分析”推进到“历史可直接阅读和复盘”
-13. 当 retained transition 开始变复杂之后，还需要 history alert，把“历史可阅读”推进到“历史里的大变更能被主动标记和门禁”
+13. 当 retained transition 开始变复杂之后，还需要 history alert 和 policy profile，把“历史可阅读”推进到“历史里的大变更能被主动标记、复用同一套阈值并接进门禁”
 8. 当 drift 被接受时，还需要 baseline promotion 把“新期望状态”正式落盘，而不是长期停留在告警状态
 9. 当 baseline 开始持续演进时，还需要 history 把这条演进链条保存下来，方便团队回看

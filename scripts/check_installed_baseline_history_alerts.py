@@ -11,6 +11,7 @@ import report_installed_baseline_history
 from market_utils import ROOT
 
 
+HISTORY_ALERT_POLICIES_DIR = ROOT / "governance" / "history-alert-policies"
 DEFAULT_MAX_ADDED_SKILLS = 1
 DEFAULT_MAX_REMOVED_SKILLS = 1
 DEFAULT_MAX_CHANGED_SKILLS = 2
@@ -19,6 +20,16 @@ DEFAULT_MAX_REMOVED_BUNDLES = 0
 DEFAULT_MAX_CHANGED_BUNDLES = 1
 DEFAULT_MAX_INSTALLED_DELTA = 1
 DEFAULT_MAX_BUNDLE_DELTA = 0
+THRESHOLD_FIELDS = (
+    "max_added_skills",
+    "max_removed_skills",
+    "max_changed_skills",
+    "max_added_bundles",
+    "max_removed_bundles",
+    "max_changed_bundles",
+    "max_installed_delta",
+    "max_bundle_delta",
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -26,15 +37,19 @@ def build_parser() -> argparse.ArgumentParser:
         description="Evaluate installed baseline history transitions against alert thresholds."
     )
     parser.add_argument("history", type=Path, help="Baseline history JSON file.")
-    parser.add_argument("--latest-only", action="store_true", help="Only evaluate the latest retained transition.")
-    parser.add_argument("--max-added-skills", type=int, default=DEFAULT_MAX_ADDED_SKILLS, help="Maximum allowed added skills per transition.")
-    parser.add_argument("--max-removed-skills", type=int, default=DEFAULT_MAX_REMOVED_SKILLS, help="Maximum allowed removed skills per transition.")
-    parser.add_argument("--max-changed-skills", type=int, default=DEFAULT_MAX_CHANGED_SKILLS, help="Maximum allowed changed skills per transition.")
-    parser.add_argument("--max-added-bundles", type=int, default=DEFAULT_MAX_ADDED_BUNDLES, help="Maximum allowed added bundles per transition.")
-    parser.add_argument("--max-removed-bundles", type=int, default=DEFAULT_MAX_REMOVED_BUNDLES, help="Maximum allowed removed bundles per transition.")
-    parser.add_argument("--max-changed-bundles", type=int, default=DEFAULT_MAX_CHANGED_BUNDLES, help="Maximum allowed changed bundles per transition.")
-    parser.add_argument("--max-installed-delta", type=int, default=DEFAULT_MAX_INSTALLED_DELTA, help="Maximum allowed absolute installed-count delta per transition.")
-    parser.add_argument("--max-bundle-delta", type=int, default=DEFAULT_MAX_BUNDLE_DELTA, help="Maximum allowed absolute bundle-count delta per transition.")
+    parser.add_argument("--policy", help="Named policy id or JSON file path for reusable alert thresholds.")
+    scope_group = parser.add_mutually_exclusive_group()
+    scope_group.add_argument("--latest-only", dest="latest_only", action="store_true", help="Only evaluate the latest retained transition.")
+    scope_group.add_argument("--all-transitions", dest="latest_only", action="store_false", help="Evaluate every retained transition.")
+    parser.set_defaults(latest_only=None)
+    parser.add_argument("--max-added-skills", type=int, help="Maximum allowed added skills per transition.")
+    parser.add_argument("--max-removed-skills", type=int, help="Maximum allowed removed skills per transition.")
+    parser.add_argument("--max-changed-skills", type=int, help="Maximum allowed changed skills per transition.")
+    parser.add_argument("--max-added-bundles", type=int, help="Maximum allowed added bundles per transition.")
+    parser.add_argument("--max-removed-bundles", type=int, help="Maximum allowed removed bundles per transition.")
+    parser.add_argument("--max-changed-bundles", type=int, help="Maximum allowed changed bundles per transition.")
+    parser.add_argument("--max-installed-delta", type=int, help="Maximum allowed absolute installed-count delta per transition.")
+    parser.add_argument("--max-bundle-delta", type=int, help="Maximum allowed absolute bundle-count delta per transition.")
     parser.add_argument("--output-path", type=Path, help="Optional JSON alert report output path.")
     parser.add_argument("--markdown-path", type=Path, help="Optional Markdown alert report output path.")
     parser.add_argument("--json", action="store_true", help="Print JSON output.")
@@ -51,8 +66,116 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def threshold_payload(args: argparse.Namespace) -> dict:
+def default_thresholds() -> dict:
     return {
+        "max_added_skills": DEFAULT_MAX_ADDED_SKILLS,
+        "max_removed_skills": DEFAULT_MAX_REMOVED_SKILLS,
+        "max_changed_skills": DEFAULT_MAX_CHANGED_SKILLS,
+        "max_added_bundles": DEFAULT_MAX_ADDED_BUNDLES,
+        "max_removed_bundles": DEFAULT_MAX_REMOVED_BUNDLES,
+        "max_changed_bundles": DEFAULT_MAX_CHANGED_BUNDLES,
+        "max_installed_delta": DEFAULT_MAX_INSTALLED_DELTA,
+        "max_bundle_delta": DEFAULT_MAX_BUNDLE_DELTA,
+    }
+
+
+def iter_policy_paths() -> list[Path]:
+    return sorted(HISTORY_ALERT_POLICIES_DIR.glob("*.json"))
+
+
+def validate_policy_payload(path: Path) -> tuple[dict, list[str]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    errors: list[str] = []
+    label = path.relative_to(ROOT).as_posix()
+    if not isinstance(payload, dict):
+        return {}, [f"{label}: JSON root must be an object"]
+
+    policy_version = payload.get("policy_version")
+    if not isinstance(policy_version, int) or policy_version < 1:
+        errors.append(f"{label}: 'policy_version' must be an integer >= 1")
+    policy_id = payload.get("id")
+    if not isinstance(policy_id, str) or len(policy_id.strip()) < 3:
+        errors.append(f"{label}: 'id' must be a non-empty string")
+    title = payload.get("title")
+    if not isinstance(title, str) or len(title.strip()) < 3:
+        errors.append(f"{label}: 'title' must be a non-empty string")
+    description = payload.get("description")
+    if not isinstance(description, str) or len(description.strip()) < 20:
+        errors.append(f"{label}: 'description' must be a descriptive string")
+
+    defaults = payload.get("defaults")
+    if not isinstance(defaults, dict):
+        errors.append(f"{label}: 'defaults' must be an object")
+    else:
+        latest_only = defaults.get("latest_only")
+        if not isinstance(latest_only, bool):
+            errors.append(f"{label}: 'defaults.latest_only' must be a boolean")
+
+    thresholds = payload.get("thresholds")
+    if not isinstance(thresholds, dict):
+        errors.append(f"{label}: 'thresholds' must be an object")
+    else:
+        for key in THRESHOLD_FIELDS:
+            value = thresholds.get(key)
+            if not isinstance(value, int) or value < 0:
+                errors.append(f"{label}: 'thresholds.{key}' must be an integer >= 0")
+        unexpected = sorted(set(thresholds) - set(THRESHOLD_FIELDS))
+        if unexpected:
+            errors.append(f"{label}: unsupported threshold keys: {', '.join(unexpected)}")
+
+    return payload, errors
+
+
+def load_policy_profiles() -> tuple[list[dict], list[str]]:
+    policies: list[dict] = []
+    errors: list[str] = []
+    seen_ids: set[str] = set()
+
+    for path in iter_policy_paths():
+        payload, policy_errors = validate_policy_payload(path)
+        if policy_errors:
+            errors.extend(policy_errors)
+            continue
+        policy_id = str(payload.get("id", "")).strip()
+        if policy_id in seen_ids:
+            errors.append(f"{path.relative_to(ROOT).as_posix()}: duplicate policy id '{policy_id}'")
+            continue
+        seen_ids.add(policy_id)
+        payload["_path"] = str(path)
+        policies.append(payload)
+
+    policies.sort(key=lambda item: str(item.get("title", "")).lower())
+    return policies, errors
+
+
+def resolve_policy_reference(token: str) -> tuple[dict, Path]:
+    candidate_path = resolve_repo_path(Path(token))
+    if candidate_path.is_file():
+        payload, errors = validate_policy_payload(candidate_path)
+        if errors:
+            raise SystemExit("\n".join(errors))
+        return payload, candidate_path
+
+    policies, errors = load_policy_profiles()
+    if errors:
+        raise SystemExit("\n".join(errors))
+    for policy in policies:
+        if str(policy.get("id", "")).strip().lower() == token.strip().lower():
+            return policy, Path(str(policy.get("_path", "")))
+    raise SystemExit(f"installed history alert policy not found: {token}")
+
+
+def threshold_payload(args: argparse.Namespace, policy_payload: dict | None = None) -> dict:
+    merged = default_thresholds()
+    if isinstance(policy_payload, dict):
+        thresholds = policy_payload.get("thresholds", {})
+        if isinstance(thresholds, dict):
+            for key in THRESHOLD_FIELDS:
+                value = thresholds.get(key)
+                if isinstance(value, int) and value >= 0:
+                    merged[key] = value
+
+    overrides = {
         "max_added_skills": args.max_added_skills,
         "max_removed_skills": args.max_removed_skills,
         "max_changed_skills": args.max_changed_skills,
@@ -62,6 +185,20 @@ def threshold_payload(args: argparse.Namespace) -> dict:
         "max_installed_delta": args.max_installed_delta,
         "max_bundle_delta": args.max_bundle_delta,
     }
+    for key, value in overrides.items():
+        if value is not None:
+            merged[key] = value
+    return merged
+
+
+def resolve_latest_only(args: argparse.Namespace, policy_payload: dict | None = None) -> bool:
+    if args.latest_only is not None:
+        return args.latest_only
+    if isinstance(policy_payload, dict):
+        defaults = policy_payload.get("defaults", {})
+        if isinstance(defaults, dict) and isinstance(defaults.get("latest_only"), bool):
+            return defaults["latest_only"]
+    return False
 
 
 def check_count(metric: str, actual: int, threshold: int, *, before_entry: object, after_entry: object) -> dict | None:
@@ -120,16 +257,24 @@ def evaluate_transition(transition: dict, thresholds: dict) -> dict:
 
 
 def build_alert_payload(history_path: Path, args: argparse.Namespace) -> dict:
+    policy_payload: dict | None = None
+    policy_path: Path | None = None
+    if args.policy:
+        policy_payload, policy_path = resolve_policy_reference(args.policy)
     report_payload = report_installed_baseline_history.build_report_payload(history_path)
-    thresholds = threshold_payload(args)
+    thresholds = threshold_payload(args, policy_payload)
     transitions = report_payload.get("transitions", [])
-    if args.latest_only and transitions:
+    latest_only = resolve_latest_only(args, policy_payload)
+    if latest_only and transitions:
         transitions = [transitions[-1]]
     evaluated = [evaluate_transition(item, thresholds) for item in transitions if isinstance(item, dict)]
     alert_count = sum(item.get("alert_count", 0) for item in evaluated)
     return {
         "history_path": report_payload.get("history_path", ""),
-        "latest_only": args.latest_only,
+        "latest_only": latest_only,
+        "policy_id": policy_payload.get("id") if policy_payload else None,
+        "policy_title": policy_payload.get("title") if policy_payload else None,
+        "policy_path": str(policy_path) if policy_path is not None else None,
         "thresholds": thresholds,
         "entries_count": report_payload.get("entries_count", 0),
         "evaluated_transition_count": len(evaluated),
@@ -145,6 +290,7 @@ def render_markdown(payload: dict) -> str:
         "# Installed Baseline History Alerts",
         "",
         f"- History path: `{payload.get('history_path', '')}`",
+        f"- Policy id: `{payload.get('policy_id', '')}`",
         f"- Latest only: `{payload.get('latest_only', False)}`",
         f"- Evaluated transitions: `{payload.get('evaluated_transition_count', 0)}`",
         f"- Alert count: `{payload.get('alert_count', 0)}`",

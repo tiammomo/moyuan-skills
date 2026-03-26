@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/installed-history-alert-policy.schema.json",
+  "title": "Installed History Alert Policy",
+  "type": "object",
+  "required": [
+    "policy_version",
+    "id",
+    "title",
+    "description",
+    "defaults",
+    "thresholds"
+  ],
+  "properties": {
+    "policy_version": { "type": "integer", "minimum": 1 },
+    "id": { "type": "string", "minLength": 3 },
+    "title": { "type": "string", "minLength": 3 },
+    "description": { "type": "string", "minLength": 20 },
+    "defaults": {
+      "type": "object",
+      "required": ["latest_only"],
+      "properties": {
+        "latest_only": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "max_added_skills",
+        "max_removed_skills",
+        "max_changed_skills",
+        "max_added_bundles",
+        "max_removed_bundles",
+        "max_changed_bundles",
+        "max_installed_delta",
+        "max_bundle_delta"
+      ],
+      "properties": {
+        "max_added_skills": { "type": "integer", "minimum": 0 },
+        "max_removed_skills": { "type": "integer", "minimum": 0 },
+        "max_changed_skills": { "type": "integer", "minimum": 0 },
+        "max_added_bundles": { "type": "integer", "minimum": 0 },
+        "max_removed_bundles": { "type": "integer", "minimum": 0 },
+        "max_changed_bundles": { "type": "integer", "minimum": 0 },
+        "max_installed_delta": { "type": "integer", "minimum": 0 },
+        "max_bundle_delta": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

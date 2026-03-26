@@ -1,0 +1,19 @@
+{
+  "policy_version": 1,
+  "id": "latest-release-gate",
+  "title": "Latest Release Gate",
+  "description": "A tighter profile for gating the latest accepted installed baseline transition during release-style reviews.",
+  "defaults": {
+    "latest_only": true
+  },
+  "thresholds": {
+    "max_added_skills": 1,
+    "max_removed_skills": 1,
+    "max_changed_skills": 2,
+    "max_added_bundles": 0,
+    "max_removed_bundles": 0,
+    "max_changed_bundles": 1,
+    "max_installed_delta": 1,
+    "max_bundle_delta": 0
+  }
+}

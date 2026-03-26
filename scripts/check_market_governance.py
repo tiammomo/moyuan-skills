@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import check_installed_baseline_history_alerts
 from market_utils import (
     collect_valid_manifests,
     iter_org_policy_paths,
@@ -14,7 +15,8 @@ from market_utils import (
 def main() -> int:
     manifests, manifest_errors = collect_valid_manifests()
     publisher_profiles, publisher_errors = load_publisher_profiles()
-    errors = [*manifest_errors, *publisher_errors]
+    history_alert_policies, history_alert_policy_errors = check_installed_baseline_history_alerts.load_policy_profiles()
+    errors = [*manifest_errors, *publisher_errors, *history_alert_policy_errors]
 
     known_skill_ids = {manifest["id"] for manifest in manifests}
     valid_policy_count = 0
@@ -32,7 +34,9 @@ def main() -> int:
 
     print(
         "Market governance check passed for "
-        f"{len(publisher_profiles)} publisher profile(s) and {valid_policy_count} org policy file(s)."
+        f"{len(publisher_profiles)} publisher profile(s), "
+        f"{valid_policy_count} org policy file(s), and "
+        f"{len(history_alert_policies)} history alert policy file(s)."
     )
     return 0
 

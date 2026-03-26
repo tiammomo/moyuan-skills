@@ -4,13 +4,15 @@
 
 ## 当前治理对象
 
-仓库现在有 3 类治理资产：
+仓库现在有 4 类治理资产：
 
 1. `publisher profile`
    位置：`publishers/*.json`
 2. `org market policy`
    位置：`governance/orgs/*.json`
-3. `governance checker`
+3. `installed history alert policy`
+   位置：`governance/history-alert-policies/*.json`
+4. `governance checker`
    位置：`scripts/check_market_governance.py`
 
 ## Publisher Profile
@@ -52,6 +54,22 @@ org policy 当前回答这些问题：
 
 - [../governance/orgs/moyuan-internal.json](../governance/orgs/moyuan-internal.json)
 - [../schemas/org-market-policy.schema.json](../schemas/org-market-policy.schema.json)
+
+## Installed History Alert Policy
+
+installed history alert policy 当前回答这些问题：
+
+- installed baseline history 应该用哪一组阈值做 alert/gate
+- 默认只看 latest transition，还是检查 retained history 全部 transition
+- 团队想复用的 gate 名称、标题和说明是什么
+
+当前参考：
+
+- [../governance/history-alert-policies/latest-release-gate.json](../governance/history-alert-policies/latest-release-gate.json)
+- [../governance/history-alert-policies/history-audit.json](../governance/history-alert-policies/history-audit.json)
+- [../schemas/installed-history-alert-policy.schema.json](../schemas/installed-history-alert-policy.schema.json)
+
+这类 policy 会被 `scripts/check_market_governance.py` 一起校验，也会进入本地 client 的 installed baseline history alert 工作流。
 
 ## 当前治理信号已经进入哪里
 
@@ -115,6 +133,13 @@ python scripts/skills_market.py recommend --org-policy governance/orgs/moyuan-in
 python scripts/skills_market.py federation-feed --org-policy governance/orgs/moyuan-internal.json
 ```
 
+### 5. 复用 installed history alert policy
+
+```text
+python scripts/skills_market.py list-installed-history-policies
+python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -124,3 +149,4 @@ python scripts/skills_market.py federation-feed --org-policy governance/orgs/moy
 - [../scripts/build_market_catalog.py](../scripts/build_market_catalog.py)
 - [../scripts/build_market_recommendations.py](../scripts/build_market_recommendations.py)
 - [../scripts/build_federation_feed.py](../scripts/build_federation_feed.py)
+- [../scripts/list_installed_baseline_history_policies.py](../scripts/list_installed_baseline_history_policies.py)

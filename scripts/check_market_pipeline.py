@@ -921,6 +921,16 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Report" not in history_report_markdown.read_text(encoding="utf-8"):
         print("ERROR: history report Markdown output should contain the report heading")
         return 1
+    history_policy_output = require_success(
+        "list installed baseline history policies",
+        [
+            "scripts/skills_market.py",
+            "list-installed-history-policies",
+        ],
+    )
+    if "latest-release-gate" not in history_policy_output or "history-audit" not in history_policy_output:
+        print("ERROR: list-installed-history-policies should expose both reusable history alert profiles")
+        return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
     history_alert_result = run_python(
@@ -928,12 +938,8 @@ def main(argv: list[str] | None = None) -> int:
             "scripts/skills_market.py",
             "alert-installed-baseline-history",
             repo_relative_path(promotion_history_json),
-            "--max-removed-skills",
-            "1",
-            "--max-removed-bundles",
-            "0",
-            "--max-installed-delta",
-            "1",
+            "--policy",
+            "latest-release-gate",
             "--output-path",
             repo_relative_path(history_alert_json),
             "--markdown-path",
@@ -955,6 +961,9 @@ def main(argv: list[str] | None = None) -> int:
     history_alert_payload = json.loads(history_alert_result.stdout)
     if history_alert_payload.get("passes") is not False or history_alert_payload.get("alert_count", 0) < 1:
         print("ERROR: alert-installed-baseline-history should report alert findings for oversized transitions")
+        return 1
+    if history_alert_payload.get("policy_id") != "latest-release-gate" or history_alert_payload.get("latest_only") is not True:
+        print("ERROR: history alert policy should resolve latest-release-gate with latest_only defaults")
         return 1
     alert_transitions = history_alert_payload.get("transitions", [])
     if len(alert_transitions) != 1 or alert_transitions[0].get("before_entry") != 1 or alert_transitions[0].get("after_entry") != 2:
@@ -1168,13 +1177,8 @@ def main(argv: list[str] | None = None) -> int:
             "scripts/skills_market.py",
             "alert-installed-baseline-history",
             repo_relative_path(promotion_history_json),
-            "--latest-only",
-            "--max-removed-skills",
-            "1",
-            "--max-removed-bundles",
-            "0",
-            "--max-installed-delta",
-            "1",
+            "--policy",
+            "latest-release-gate",
             "--output-path",
             repo_relative_path(post_prune_history_alert_json),
             "--strict",
@@ -1183,6 +1187,9 @@ def main(argv: list[str] | None = None) -> int:
     post_prune_history_alert = load_json(post_prune_history_alert_json)
     if post_prune_history_alert.get("passes") is not True or post_prune_history_alert.get("alert_count") != 0:
         print("ERROR: latest-only history alert should pass after prune and re-promotion keep the latest transition small")
+        return 1
+    if post_prune_history_alert.get("policy_id") != "latest-release-gate":
+        print("ERROR: post-prune history alert should keep reporting the applied policy id")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",

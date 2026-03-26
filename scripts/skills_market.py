@@ -20,6 +20,7 @@ import diff_installed_market_snapshots
 import install_skill_bundle
 import install_skill
 import list_installed_baseline_history
+import list_installed_baseline_history_policies
 import list_installed_bundles
 import list_skill_bundles
 import list_installed_skills
@@ -178,6 +179,9 @@ def build_parser() -> argparse.ArgumentParser:
     history_parser.add_argument("history", help="Baseline history JSON file.")
     history_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
+    history_policy_parser = subparsers.add_parser("list-installed-history-policies", help="List reusable installed baseline history alert policies.")
+    history_policy_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
     report_history_parser.add_argument("--output-path", help="Optional JSON report output path.")
@@ -186,7 +190,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     alert_history_parser = subparsers.add_parser("alert-installed-baseline-history", help="Flag unusually large retained installed baseline history transitions.")
     alert_history_parser.add_argument("history", help="Baseline history JSON file.")
-    alert_history_parser.add_argument("--latest-only", action="store_true", help="Only evaluate the latest retained transition.")
+    alert_history_parser.add_argument("--policy", help="Named policy id or JSON file path for reusable alert thresholds.")
+    alert_scope_group = alert_history_parser.add_mutually_exclusive_group()
+    alert_scope_group.add_argument("--latest-only", dest="latest_only", action="store_true", help="Only evaluate the latest retained transition.")
+    alert_scope_group.add_argument("--all-transitions", dest="latest_only", action="store_false", help="Evaluate every retained transition.")
+    alert_history_parser.set_defaults(latest_only=None)
     alert_history_parser.add_argument("--max-added-skills", type=int, help="Maximum allowed added skills per transition.")
     alert_history_parser.add_argument("--max-removed-skills", type=int, help="Maximum allowed removed skills per transition.")
     alert_history_parser.add_argument("--max-changed-skills", type=int, help="Maximum allowed changed skills per transition.")
@@ -474,6 +482,12 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.append("--json")
         return list_installed_baseline_history.main(forwarded_args)
 
+    if args.command == "list-installed-history-policies":
+        forwarded_args = []
+        if args.json:
+            forwarded_args.append("--json")
+        return list_installed_baseline_history_policies.main(forwarded_args)
+
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]
         if args.output_path:
@@ -486,8 +500,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "alert-installed-baseline-history":
         forwarded_args = [args.history]
-        if args.latest_only:
+        if args.policy:
+            forwarded_args.extend(["--policy", args.policy])
+        if args.latest_only is True:
             forwarded_args.append("--latest-only")
+        if args.latest_only is False:
+            forwarded_args.append("--all-transitions")
         if args.max_added_skills is not None:
             forwarded_args.extend(["--max-added-skills", str(args.max_added_skills)])
         if args.max_removed_skills is not None:
