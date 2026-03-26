@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocsCatalog, getProjectDoc, getRelatedDocs } from '@/lib/data';
+import { getDocHref, getDocNeighbors, getDocsCatalog, getProjectDoc, getRelatedDocs } from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocContextPanel } from '../../DocContextPanel';
 import { RelatedDocs } from '../../RelatedDocs';
 
 export const revalidate = 300;
@@ -50,7 +51,34 @@ export default async function ProjectDocPage({ params }: Props) {
       summary: doc.summary,
       path: doc.path,
     };
+  const projectNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc);
+  const contextFacts = [
+    {
+      label: 'Reference',
+      value: `${projectNeighbors.position} of ${projectNeighbors.total}`,
+      testId: 'doc-context-project-position',
+    },
+    {
+      label: 'Doc id',
+      value: currentDoc.id,
+      testId: 'doc-context-project-id',
+    },
+    {
+      label: 'Source path',
+      value: currentDoc.path,
+      testId: 'doc-context-project-path',
+    },
+  ];
+  const contextLinks = [
+    { href: '/docs', label: 'Back to docs center', testId: 'doc-context-project-center' },
+    ...(projectNeighbors.previous
+      ? [{ href: getDocHref(projectNeighbors.previous), label: `Previous reference: ${projectNeighbors.previous.title}` }]
+      : []),
+    ...(projectNeighbors.next
+      ? [{ href: getDocHref(projectNeighbors.next), label: `Next reference: ${projectNeighbors.next.title}`, testId: 'doc-context-project-next' }]
+      : []),
+  ];
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -89,9 +117,15 @@ export default async function ProjectDocPage({ params }: Props) {
           <RelatedDocs currentKind={currentDoc.kind} docs={relatedDocs} />
         </div>
 
-        {headings.length > 0 && (
-          <div className="hidden lg:block">
-            <Card className="p-5 sticky top-24">
+        <div className="space-y-5 self-start mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <DocContextPanel
+            title="Project context"
+            description="Use this panel to orient the current reference inside the broader project docs set and jump to the next operational note."
+            facts={contextFacts}
+            links={contextLinks}
+          />
+          {headings.length > 0 && (
+            <Card className="hidden lg:block p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Contents</h3>
               <nav className="space-y-2">
                 {headings.map((heading) => (
@@ -107,8 +141,8 @@ export default async function ProjectDocPage({ params }: Props) {
                 ))}
               </nav>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </Shell>
   );

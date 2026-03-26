@@ -160,6 +160,35 @@ function getDocFamilyDocs(docsCatalog: DocsCatalog, kind: DocsCatalogEntry['kind
   return docsCatalog.project_docs;
 }
 
+export function getDocNeighbors(
+  currentDoc: DocsCatalogEntry,
+  docsCatalog: DocsCatalog
+): {
+  previous: DocsCatalogEntry | null;
+  next: DocsCatalogEntry | null;
+  position: number;
+  total: number;
+} {
+  const familyDocs = getDocFamilyDocs(docsCatalog, currentDoc.kind);
+  const currentIndex = familyDocs.findIndex((doc) => doc.id === currentDoc.id);
+
+  if (currentIndex === -1) {
+    return {
+      previous: null,
+      next: null,
+      position: 0,
+      total: familyDocs.length,
+    };
+  }
+
+  return {
+    previous: familyDocs[currentIndex - 1] ?? null,
+    next: familyDocs[currentIndex + 1] ?? null,
+    position: currentIndex + 1,
+    total: familyDocs.length,
+  };
+}
+
 function getFallbackNeighborDocs(currentDoc: DocsCatalogEntry, docsCatalog: DocsCatalog): DocsCatalogEntry[] {
   const familyDocs = getDocFamilyDocs(docsCatalog, currentDoc.kind);
   const currentIndex = familyDocs.findIndex((doc) => doc.id === currentDoc.id);

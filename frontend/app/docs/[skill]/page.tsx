@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocsCatalog, getRelatedDocs, getSkillDetail } from '@/lib/data';
+import { getDocHref, getDocNeighbors, getDocsCatalog, getRelatedDocs, getSkillDetail } from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocContextPanel } from '../DocContextPanel';
 import { RelatedDocs } from '../RelatedDocs';
 
 export const revalidate = 300;
@@ -49,9 +50,43 @@ export default async function SkillDocPage({ params }: Props) {
       summary: `${title} documentation`,
       path: `docs/${skill}.md`,
     };
+  const skillNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc, {
     preferredIds: detail?.related_skills.map((relatedSkill) => relatedSkill.name) ?? [],
   });
+  const contextFacts = [
+    {
+      label: 'Channel',
+      value: detail?.manifest.channel ?? 'unknown',
+      channel: detail?.manifest.channel,
+      testId: 'doc-context-skill-channel',
+    },
+    {
+      label: 'Version',
+      value: detail?.manifest.version ?? 'unknown',
+      testId: 'doc-context-skill-version',
+    },
+    {
+      label: 'Entrypoint',
+      value: detail?.install_spec?.entrypoint ?? detail?.manifest.artifacts.entrypoint ?? 'n/a',
+      testId: 'doc-context-skill-entrypoint',
+    },
+    {
+      label: 'Package',
+      value: detail?.install_spec?.package_path ?? 'n/a',
+      testId: 'doc-context-skill-package',
+    },
+  ];
+  const contextLinks = [
+    { href: `/skills/${skill}`, label: 'Open market skill page', testId: 'doc-context-skill-link' },
+    { href: `/channels/${detail?.manifest.channel ?? 'stable'}`, label: 'View release channel', testId: 'doc-context-channel-link' },
+    ...(skillNeighbors.previous
+      ? [{ href: getDocHref(skillNeighbors.previous), label: `Previous skill doc: ${skillNeighbors.previous.title}` }]
+      : []),
+    ...(skillNeighbors.next
+      ? [{ href: getDocHref(skillNeighbors.next), label: `Next skill doc: ${skillNeighbors.next.title}` }]
+      : []),
+  ];
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -80,9 +115,15 @@ export default async function SkillDocPage({ params }: Props) {
           <RelatedDocs currentKind={currentDoc.kind} docs={relatedDocs} />
         </div>
 
-        {headings.length > 0 && (
-          <div className="hidden lg:block">
-            <Card className="p-5 sticky top-24">
+        <div className="space-y-5 self-start mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <DocContextPanel
+            title="Skill context"
+            description="Use the market metadata here to understand where this skill lives, how it installs, and which skill docs to read next."
+            facts={contextFacts}
+            links={contextLinks}
+          />
+          {headings.length > 0 && (
+            <Card className="hidden lg:block p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Contents</h3>
               <nav className="space-y-2">
                 {headings.map((heading) => (
@@ -98,8 +139,8 @@ export default async function SkillDocPage({ params }: Props) {
                 ))}
               </nav>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </Shell>
   );

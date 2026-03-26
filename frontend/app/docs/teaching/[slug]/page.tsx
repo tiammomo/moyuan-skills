@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getDocsCatalog, getRelatedDocs, getTeachingDoc } from '@/lib/data';
+import { getDocHref, getDocNeighbors, getDocsCatalog, getRelatedDocs, getTeachingDoc } from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Card } from '@/components/ui/Card';
 import { Shell } from '@/components/ui/Shell';
+import { DocContextPanel } from '../../DocContextPanel';
 import { RelatedDocs } from '../../RelatedDocs';
 
 export const revalidate = 300;
@@ -50,7 +51,35 @@ export default async function TeachingDocPage({ params }: Props) {
       summary: doc.summary,
       path: doc.path,
     };
+  const teachingNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc);
+  const moduleMatch = currentDoc.id.match(/^(\d+)/);
+  const contextFacts = [
+    {
+      label: 'Module',
+      value: moduleMatch ? `Lesson ${moduleMatch[1]}` : currentDoc.id,
+      testId: 'doc-context-teaching-module',
+    },
+    {
+      label: 'Path position',
+      value: `${teachingNeighbors.position} of ${teachingNeighbors.total}`,
+      testId: 'doc-context-teaching-position',
+    },
+    {
+      label: 'Source path',
+      value: currentDoc.path,
+      testId: 'doc-context-teaching-path',
+    },
+  ];
+  const contextLinks = [
+    { href: '/docs/teaching', label: 'Back to teaching library', testId: 'doc-context-teaching-library' },
+    ...(teachingNeighbors.previous
+      ? [{ href: getDocHref(teachingNeighbors.previous), label: `Previous lesson: ${teachingNeighbors.previous.title}` }]
+      : []),
+    ...(teachingNeighbors.next
+      ? [{ href: getDocHref(teachingNeighbors.next), label: `Next lesson: ${teachingNeighbors.next.title}`, testId: 'doc-context-teaching-next' }]
+      : []),
+  ];
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -89,9 +118,15 @@ export default async function TeachingDocPage({ params }: Props) {
           <RelatedDocs currentKind={currentDoc.kind} docs={relatedDocs} />
         </div>
 
-        {headings.length > 0 && (
-          <div className="hidden lg:block">
-            <Card className="p-5 sticky top-24">
+        <div className="space-y-5 self-start mt-6 lg:mt-0 lg:sticky lg:top-24">
+          <DocContextPanel
+            title="Teaching context"
+            description="Keep your place in the learning path and use the next-step links here to move through the teaching sequence."
+            facts={contextFacts}
+            links={contextLinks}
+          />
+          {headings.length > 0 && (
+            <Card className="hidden lg:block p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Contents</h3>
               <nav className="space-y-2">
                 {headings.map((heading) => (
@@ -107,8 +142,8 @@ export default async function TeachingDocPage({ params }: Props) {
                 ))}
               </nav>
             </Card>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </Shell>
   );
