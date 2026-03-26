@@ -201,6 +201,7 @@ python scripts/skills_market.py report-installed-baseline-history dist/installed
 python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
 python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
+python scripts/skills_market.py remediate-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -224,5 +225,6 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 13. 当 retained transition 开始变复杂之后，还需要 history alert 和 policy profile，把“历史可阅读”推进到“历史里的大变更能被主动标记、复用同一套阈值并接进门禁”
 14. 当团队开始接受某些已 review 的大变更之后，还需要 history waiver，把“门禁可复用”推进到“已批准例外也能被显式记录、复用和审计”
 15. 当 waiver 自己也开始积累之后，还需要 waiver audit，把“例外可复用”推进到“例外本身也会被定期巡检、续期和清理”
+16. 当 audit 开始稳定发现问题之后，还需要 waiver remediation，把“问题可发现”推进到“问题后面该怎么处理也能被显式讲清楚”
 8. 当 drift 被接受时，还需要 baseline promotion 把“新期望状态”正式落盘，而不是长期停留在告警状态
 9. 当 baseline 开始持续演进时，还需要 history 把这条演进链条保存下来，方便团队回看

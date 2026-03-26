@@ -164,6 +164,7 @@ python scripts/skills_market.py report-installed-baseline-history dist/installed
 python scripts/skills_market.py list-installed-history-policies
 python scripts/skills_market.py list-installed-history-waivers
 python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
+python scripts/skills_market.py remediate-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --strict
 python scripts/skills_market.py alert-installed-baseline-history dist/installed-skills/snapshots/baseline-history.json --policy latest-release-gate --waiver approved-release-engineering-downsize --strict
 python scripts/skills_market.py restore-installed-baseline dist/installed-skills/snapshots/baseline-history.json latest --baseline-path dist/installed-skills/snapshots/baseline.json --markdown-path dist/installed-skills/snapshots/baseline.md
@@ -237,6 +238,14 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `unmatched` 表示它已经匹配不到任何 retained transition，通常说明对应历史已经被 prune 或条件写错
 - `stale` 表示它还能对上 retained transition，但已经对不上任何 active alert，通常说明这份例外已经没有继续保留的必要
 
+当 audit 已经告诉你“哪里坏了”之后，当前也可以直接看 remediation 建议，而不是自己再翻译一遍：
+
+- `remediate-installed-history-waivers` 会把 audit finding 转成下一步建议
+- `renew_or_remove` 适合 expired waiver
+- `rescope_or_remove` 适合 unmatched waiver
+- `retire_or_replace` 适合 stale waiver
+- 它保持只读输出，不会自动改治理文件，目的是把后续动作讲清楚而不是偷偷改审批记录
+
 如果 drift 已经被 review 通过，当前也可以直接把 live state 提升成新的 baseline：
 
 - `promote-installed-baseline` 会重写 baseline snapshot 和对应 Markdown 摘要
@@ -250,6 +259,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `list-installed-history-policies` 可以先列出当前可复用的 alert policy profile
 - `list-installed-history-waivers` 可以先列出当前已经批准的 waiver record
 - `audit-installed-history-waivers` 可以先把 waiver 做一轮健康检查，再决定哪些该续期、哪些该清理
+- `remediate-installed-history-waivers` 可以把 audit 结果继续翻译成明确的 follow-up action
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”

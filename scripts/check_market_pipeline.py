@@ -967,6 +967,29 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Audit" not in history_waiver_audit_markdown.read_text(encoding="utf-8"):
         print("ERROR: waiver audit Markdown output should contain the audit heading")
         return 1
+    history_waiver_remediation_json = output_root / "snapshots" / "history-waiver-remediation.json"
+    history_waiver_remediation_markdown = output_root / "snapshots" / "history-waiver-remediation.md"
+    require_success(
+        "remediate installed baseline history waivers",
+        [
+            "scripts/skills_market.py",
+            "remediate-installed-history-waivers",
+            repo_relative_path(promotion_history_json),
+            "--output-path",
+            repo_relative_path(history_waiver_remediation_json),
+            "--markdown-path",
+            repo_relative_path(history_waiver_remediation_markdown),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_remediation_payload = load_json(history_waiver_remediation_json)
+    if history_waiver_remediation_payload.get("passes") is not True or history_waiver_remediation_payload.get("remediation_count") != 0:
+        print("ERROR: waiver remediation should report zero actions when waiver audit is already healthy")
+        return 1
+    if "Installed Baseline History Waiver Remediation" not in history_waiver_remediation_markdown.read_text(encoding="utf-8"):
+        print("ERROR: waiver remediation Markdown output should contain the remediation heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1072,6 +1095,50 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     if waiver_findings_by_id.get("stale-added-skills") != {"stale"}:
         print("ERROR: stale waiver fixture should report only the stale finding code")
+        return 1
+    history_waiver_remediation_findings_json = output_root / "snapshots" / "history-waiver-remediation-findings.json"
+    history_waiver_remediation_findings_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "remediate-installed-history-waivers",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-path",
+            repo_relative_path(history_waiver_remediation_findings_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_remediation_findings_result.returncode == 0:
+        print("ERROR: waiver remediation should fail in strict mode when action is required")
+        if history_waiver_remediation_findings_result.stdout.strip():
+            print(history_waiver_remediation_findings_result.stdout.strip())
+        if history_waiver_remediation_findings_result.stderr.strip():
+            print(history_waiver_remediation_findings_result.stderr.strip())
+        return 1
+    history_waiver_remediation_findings_payload = load_json(history_waiver_remediation_findings_json)
+    if history_waiver_remediation_findings_payload.get("remediation_count") != 2:
+        print("ERROR: waiver remediation should emit one remediation action for each failing temporary waiver")
+        return 1
+    remediation_actions_by_id = {
+        item.get("id"): {
+            action.get("code")
+            for action in item.get("actions", [])
+            if isinstance(action, dict)
+        }
+        for item in history_waiver_remediation_findings_payload.get("waivers", [])
+        if isinstance(item, dict)
+    }
+    if remediation_actions_by_id.get("expired-release-downsize") != {"renew_or_remove"}:
+        print("ERROR: expired waiver remediation should suggest renewing or removing the waiver")
+        return 1
+    if remediation_actions_by_id.get("stale-added-skills") != {"retire_or_replace"}:
+        print("ERROR: stale waiver remediation should suggest retiring or replacing the waiver")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -1400,6 +1467,36 @@ def main(argv: list[str] | None = None) -> int:
     post_prune_history_waiver_audit = load_json(post_prune_history_waiver_audit_json)
     if post_prune_history_waiver_audit.get("unmatched_count") != 1 or post_prune_history_waiver_audit.get("stale_count") != 0:
         print("ERROR: waiver audit should classify the built-in waiver as unmatched after prune removes its retained transition")
+        return 1
+    post_prune_history_waiver_remediation_json = output_root / "snapshots" / "history-waiver-remediation-post-prune.json"
+    post_prune_history_waiver_remediation_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "remediate-installed-history-waivers",
+            repo_relative_path(promotion_history_json),
+            "--output-path",
+            repo_relative_path(post_prune_history_waiver_remediation_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if post_prune_history_waiver_remediation_result.returncode == 0:
+        print("ERROR: waiver remediation should fail after prune when the built-in waiver needs follow-up")
+        if post_prune_history_waiver_remediation_result.stdout.strip():
+            print(post_prune_history_waiver_remediation_result.stdout.strip())
+        if post_prune_history_waiver_remediation_result.stderr.strip():
+            print(post_prune_history_waiver_remediation_result.stderr.strip())
+        return 1
+    post_prune_history_waiver_remediation = load_json(post_prune_history_waiver_remediation_json)
+    post_prune_actions = {
+        action.get("code")
+        for waiver in post_prune_history_waiver_remediation.get("waivers", [])
+        if isinstance(waiver, dict)
+        for action in waiver.get("actions", [])
+        if isinstance(action, dict)
+    }
+    if post_prune_actions != {"rescope_or_remove"}:
+        print("ERROR: post-prune waiver remediation should suggest rescoping or removing the unmatched waiver")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",

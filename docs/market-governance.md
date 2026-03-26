@@ -89,6 +89,7 @@ installed history alert waiver 当前回答这些问题：
 
 这类 waiver 也会被 `scripts/check_market_governance.py` 一起校验，并在本地 client 的 history alert 工作流里把匹配到的 finding 转成 approved exception。
 当 waiver 开始积累之后，维护者还需要定期跑本地 audit，确认没有过期、失配或已经失效的例外记录继续留在治理资产里。
+再往下一步，维护者还需要把 audit finding 转成明确 remediation，而不是只留下“这里有问题”却不说明应该续期、删除还是重写 selector。
 
 ## 当前治理信号已经进入哪里
 
@@ -172,6 +173,12 @@ python scripts/skills_market.py alert-installed-baseline-history dist/installed-
 python scripts/skills_market.py audit-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
 ```
 
+### 8. 生成 installed history waiver remediation
+
+```text
+python scripts/skills_market.py remediate-installed-history-waivers dist/installed-skills/snapshots/baseline-history.json --strict
+```
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
@@ -184,3 +191,4 @@ python scripts/skills_market.py audit-installed-history-waivers dist/installed-s
 - [../scripts/list_installed_baseline_history_policies.py](../scripts/list_installed_baseline_history_policies.py)
 - [../scripts/list_installed_baseline_history_waivers.py](../scripts/list_installed_baseline_history_waivers.py)
 - [../scripts/audit_installed_baseline_history_waivers.py](../scripts/audit_installed_baseline_history_waivers.py)
+- [../scripts/remediate_installed_baseline_history_waivers.py](../scripts/remediate_installed_baseline_history_waivers.py)

@@ -31,6 +31,7 @@ import promote_installed_market_baseline
 import prune_installed_baseline_history
 import report_installed_baseline_history
 import repair_installed_market_state
+import remediate_installed_baseline_history_waivers
 import remove_skill_bundle
 import remove_skill
 import restore_installed_market_baseline
@@ -202,6 +203,22 @@ def build_parser() -> argparse.ArgumentParser:
     audit_history_waivers_parser.add_argument("--markdown-path", help="Optional Markdown audit output path.")
     audit_history_waivers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     audit_history_waivers_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when findings are present.")
+
+    remediate_history_waivers_parser = subparsers.add_parser(
+        "remediate-installed-history-waivers",
+        help="Suggest remediation actions for installed baseline history waiver findings.",
+    )
+    remediate_history_waivers_parser.add_argument("history", help="Baseline history JSON file.")
+    remediate_history_waivers_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to remediate. Defaults to all known waivers.",
+    )
+    remediate_history_waivers_parser.add_argument("--output-path", help="Optional JSON remediation output path.")
+    remediate_history_waivers_parser.add_argument("--markdown-path", help="Optional Markdown remediation output path.")
+    remediate_history_waivers_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    remediate_history_waivers_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when remediation is required.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -534,6 +551,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return audit_installed_baseline_history_waivers.main(forwarded_args)
+
+    if args.command == "remediate-installed-history-waivers":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return remediate_installed_baseline_history_waivers.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]
