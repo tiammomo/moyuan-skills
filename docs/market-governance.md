@@ -251,6 +251,7 @@ python scripts/skills_market.py remediate-installed-history-waiver-source-reconc
 python scripts/skills_market.py draft-installed-history-waiver-source-reconcile-waiver-execution dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
 python scripts/skills_market.py preview-installed-history-waiver-source-reconcile-waiver-execution dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --strict
 python scripts/skills_market.py prepare-installed-history-waiver-source-reconcile-waiver-apply dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --strict
+python scripts/skills_market.py execute-installed-history-waiver-source-reconcile-waiver-apply dist/installed-skills/snapshots/baseline-history.json --gate-waiver approved-expired-release-downsize-source-drift --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --strict
 python scripts/skills_market.py gate-installed-history-waiver-source-reconcile dist/installed-skills/snapshots/baseline-history.json --policy source-reconcile-review-handoff --output-dir dist/installed-skills/snapshots/waiver-apply --target-root dist/governance-write-root --execute-summary-path dist/installed-skills/snapshots/waiver-apply/source-reconcile-execute-write-summary.json --strict
 ```
 
@@ -284,5 +285,6 @@ python scripts/skills_market.py gate-installed-history-waiver-source-reconcile d
 - [../scripts/draft_source_reconcile_gate_waiver_execution.py](../scripts/draft_source_reconcile_gate_waiver_execution.py)
 - [../scripts/preview_source_reconcile_gate_waiver_execution.py](../scripts/preview_source_reconcile_gate_waiver_execution.py)
 - [../scripts/prepare_source_reconcile_gate_waiver_apply.py](../scripts/prepare_source_reconcile_gate_waiver_apply.py)
+- [../scripts/execute_source_reconcile_gate_waiver_apply.py](../scripts/execute_source_reconcile_gate_waiver_apply.py)
 - [../schemas/installed-history-waiver-source-reconcile-policy.schema.json](../schemas/installed-history-waiver-source-reconcile-policy.schema.json)
 - [../schemas/installed-history-waiver-source-reconcile-waiver.schema.json](../schemas/installed-history-waiver-source-reconcile-waiver.schema.json)

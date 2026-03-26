@@ -370,11 +370,19 @@ def main(argv: list[str] | None = None) -> int:
         execute_summary_path=execute_summary_path,
     )
 
-    summary_json_path = resolve_repo_path(args.output_path) if args.output_path else (output_dir / "source-reconcile-gate-waiver-apply-summary.json")
-    summary_markdown_path = resolve_repo_path(args.markdown_path) if args.markdown_path else (output_dir / "source-reconcile-gate-waiver-apply-summary.md")
+    canonical_summary_json_path = output_dir / "source-reconcile-gate-waiver-apply-summary.json"
+    canonical_summary_markdown_path = output_dir / "source-reconcile-gate-waiver-apply-summary.md"
+    summary_json_path = resolve_repo_path(args.output_path) if args.output_path else canonical_summary_json_path
+    summary_markdown_path = resolve_repo_path(args.markdown_path) if args.markdown_path else canonical_summary_markdown_path
 
-    write_text(summary_json_path, render_json_payload(payload))
-    write_text(summary_markdown_path, render_markdown(payload))
+    rendered_json = render_json_payload(payload)
+    rendered_markdown = render_markdown(payload)
+    write_text(canonical_summary_json_path, rendered_json)
+    write_text(canonical_summary_markdown_path, rendered_markdown)
+    if summary_json_path != canonical_summary_json_path:
+        write_text(summary_json_path, rendered_json)
+    if summary_markdown_path != canonical_summary_markdown_path:
+        write_text(summary_markdown_path, rendered_markdown)
 
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))

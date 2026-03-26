@@ -35,6 +35,7 @@ import list_installed_baseline_history_waiver_source_reconcile_waivers
 import list_installed_bundles
 import list_skill_bundles
 import list_installed_skills
+import execute_source_reconcile_gate_waiver_apply
 import package_skill
 import prepare_source_reconcile_gate_waiver_apply
 import prepare_installed_baseline_history_waiver_apply
@@ -362,6 +363,33 @@ def build_parser() -> argparse.ArgumentParser:
     prepare_source_reconcile_waiver_apply_parser.add_argument("--markdown-path", help="Optional Markdown apply summary output path.")
     prepare_source_reconcile_waiver_apply_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     prepare_source_reconcile_waiver_apply_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when apply follow-up is required.")
+
+    execute_source_reconcile_waiver_apply_parser = subparsers.add_parser(
+        "execute-installed-history-waiver-source-reconcile-waiver-apply",
+        help="Stage or write reviewed source-reconcile gate waiver apply packs safely.",
+    )
+    execute_source_reconcile_waiver_apply_parser.add_argument("history", help="Baseline history JSON file.")
+    execute_source_reconcile_waiver_apply_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named installed-history waiver id or JSON file path used to build the source-reconcile report context.",
+    )
+    execute_source_reconcile_waiver_apply_parser.add_argument(
+        "--gate-waiver",
+        action="append",
+        default=[],
+        help="Named source-reconcile gate waiver id or JSON file path to execute. Defaults to all known gate waivers.",
+    )
+    execute_source_reconcile_waiver_apply_parser.add_argument("--output-dir", help="Directory containing or receiving apply-pack artifacts.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--stage-dir", help="Optional staging directory for rendered file changes.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--target-root", help="Optional repo-root mirror used for --write mode.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--write", action="store_true", help="Write approved changes into the target root.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--execute-summary-path", help="Optional source-reconcile execution summary JSON path used when apply artifacts must be regenerated.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--output-path", help="Optional JSON execution summary output path.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--markdown-path", help="Optional Markdown execution summary output path.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    execute_source_reconcile_waiver_apply_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when safety checks block execution.")
 
     remediate_history_waivers_parser = subparsers.add_parser(
         "remediate-installed-history-waivers",
@@ -1059,6 +1087,32 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return prepare_source_reconcile_gate_waiver_apply.main(forwarded_args)
+
+    if args.command == "execute-installed-history-waiver-source-reconcile-waiver-apply":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        for gate_waiver in args.gate_waiver:
+            forwarded_args.extend(["--gate-waiver", gate_waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.stage_dir:
+            forwarded_args.extend(["--stage-dir", args.stage_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.write:
+            forwarded_args.append("--write")
+        if args.execute_summary_path:
+            forwarded_args.extend(["--execute-summary-path", args.execute_summary_path])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return execute_source_reconcile_gate_waiver_apply.main(forwarded_args)
 
     if args.command == "remediate-installed-history-waivers":
         forwarded_args = [args.history]
