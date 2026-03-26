@@ -264,6 +264,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `audit-installed-history-waiver-source-reconcile-waivers` 会审计 source-reconcile gate waiver 是否已经过期、失配、陈旧，或者挂在错误 policy 上
 - `remediate-installed-history-waiver-source-reconcile-waivers` 会把这些 audit finding 翻译成具体动作，比如续期、重定向匹配范围、替换或删除 waiver
 - `draft-installed-history-waiver-source-reconcile-waiver-execution` 会把这些 remediation 动作继续落成 review-ready draft，例如 renewal draft、selector retarget draft、replacement draft 或 policy review
+- `preview-installed-history-waiver-source-reconcile-waiver-execution` 会把这些 execution draft 和当前 source waiver 做字段级对比，方便 reviewer 先看变化再决定是否继续 apply
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver
 - `retire_or_replace` 适合 stale waiver
@@ -299,6 +300,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `audit-installed-history-waiver-source-reconcile-waivers` 适合在 strict gate 之前先清点这些例外是不是还有效，避免 waiver 累积成长期放行
 - `remediate-installed-history-waiver-source-reconcile-waivers` 适合在 audit 之后直接生成治理动作建议，减少人工判断每条 finding 该怎么处理
 - `draft-installed-history-waiver-source-reconcile-waiver-execution` 适合在 remediation 之后直接生成 review-ready draft pack，让维护者先审 renewal / retarget / replacement / policy review，再决定是否继续 apply
+- `preview-installed-history-waiver-source-reconcile-waiver-execution` 适合在 draft 之后直接做 review diff，让 reviewer 先看哪些字段会变化、哪些仍然只是 review-only
 - `gate-installed-history-waiver-source-reconcile --policy source-reconcile-review-handoff` 适合 review/handoff 阶段，只要求策略里声明的条件成立
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线

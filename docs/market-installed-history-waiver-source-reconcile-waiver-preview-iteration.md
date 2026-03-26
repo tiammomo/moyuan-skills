@@ -4,11 +4,12 @@ This temporary note tracks the next installed-state history waiver source-reconc
 
 ## Goals
 
-- [ ] Turn source-reconcile gate waiver execution drafts into review-friendly previews that show how renewal, retarget, replacement, or policy-review drafts differ from the source waiver files
-- [ ] Expose the source-reconcile-waiver-preview workflow through the unified CLI, README/docs, and smoke pipeline
-- [ ] Run validation, then delete this note after the iteration is fully complete
+- [x] Turn source-reconcile gate waiver execution drafts into review-friendly previews that show how renewal, retarget, replacement, or policy-review drafts differ from the source waiver files
+- [x] Expose the source-reconcile-waiver-preview workflow through the unified CLI, README/docs, and smoke pipeline
+- [x] Run validation, then delete this note after the iteration is fully complete
 
 ## Current Status
 
-- The client can now audit source-reconcile gate waivers, remediate their findings, and materialize execution drafts under a dedicated execution artifact root.
-- The next gap is review diffing: maintainers still need a compact way to compare those generated drafts against the current waiver sources before they move on to apply-ready changes.
+- Completed on 2026-03-26.
+- The client can now compare source-reconcile gate waiver execution drafts against the current waiver sources and emit per-waiver preview JSON/Markdown artifacts.
+- The unified CLI, smoke pipeline, README, governance docs, registry docs, repo commands, and teaching docs now all describe the `preview-installed-history-waiver-source-reconcile-waiver-execution` workflow.
