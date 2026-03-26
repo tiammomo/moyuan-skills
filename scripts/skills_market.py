@@ -47,6 +47,7 @@ import snapshot_installed_market_state
 import update_skill_bundle
 import update_installed_skill
 import verify_installed_history_baseline
+import verify_installed_baseline_history_waiver_source_reconcile
 import validate_market_manifest
 import verify_installed_market_baseline
 import verify_market_provenance
@@ -362,6 +363,29 @@ def build_parser() -> argparse.ArgumentParser:
     execute_reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown execution summary output path.")
     execute_reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
     execute_reconcile_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when safety checks block execution.")
+
+    verify_reconcile_history_source_parser = subparsers.add_parser(
+        "verify-installed-history-waiver-source-reconcile",
+        help="Verify executed source-reconcile repairs against reviewed reconcile artifacts.",
+    )
+    verify_reconcile_history_source_parser.add_argument("history", help="Baseline history JSON file.")
+    verify_reconcile_history_source_parser.add_argument(
+        "--waiver",
+        action="append",
+        default=[],
+        help="Named waiver id or JSON file path to verify. Defaults to all known waivers.",
+    )
+    verify_reconcile_history_source_parser.add_argument(
+        "--output-dir",
+        help="Directory containing source-reconcile and execution artifacts.",
+    )
+    verify_reconcile_history_source_parser.add_argument("--target-root", help="Optional repo-root mirror used for write verification.")
+    verify_reconcile_history_source_parser.add_argument("--stage-dir", help="Optional staging directory used for staged verification.")
+    verify_reconcile_history_source_parser.add_argument("--execute-summary-path", help="Optional source-reconcile execution summary JSON path.")
+    verify_reconcile_history_source_parser.add_argument("--output-path", help="Optional JSON verification summary output path.")
+    verify_reconcile_history_source_parser.add_argument("--markdown-path", help="Optional Markdown verification summary output path.")
+    verify_reconcile_history_source_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+    verify_reconcile_history_source_parser.add_argument("--strict", action="store_true", help="Return a non-zero exit code when verification drift is detected.")
 
     report_history_parser = subparsers.add_parser("report-installed-baseline-history", help="Build a readable report for retained installed baseline history.")
     report_history_parser.add_argument("history", help="Baseline history JSON file.")
@@ -836,6 +860,28 @@ def main(argv: list[str] | None = None) -> int:
         if args.strict:
             forwarded_args.append("--strict")
         return execute_reconcile_installed_baseline_history_waiver_sources.main(forwarded_args)
+
+    if args.command == "verify-installed-history-waiver-source-reconcile":
+        forwarded_args = [args.history]
+        for waiver in args.waiver:
+            forwarded_args.extend(["--waiver", waiver])
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.target_root:
+            forwarded_args.extend(["--target-root", args.target_root])
+        if args.stage_dir:
+            forwarded_args.extend(["--stage-dir", args.stage_dir])
+        if args.execute_summary_path:
+            forwarded_args.extend(["--execute-summary-path", args.execute_summary_path])
+        if args.output_path:
+            forwarded_args.extend(["--output-path", args.output_path])
+        if args.markdown_path:
+            forwarded_args.extend(["--markdown-path", args.markdown_path])
+        if args.json:
+            forwarded_args.append("--json")
+        if args.strict:
+            forwarded_args.append("--strict")
+        return verify_installed_baseline_history_waiver_source_reconcile.main(forwarded_args)
 
     if args.command == "report-installed-baseline-history":
         forwarded_args = [args.history]

@@ -255,6 +255,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `audit-installed-history-waiver-sources` 会拿 reviewed apply / execute 工件反查当前治理源文件，明确区分 pending、applied 和 drifted
 - `reconcile-installed-history-waiver-sources` 会把 source-audit 里的 drift finding 收口成 restore target、restore delete 或 review artifact，方便后续恢复治理源文件
 - `execute-installed-history-waiver-source-reconcile` 会继续对 reviewed reconcile pack 做 source hash 校验，再把恢复动作 stage 到单独目录，或按 `--write` 写回治理镜像目录
+- `verify-installed-history-waiver-source-reconcile` 会在 source-reconcile execute 之后复核 staged 或 written 结果，确认治理源镜像仍然和 reviewed reconcile target 一致
 - `renew_or_remove` 适合 expired waiver
 - `rescope_or_remove` 适合 unmatched waiver
 - `retire_or_replace` 适合 stale waiver
@@ -281,6 +282,7 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 - `audit-installed-history-waiver-sources` 可以在 execute 之后继续核对治理源文件是否还和 reviewed target 一致，适合抓 post-execute drift
 - `reconcile-installed-history-waiver-sources` 可以在 drift 出现后直接生成恢复包，区分“恢复到 reviewed target”“恢复 delete 状态”或“继续人工 review”
 - `execute-installed-history-waiver-source-reconcile` 可以把 reviewed source-reconcile 恢复包真正 stage 或写回治理镜像，并继续阻止 post-review source mismatch
+- `verify-installed-history-waiver-source-reconcile` 可以在 source-reconcile execute 之后继续核验 staged 或 written 结果，适合把恢复后的治理镜像再做一次 gate
 - `alert-installed-baseline-history` 会按阈值或 policy 标记 retained transition 里的大变更，适合 review 前的快速筛查
 - `verify-installed-history` 可以直接拿某个 history entry 做 drift 检查，适合复盘和回看旧基线
 - `diff-installed-history` 可以直接比较两个历史 entry，适合回答“这两次 accepted baseline 之间到底变了什么”

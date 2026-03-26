@@ -1170,6 +1170,30 @@ def main(argv: list[str] | None = None) -> int:
     if "Installed Baseline History Waiver Source Reconcile Execution" not in healthy_source_reconcile_execute_markdown.read_text(encoding="utf-8"):
         print("ERROR: healthy waiver source reconcile execute Markdown output should contain the execution heading")
         return 1
+    history_waiver_source_reconcile_verify_output = require_success(
+        "verify installed baseline history waiver source reconcile",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_dir),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_verify_payload = json.loads(history_waiver_source_reconcile_verify_output)
+    if history_waiver_source_reconcile_verify_payload.get("passes") is not True or history_waiver_source_reconcile_verify_payload.get("action_count") != 0:
+        print("ERROR: healthy waiver source reconcile verify should report zero verification actions")
+        return 1
+    healthy_source_reconcile_verify_json = history_waiver_execute_dir / "source-reconcile-verify-summary.json"
+    healthy_source_reconcile_verify_markdown = history_waiver_execute_dir / "source-reconcile-verify-summary.md"
+    if not healthy_source_reconcile_verify_json.is_file() or not healthy_source_reconcile_verify_markdown.is_file():
+        print("ERROR: healthy waiver source reconcile verify should write summary artifacts")
+        return 1
+    if "Installed Baseline History Waiver Source Reconcile Verification" not in healthy_source_reconcile_verify_markdown.read_text(encoding="utf-8"):
+        print("ERROR: healthy waiver source reconcile verify Markdown output should contain the verification heading")
+        return 1
     waiver_temp_dir = output_root / "waivers"
     waiver_temp_dir.mkdir(parents=True, exist_ok=True)
     expired_history_waiver_path = waiver_temp_dir / "expired-release-downsize.json"
@@ -1706,6 +1730,8 @@ def main(argv: list[str] | None = None) -> int:
         print("ERROR: reconcile target artifact should restore the reviewed content instead of preserving the tampered field")
         return 1
     history_waiver_source_reconcile_stage_dir = history_waiver_execute_write_updates_dir / "source-reconcile-stage"
+    history_waiver_source_reconcile_stage_summary_json = history_waiver_execute_write_updates_dir / "source-reconcile-execute-stage-summary.json"
+    history_waiver_source_reconcile_stage_summary_md = history_waiver_execute_write_updates_dir / "source-reconcile-execute-stage-summary.md"
     history_waiver_source_reconcile_stage_output = require_success(
         "execute installed baseline history waiver source reconcile with staging",
         [
@@ -1724,6 +1750,10 @@ def main(argv: list[str] | None = None) -> int:
             repo_relative_path(history_waiver_source_reconcile_stage_dir),
             "--target-root",
             repo_relative_path(history_waiver_execute_write_updates_root),
+            "--output-path",
+            repo_relative_path(history_waiver_source_reconcile_stage_summary_json),
+            "--markdown-path",
+            repo_relative_path(history_waiver_source_reconcile_stage_summary_md),
             "--json",
             "--strict",
         ],
@@ -1747,6 +1777,39 @@ def main(argv: list[str] | None = None) -> int:
     if "Tampered after execute" in staged_reconcile_target.read_text(encoding="utf-8"):
         print("ERROR: staged source reconcile target should contain the reviewed restore content instead of the tampered field")
         return 1
+    history_waiver_source_reconcile_stage_verify_output = require_success(
+        "verify installed baseline history waiver source reconcile after staging",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--stage-dir",
+            repo_relative_path(history_waiver_source_reconcile_stage_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_stage_summary_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_stage_verify_payload = json.loads(history_waiver_source_reconcile_stage_verify_output)
+    if history_waiver_source_reconcile_stage_verify_payload.get("staged_target_match_count") != 1:
+        print("ERROR: staged source reconcile verify should confirm one staged restore-target action")
+        return 1
+    if history_waiver_source_reconcile_stage_verify_payload.get("pending_count") != 0 or history_waiver_source_reconcile_stage_verify_payload.get("blocked_count") != 0 or history_waiver_source_reconcile_stage_verify_payload.get("drift_count") != 0:
+        print("ERROR: staged source reconcile verify should not report pending, blocked, or drift findings")
+        return 1
+    history_waiver_source_reconcile_write_summary_json = history_waiver_execute_write_updates_dir / "source-reconcile-execute-write-summary.json"
+    history_waiver_source_reconcile_write_summary_md = history_waiver_execute_write_updates_dir / "source-reconcile-execute-write-summary.md"
     history_waiver_source_reconcile_write_output = require_success(
         "execute installed baseline history waiver source reconcile with write mode",
         [
@@ -1764,6 +1827,10 @@ def main(argv: list[str] | None = None) -> int:
             "--target-root",
             repo_relative_path(history_waiver_execute_write_updates_root),
             "--write",
+            "--output-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--markdown-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_md),
             "--json",
             "--strict",
         ],
@@ -1771,6 +1838,35 @@ def main(argv: list[str] | None = None) -> int:
     history_waiver_source_reconcile_write_payload = json.loads(history_waiver_source_reconcile_write_output)
     if history_waiver_source_reconcile_write_payload.get("written_update_count") != 1 or history_waiver_source_reconcile_write_payload.get("blocked_action_count") != 0:
         print("ERROR: tampered waiver source reconcile write should apply one restore-target action without safety failures")
+        return 1
+    history_waiver_source_reconcile_write_verify_output = require_success(
+        "verify installed baseline history waiver source reconcile after write execution",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    history_waiver_source_reconcile_write_verify_payload = json.loads(history_waiver_source_reconcile_write_verify_output)
+    if history_waiver_source_reconcile_write_verify_payload.get("written_target_match_count") != 1:
+        print("ERROR: written source reconcile verify should confirm one written restore-target action")
+        return 1
+    if history_waiver_source_reconcile_write_verify_payload.get("pending_count") != 0 or history_waiver_source_reconcile_write_verify_payload.get("blocked_count") != 0 or history_waiver_source_reconcile_write_verify_payload.get("drift_count") != 0:
+        print("ERROR: written source reconcile verify should not report pending, blocked, or drift findings")
         return 1
     post_restore_source_audit_output = require_success(
         "audit installed baseline history waiver sources after reconcile write",
@@ -1795,6 +1891,53 @@ def main(argv: list[str] | None = None) -> int:
     post_restore_source_audit_payload = json.loads(post_restore_source_audit_output)
     if post_restore_source_audit_payload.get("drift_count") != 0 or post_restore_source_audit_payload.get("target_match_count") != 2:
         print("ERROR: source audit should pass again after source reconcile write restores the tampered source file")
+        return 1
+    tampered_written_expired_path = history_waiver_execute_write_updates_root / expired_history_waiver_path.relative_to(ROOT)
+    tampered_written_expired_payload = load_json(tampered_written_expired_path)
+    tampered_written_expired_payload["description"] = "Tampered after execute to verify source drift detection."
+    tampered_written_expired_path.write_text(
+        json.dumps(tampered_written_expired_payload, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    history_waiver_source_reconcile_verify_tampered_result = run_python(
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--waiver",
+            "approved-release-engineering-downsize",
+            "--waiver",
+            repo_relative_path(expired_history_waiver_path),
+            "--waiver",
+            repo_relative_path(stale_history_waiver_path),
+            "--output-dir",
+            repo_relative_path(history_waiver_execute_write_updates_dir),
+            "--target-root",
+            repo_relative_path(history_waiver_execute_write_updates_root),
+            "--execute-summary-path",
+            repo_relative_path(history_waiver_source_reconcile_write_summary_json),
+            "--json",
+            "--strict",
+        ]
+    )
+    if history_waiver_source_reconcile_verify_tampered_result.returncode == 0:
+        print("ERROR: source reconcile verify should fail in strict mode after a written restore target drifts")
+        if history_waiver_source_reconcile_verify_tampered_result.stdout.strip():
+            print(history_waiver_source_reconcile_verify_tampered_result.stdout.strip())
+        if history_waiver_source_reconcile_verify_tampered_result.stderr.strip():
+            print(history_waiver_source_reconcile_verify_tampered_result.stderr.strip())
+        return 1
+    history_waiver_source_reconcile_verify_tampered_payload = json.loads(history_waiver_source_reconcile_verify_tampered_result.stdout)
+    if history_waiver_source_reconcile_verify_tampered_payload.get("drift_count") != 1:
+        print("ERROR: source reconcile verify should report exactly one drift after tampering the written restore target")
+        return 1
+    tampered_verify_states = {
+        result.get("state")
+        for result in history_waiver_source_reconcile_verify_tampered_payload.get("results", [])
+        if result.get("passes") is not True
+    }
+    if tampered_verify_states != {"drifted_after_write"}:
+        print("ERROR: tampered source reconcile verify should classify the written restore target as drifted_after_write")
         return 1
     history_alert_json = output_root / "snapshots" / "history-alerts.json"
     history_alert_markdown = output_root / "snapshots" / "history-alerts.md"
@@ -2383,6 +2526,8 @@ def main(argv: list[str] | None = None) -> int:
     if "/dev/null" not in recreated_delete_patch.read_text(encoding="utf-8"):
         print("ERROR: restore-delete patch should target /dev/null")
         return 1
+    recreated_delete_execute_summary_json = post_prune_history_waiver_execute_dir / "source-reconcile-execute-delete-summary.json"
+    recreated_delete_execute_summary_md = post_prune_history_waiver_execute_dir / "source-reconcile-execute-delete-summary.md"
     recreated_delete_execute_output = require_success(
         "execute installed baseline history waiver source reconcile for delete drift",
         [
@@ -2394,6 +2539,10 @@ def main(argv: list[str] | None = None) -> int:
             "--target-root",
             repo_relative_path(post_prune_execute_write_root),
             "--write",
+            "--output-path",
+            repo_relative_path(recreated_delete_execute_summary_json),
+            "--markdown-path",
+            repo_relative_path(recreated_delete_execute_summary_md),
             "--json",
             "--strict",
         ],
@@ -2401,6 +2550,26 @@ def main(argv: list[str] | None = None) -> int:
     recreated_delete_execute_payload = json.loads(recreated_delete_execute_output)
     if recreated_delete_execute_payload.get("written_delete_count") != 1 or recreated_delete_execute_payload.get("blocked_action_count") != 0:
         print("ERROR: recreated delete target should reconcile with one written delete action and no safety failures")
+        return 1
+    recreated_delete_verify_output = require_success(
+        "verify installed baseline history waiver source reconcile after delete write",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execute_dir),
+            "--target-root",
+            repo_relative_path(post_prune_execute_write_root),
+            "--execute-summary-path",
+            repo_relative_path(recreated_delete_execute_summary_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    recreated_delete_verify_payload = json.loads(recreated_delete_verify_output)
+    if recreated_delete_verify_payload.get("written_delete_match_count") != 1 or recreated_delete_verify_payload.get("drift_count") != 0:
+        print("ERROR: delete reconcile verify should confirm one written delete action without drift")
         return 1
     post_delete_restore_audit_output = require_success(
         "audit installed baseline history waiver sources after delete reconcile write",
@@ -2419,6 +2588,26 @@ def main(argv: list[str] | None = None) -> int:
     post_delete_restore_audit_payload = json.loads(post_delete_restore_audit_output)
     if post_delete_restore_audit_payload.get("drift_count") != 0 or post_delete_restore_audit_payload.get("deleted_match_count") != 1:
         print("ERROR: source audit should pass again after source reconcile write restores the reviewed delete state")
+        return 1
+    post_delete_restore_verify_output = require_success(
+        "verify installed baseline history waiver source reconcile after delete restore",
+        [
+            "scripts/skills_market.py",
+            "verify-installed-history-waiver-source-reconcile",
+            repo_relative_path(promotion_history_json),
+            "--output-dir",
+            repo_relative_path(post_prune_history_waiver_execute_dir),
+            "--target-root",
+            repo_relative_path(post_prune_execute_write_root),
+            "--execute-summary-path",
+            repo_relative_path(recreated_delete_execute_summary_json),
+            "--json",
+            "--strict",
+        ],
+    )
+    post_delete_restore_verify_payload = json.loads(post_delete_restore_verify_output)
+    if post_delete_restore_verify_payload.get("written_delete_match_count") != 1 or post_delete_restore_verify_payload.get("pending_count") != 0 or post_delete_restore_verify_payload.get("blocked_count") != 0 or post_delete_restore_verify_payload.get("drift_count") != 0:
+        print("ERROR: source reconcile verify should pass again after delete restore is re-applied")
         return 1
     require_success(
         "verify newest archived installed baseline history after prune",
