@@ -73,6 +73,15 @@ python scripts/skills_market.py provenance-check dist/market/install/release-not
 python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --dry-run
 ```
 
+如果你已经有 hosted registry URL，当前也可以直接按 `skill id + registry URL` 走远端拉取：
+
+```text
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --target-root dist/installed-remote-skills
+```
+
+这条链路会先把 install spec、package 和 provenance 下载到 `dist/remote-registry-cache/`，然后复用现有本地 installer 落地安装。
+
 真正安装后，当前本地 client 还支持继续做这几件事：
 
 ```text
@@ -92,6 +101,12 @@ python scripts/skills_market.py remove moyuan.release-note-writer --target-root 
 python scripts/skills_market.py list-bundles
 python scripts/skills_market.py list-bundles --org-policy governance/orgs/moyuan-internal.json
 python scripts/skills_market.py install-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles
+```
+
+如果 bundle 来自 hosted registry，也可以直接按 `bundle id + registry URL` 走远端拉取：
+
+```text
+python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
 ```
 
 当前 bundle 安装的语义是：

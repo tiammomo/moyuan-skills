@@ -29,6 +29,8 @@ import execute_installed_baseline_history_waiver_apply
 import execute_reconcile_installed_baseline_history_waiver_sources
 import install_skill_bundle
 import install_skill
+import install_remote_skill
+import install_remote_bundle
 import list_installed_baseline_history
 import list_installed_baseline_history_policies
 import list_installed_baseline_history_waivers
@@ -113,8 +115,11 @@ def build_parser() -> argparse.ArgumentParser:
     package_parser.add_argument("--all", action="store_true", help="Package every skill that has a market manifest.")
     package_parser.add_argument("--output-dir", help="Output directory for package and install artifacts.")
 
-    install_parser = subparsers.add_parser("install", help="Install a skill from an install spec.")
-    install_parser.add_argument("install_spec", help="Path to the install spec JSON file.")
+    install_parser = subparsers.add_parser("install", help="Install a skill from a local install spec or remote registry.")
+    install_parser.add_argument("install_spec", help="Local install spec path, or a remote skill id/name when --registry is provided.")
+    install_parser.add_argument("--registry", help="Hosted registry base URL or registry.json URL.")
+    install_parser.add_argument("--channel", default="stable", help="Remote channel to resolve when --registry is used.")
+    install_parser.add_argument("--cache-root", help="Cache directory for downloaded remote artifacts.")
     install_parser.add_argument("--target-root", help="Installation root directory.")
     install_parser.add_argument("--dry-run", action="store_true", help="Only print planned actions without extracting files.")
 
@@ -139,6 +144,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     install_bundle_parser = subparsers.add_parser("install-bundle", help="Install every installable skill from a starter bundle.")
     install_bundle_parser.add_argument("bundle", help="Bundle id or title.")
+    install_bundle_parser.add_argument("--registry", help="Hosted registry base URL or registry.json URL.")
+    install_bundle_parser.add_argument("--cache-root", help="Cache directory for downloaded remote artifacts.")
     install_bundle_parser.add_argument("--market-dir", help="Generated market artifact directory.")
     install_bundle_parser.add_argument("--org-policy", help="Optional org market policy file.")
     install_bundle_parser.add_argument("--target-root", help="Installation root directory.")
@@ -920,6 +927,17 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "install":
         forwarded_args = [args.install_spec]
+        if args.registry:
+            forwarded_args.extend(["--registry", args.registry])
+            if args.channel:
+                forwarded_args.extend(["--channel", args.channel])
+            if args.cache_root:
+                forwarded_args.extend(["--cache-root", args.cache_root])
+            if args.target_root:
+                forwarded_args.extend(["--target-root", args.target_root])
+            if args.dry_run:
+                forwarded_args.append("--dry-run")
+            return install_remote_skill.main(forwarded_args)
         if args.target_root:
             forwarded_args.extend(["--target-root", args.target_root])
         if args.dry_run:
@@ -962,6 +980,15 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "install-bundle":
         forwarded_args = [args.bundle]
+        if args.registry:
+            forwarded_args.extend(["--registry", args.registry])
+            if args.cache_root:
+                forwarded_args.extend(["--cache-root", args.cache_root])
+            if args.target_root:
+                forwarded_args.extend(["--target-root", args.target_root])
+            if args.dry_run:
+                forwarded_args.append("--dry-run")
+            return install_remote_bundle.main(forwarded_args)
         if args.market_dir:
             forwarded_args.extend(["--market-dir", args.market_dir])
         if args.org_policy:

@@ -106,9 +106,10 @@
 - 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - Playwright 已覆盖首页、skills、bundles、docs 与详情页联调
 - backend 现在已经补了本地 lifecycle 接口：`POST /api/v1/local/skills/install`、`POST /api/v1/local/skills/update`、`POST /api/v1/local/skills/remove`、`POST /api/v1/local/bundles/install`、`POST /api/v1/local/bundles/update`、`POST /api/v1/local/bundles/remove`、`GET /api/v1/local/jobs/{job_id}` 和 `GET /api/v1/local/state`
+- backend 现在也已经补了第一版远端 registry install 接口：`POST /api/v1/registry/skills/install` 和 `POST /api/v1/registry/bundles/install`
 - skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端已经能对 skill install 和 bundle install 走真实 backend 本地执行，backend 也已经补齐 local lifecycle API；但前端还没把 update/remove/state 接上，远端拉取下载也还没补完。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端已经能对 skill install 和 bundle install 走真实 backend 本地执行；backend 则已经补齐 local lifecycle API 和 remote registry install API。还没补完的是前端对 update/remove/state 的消费，以及前端里的远端 registry install UI。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 
@@ -120,6 +121,17 @@
 - registry / federation：[docs/market-registry.md](./docs/market-registry.md)
 - 前后端集成：[docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - 交互与远端安装规划：[docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+
+## 远端安装示例
+
+第一版远端 registry install 现在已经可以直接用 `skill id + registry URL` 或 `bundle id + registry URL` 运行：
+
+```text
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
+python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
+```
+
+这条链路会先把 install spec、package、provenance 下载到 `dist/remote-registry-cache/` 再落地安装，本地 install spec 模式仍然保持不变。
 
 ## 仓库结构
 

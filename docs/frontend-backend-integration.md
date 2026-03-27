@@ -30,6 +30,8 @@ Core endpoints:
 - `GET /api/v1/market/bundles/{bundle_id}`
 - `POST /api/v1/local/skills/install`
 - `POST /api/v1/local/bundles/install`
+- `POST /api/v1/registry/skills/install`
+- `POST /api/v1/registry/bundles/install`
 - `GET /api/v1/local/jobs/{job_id}`
 - `GET /api/v1/docs/catalog`
 - `GET /api/v1/docs/teaching/{doc_id}`
@@ -38,7 +40,7 @@ Core endpoints:
 The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
 That same shared payload now also supports detail-page related navigation, context panels, and copy-friendly ordered action panels with prerequisite, expected-outcome, and artifact/output cues without requiring separate recommendations or metadata endpoints.
 Skill detail and bundle detail pages now distinguish copy-first CLI fallbacks from true backend execution flows, so the current UI stays honest while still exposing one-click local install for the flows that are already wired.
-The backend now exposes the first mutation/job layer for local skill and bundle installs, and the frontend now proxies those operations through local Next.js API routes so users can launch installs and watch job progress without leaving the page.
+The backend now exposes both the local mutation/job layer and the first remote registry install job layer; the frontend currently proxies the local install flows, while the new remote install endpoints are ready for a later UI pass.
 
 The repository layer reads these real assets directly:
 
@@ -143,6 +145,7 @@ Then it validates:
 - skill detail pages can now run local install jobs through the backend and poll job progress in-page
 - bundle detail pages can now run local bundle install jobs through the backend and poll job progress in-page
 - backend now also exposes local update/remove/state APIs for future installed-state product surfaces
+- backend now also exposes remote registry install APIs for future remote execution surfaces
 
 Run:
 
@@ -198,6 +201,7 @@ What is already complete:
 - command-copy, runbook, prerequisite, expected-outcome, and artifact hints
 - honest local-command wording for skill install and bundle-level local actions
 - backend local lifecycle APIs for skill/bundle install, update, remove, state, and job polling
+- backend remote registry install APIs for skill/bundle downloads over HTTP
 - end-to-end verification with Playwright
 
 What is still partial:
@@ -205,6 +209,6 @@ What is still partial:
 - frontend now supports backend execution for local skill install and local bundle install, but update/remove/state actions still remain copy-first
 - docs action panels are guidance-oriented and do not execute commands
 - backend lifecycle APIs are ahead of the current frontend, so installed-state UI still needs another iteration
-- the current installer still expects a local install spec JSON file and does not fetch remote market artifacts over HTTP
+- frontend still does not expose a remote registry install UI even though the backend can now run those jobs
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

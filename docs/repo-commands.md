@@ -140,6 +140,8 @@ python scripts/skills_market.py package --all
 python scripts/skills_market.py provenance-check dist/market/install/release-note-writer-0.1.0.json
 python scripts/skills_market.py registry
 python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --dry-run
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
+python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
 python scripts/skills_market.py smoke
 ```
 
@@ -218,6 +220,7 @@ python scripts/skills_market.py install dist/market/install/release-note-writer-
 python scripts/skills_market.py list-installed --target-root dist/installed-skills
 python scripts/skills_market.py update moyuan.release-note-writer --index dist/market/channels/stable.json --target-root dist/installed-skills --dry-run
 python scripts/skills_market.py remove moyuan.release-note-writer --target-root dist/installed-skills
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --target-root dist/installed-remote-skills
 ```
 
 如果你只想让 smoke 一次性把这条链路也覆盖进去，直接跑：
@@ -235,6 +238,7 @@ python scripts/skills_market.py list-bundles
 python scripts/skills_market.py list-bundles --org-policy governance/orgs/moyuan-internal.json
 python scripts/skills_market.py install-bundle release-engineering-starter --market-dir dist/market --target-root dist/installed-bundles
 python scripts/skills_market.py install-bundle skill-authoring-starter --market-dir dist/market --target-root dist/installed-bundles --dry-run
+python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
 ```
 
 它们分别在验证：

@@ -48,6 +48,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     install_spec = load_json(install_spec_path)
+    remote_source = install_spec.get("remote_source")
+    if not isinstance(remote_source, dict):
+        remote_source = {}
     try:
         spec_label = install_spec_path.relative_to(ROOT).as_posix()
     except ValueError:
@@ -88,8 +91,19 @@ def main(argv: list[str] | None = None) -> int:
         provenance_label = provenance_path.relative_to(ROOT).as_posix()
     except ValueError:
         provenance_label = provenance_path.as_posix()
-    provenance_errors = validate_provenance_payload(provenance_payload, provenance_label)
-    provenance_errors.extend(verify_provenance_against_install_spec(provenance_payload, install_spec, provenance_label))
+    provenance_errors = validate_provenance_payload(
+        provenance_payload,
+        provenance_label,
+        require_local_paths=not bool(remote_source),
+    )
+    provenance_errors.extend(
+        verify_provenance_against_install_spec(
+            provenance_payload,
+            install_spec,
+            provenance_label,
+            expected_package_path=str(remote_source.get("upstream_package_path", "")) or None,
+        )
+    )
     if provenance_errors:
         for error in provenance_errors:
             print(f"ERROR: {error}")

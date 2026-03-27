@@ -4,11 +4,15 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import http.server
 import json
 import os
+import socket
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 from market_utils import ROOT, load_json, repo_relative_path
@@ -55,13 +59,41 @@ def require_success(step: str, command: list[str]) -> str:
     return result.stdout.strip()
 
 
+@contextlib.contextmanager
+def serve_directory(directory: Path):
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(directory), **kwargs)
+
+        def log_message(self, format: str, *args) -> None:  # noqa: A003 - stdlib signature
+            return
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        host, port = probe.getsockname()
+
+    server = http.server.ThreadingHTTPServer((host, port), QuietHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://{host}:{port}"
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     output_root = (args.output_root if args.output_root.is_absolute() else (ROOT / args.output_root)).resolve()
     market_root = output_root / "market"
+    registry_root = output_root / "registry"
     install_root = output_root / "installed"
+    remote_install_root = output_root / "remote-installed"
+    remote_bundle_install_root = output_root / "remote-bundle-installed"
+    remote_cache_root = output_root / "remote-cache"
     bundle_install_root = output_root / "bundle-installed"
     doctor_bad_root = output_root / "doctor-bad"
     fixture_root = ROOT / "dist" / "_smoke-fixtures"
@@ -131,8 +163,114 @@ def main(argv: list[str] | None = None) -> int:
     )
     require_success(
         "build hosted registry",
-        ["scripts/build_market_registry.py", "--output-dir", repo_relative_path(output_root / "registry")],
+        ["scripts/build_market_registry.py", "--output-dir", repo_relative_path(registry_root)],
     )
+
+    with serve_directory(registry_root) as registry_url:
+        require_success(
+            "dry-run remote install release-note-writer",
+            [
+                "scripts/skills_market.py",
+                "install",
+                "moyuan.release-note-writer",
+                "--registry",
+                registry_url,
+                "--target-root",
+                repo_relative_path(remote_install_root),
+                "--cache-root",
+                repo_relative_path(remote_cache_root),
+                "--dry-run",
+            ],
+        )
+        remote_install_output = require_success(
+            "install remote release-note-writer",
+            [
+                "scripts/skills_market.py",
+                "install",
+                "moyuan.release-note-writer",
+                "--registry",
+                registry_url,
+                "--target-root",
+                repo_relative_path(remote_install_root),
+                "--cache-root",
+                repo_relative_path(remote_cache_root),
+            ],
+        )
+        if "Resolved remote skill moyuan.release-note-writer" not in remote_install_output:
+            print("ERROR: remote install should report the resolved remote skill")
+            return 1
+        remote_entrypoint = remote_install_root / "release-note-writer" / "SKILL.md"
+        if not remote_entrypoint.is_file():
+            print(f"ERROR: expected remote-installed skill entrypoint {remote_entrypoint} to exist")
+            return 1
+        remote_lock_payload = load_json(remote_install_root / "skills.lock.json")
+        remote_entry = next(
+            (entry for entry in remote_lock_payload.get("installed", []) if entry.get("skill_id") == "moyuan.release-note-writer"),
+            None,
+        )
+        remote_sources = remote_entry.get("sources", []) if isinstance(remote_entry, dict) else []
+        remote_source_pairs = {
+            (item.get("kind"), item.get("id"))
+            for item in remote_sources
+            if isinstance(item, dict)
+        }
+        if ("registry", f"{registry_url}#stable") not in remote_source_pairs:
+            print("ERROR: remote skill install should record a registry ownership source")
+            return 1
+
+        remote_bundle_dry_run = require_success(
+            "dry-run remote install release-engineering bundle",
+            [
+                "scripts/skills_market.py",
+                "install-bundle",
+                "release-engineering-starter",
+                "--registry",
+                registry_url,
+                "--target-root",
+                repo_relative_path(remote_bundle_install_root),
+                "--cache-root",
+                repo_relative_path(remote_cache_root),
+                "--dry-run",
+            ],
+        )
+        if "planned=3" not in remote_bundle_dry_run and "Processing remote bundle" not in remote_bundle_dry_run:
+            print("ERROR: remote bundle dry-run should describe the bundle resolution and planned members")
+            return 1
+        require_success(
+            "install remote release-engineering bundle",
+            [
+                "scripts/skills_market.py",
+                "install-bundle",
+                "release-engineering-starter",
+                "--registry",
+                registry_url,
+                "--target-root",
+                repo_relative_path(remote_bundle_install_root),
+                "--cache-root",
+                repo_relative_path(remote_cache_root),
+            ],
+        )
+        remote_bundle_report_path = remote_bundle_install_root / "bundle-reports" / "release-engineering-starter.json"
+        if not remote_bundle_report_path.is_file():
+            print("ERROR: remote bundle install should produce a bundle report")
+            return 1
+        remote_bundle_report = load_json(remote_bundle_report_path)
+        remote_bundle_ids = {
+            entry.get("skill_id")
+            for entry in remote_bundle_report.get("results", [])
+            if entry.get("status") == "installed"
+        }
+        if remote_bundle_ids != {
+            "moyuan.release-note-writer",
+            "moyuan.issue-triage-report",
+            "moyuan.api-change-risk-review",
+        }:
+            print("ERROR: remote bundle install should include the three expected starter skills")
+            return 1
+        remote_stage_spec = next(remote_cache_root.rglob("staged/install/release-note-writer-0.1.0.json"), None)
+        if remote_stage_spec is None or not remote_stage_spec.is_file():
+            print("ERROR: remote install should stage a local install spec cache artifact")
+            return 1
 
     stable_index = market_root / "channels" / "stable.json"
     search_output = require_success(

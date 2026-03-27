@@ -3,8 +3,13 @@
 
 from __future__ import annotations
 
+import contextlib
+import http.server
 import shutil
+import socket
+import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -16,6 +21,46 @@ from fastapi.testclient import TestClient
 
 from backend.app.main import app
 from backend.app.repository import MarketRepository
+
+
+def run_python(command: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, *command],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"command failed: {' '.join(command)}\n"
+            f"{result.stdout.strip()}\n{result.stderr.strip()}".strip()
+        )
+
+
+@contextlib.contextmanager
+def serve_directory(directory: Path):
+    class QuietHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(directory), **kwargs)
+
+        def log_message(self, format: str, *args) -> None:  # noqa: A003 - stdlib signature
+            return
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        host, port = probe.getsockname()
+
+    server = http.server.ThreadingHTTPServer((host, port), QuietHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://{host}:{port}"
+    finally:
+        server.shutdown()
+        thread.join(timeout=5)
+        server.server_close()
 
 
 def wait_for_job(client: TestClient, job_id: str, timeout_seconds: float = 20.0) -> dict:
@@ -95,6 +140,9 @@ def main() -> int:
     local_target_root = ROOT / "dist" / "backend-api-check"
     if local_target_root.exists():
         shutil.rmtree(local_target_root)
+    local_registry_root = ROOT / "dist" / "backend-api-check-registry"
+    if local_registry_root.exists():
+        shutil.rmtree(local_registry_root)
 
     skill_response = client.post(
         "/api/v1/local/skills/install",
@@ -260,14 +308,71 @@ def main() -> int:
         print("ERROR: backend local state should show zero installed bundles after removal")
         return 1
 
+    run_python(["scripts/build_market_registry.py", "--output-dir", "dist/backend-api-check-registry"])
+    with serve_directory(local_registry_root) as registry_url:
+        remote_skill_response = client.post(
+            "/api/v1/registry/skills/install",
+            json={
+                "skill": "moyuan.release-note-writer",
+                "registry_url": registry_url,
+                "target_root": str(local_target_root / "remote-skills"),
+                "cache_root": str(local_target_root / "remote-cache"),
+                "dry_run": False,
+            },
+        )
+        if remote_skill_response.status_code != 202:
+            print(
+                "ERROR: backend remote skill install should return 202, "
+                f"got {remote_skill_response.status_code}"
+            )
+            return 1
+        remote_skill_job = wait_for_job(client, remote_skill_response.json()["job_id"])
+        if remote_skill_job.get("status") != "succeeded":
+            print("ERROR: backend remote skill install job should succeed")
+            print(remote_skill_job.get("stdout", ""))
+            print(remote_skill_job.get("stderr", ""))
+            return 1
+        remote_entrypoint = local_target_root / "remote-skills" / "release-note-writer" / "SKILL.md"
+        if not remote_entrypoint.is_file():
+            print(f"ERROR: expected remote-installed skill entrypoint is missing: {remote_entrypoint}")
+            return 1
+
+        remote_bundle_response = client.post(
+            "/api/v1/registry/bundles/install",
+            json={
+                "bundle_id": "release-engineering-starter",
+                "registry_url": registry_url,
+                "target_root": str(local_target_root / "remote-bundles"),
+                "cache_root": str(local_target_root / "remote-cache"),
+                "dry_run": False,
+            },
+        )
+        if remote_bundle_response.status_code != 202:
+            print(
+                "ERROR: backend remote bundle install should return 202, "
+                f"got {remote_bundle_response.status_code}"
+            )
+            return 1
+        remote_bundle_job = wait_for_job(client, remote_bundle_response.json()["job_id"])
+        if remote_bundle_job.get("status") != "succeeded":
+            print("ERROR: backend remote bundle install job should succeed")
+            print(remote_bundle_job.get("stdout", ""))
+            print(remote_bundle_job.get("stderr", ""))
+            return 1
+        remote_bundle_report = local_target_root / "remote-bundles" / "bundle-reports" / "release-engineering-starter.json"
+        if not remote_bundle_report.is_file():
+            print(f"ERROR: expected remote-installed bundle report is missing: {remote_bundle_report}")
+            return 1
+
     shutil.rmtree(local_target_root, ignore_errors=True)
+    shutil.rmtree(local_registry_root, ignore_errors=True)
 
     print(
         "Python market backend check passed for "
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local install, update, remove, and state jobs."
+        "plus local and remote install lifecycle jobs."
     )
     return 0
 

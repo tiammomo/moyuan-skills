@@ -25,7 +25,7 @@ The current frontend already has a clear information architecture:
 This backend keeps those shapes stable while moving file access out of the frontend.
 
 The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and copy-friendly action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs. The frontend now turns those commands into lightweight ordered runbooks with prerequisite, expected-outcome, and artifact/output cues directly in the doc detail UI.
-The backend now exposes the first complete local lifecycle API layer for skills and bundles, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing installer or lifecycle logic.
+The backend now exposes a complete local lifecycle API layer plus the first remote registry install API layer for skills and bundles, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing installer or lifecycle logic.
 
 ## Run
 
@@ -67,6 +67,8 @@ POST /api/v1/local/skills/remove
 POST /api/v1/local/bundles/install
 POST /api/v1/local/bundles/update
 POST /api/v1/local/bundles/remove
+POST /api/v1/registry/skills/install
+POST /api/v1/registry/bundles/install
 GET /api/v1/local/jobs/{job_id}
 GET /api/v1/local/state
 GET /api/v1/docs/catalog
@@ -82,6 +84,12 @@ Local lifecycle notes:
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
 - the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
 - update/remove/state APIs are now available for future frontend lifecycle surfaces
+
+Remote registry notes:
+
+- the backend can now resolve `skill id + registry URL` and `bundle id + registry URL`
+- remote artifacts are downloaded into a deterministic cache root before install
+- remote install still reuses the same local installer semantics after staging, including checksum and lifecycle checks
 
 ## Suggested frontend mapping
 
@@ -132,9 +140,10 @@ What is now available:
 
 - repo-backed read APIs for market, bundle, and docs flows
 - local lifecycle APIs for skill and bundle install, update, remove, state, and job polling
-- backend smoke coverage for repository reads plus install, update, remove, and state jobs
+- remote registry install APIs for skill and bundle downloads over HTTP
+- backend smoke coverage for repository reads plus local and remote lifecycle jobs
 
 What is still next:
 
 - frontend lifecycle surfaces for update/remove/state
-- remote registry download and install support
+- frontend surfaces for remote registry install execution

@@ -105,6 +105,35 @@ class LocalBundleRemoveRequest(BaseModel):
     dry_run: bool = Field(default=False, description="Show the removal plan without deleting files.")
 
 
+class RemoteSkillInstallRequest(BaseModel):
+    skill: str = Field(..., min_length=1, description="Remote skill id or skill name.")
+    registry_url: str = Field(..., min_length=8, description="Hosted registry base URL or registry.json URL.")
+    channel: str = Field(default="stable", description="Remote channel used to resolve the skill install spec.")
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Target directory for the remote install lifecycle.",
+    )
+    cache_root: str | None = Field(
+        default="dist/backend-remote-cache",
+        description="Cache directory for downloaded remote registry artifacts.",
+    )
+    dry_run: bool = Field(default=False, description="Resolve the remote install without extracting files.")
+
+
+class RemoteBundleInstallRequest(BaseModel):
+    bundle_id: str = Field(..., min_length=1, description="Remote bundle id or title.")
+    registry_url: str = Field(..., min_length=8, description="Hosted registry base URL or registry.json URL.")
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Target directory for the remote bundle lifecycle.",
+    )
+    cache_root: str | None = Field(
+        default="dist/backend-remote-cache",
+        description="Cache directory for downloaded remote registry artifacts.",
+    )
+    dry_run: bool = Field(default=False, description="Resolve the remote bundle install without extracting files.")
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -261,6 +290,44 @@ def local_skill_install(request: LocalSkillInstallRequest) -> dict:
     return job
 
 
+@app.post("/api/v1/registry/skills/install", status_code=202)
+def registry_skill_install(request: RemoteSkillInstallRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    cache_root = resolve_local_target_path(settings.repo_root, request.cache_root, "dist/backend-remote-cache")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "install_remote_skill.py"),
+        request.skill,
+        "--registry",
+        request.registry_url,
+        "--channel",
+        request.channel,
+        "--target-root",
+        str(target_root),
+        "--cache-root",
+        str(cache_root),
+    ]
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="registry-skill-install",
+        command=command,
+        summary={
+            "skill": request.skill,
+            "registry_url": request.registry_url,
+            "channel": request.channel,
+            "mode": "dry-run" if request.dry_run else "install",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "cache_root": str(cache_root),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
 @app.post("/api/v1/local/skills/update", status_code=202)
 def local_skill_update(request: LocalSkillUpdateRequest) -> dict:
     target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
@@ -355,6 +422,42 @@ def local_bundle_install(request: LocalBundleInstallRequest) -> dict:
         artifacts={
             "target_root": str(target_root),
             "market_dir": str(market_dir),
+            "bundle_report": str(target_root / "bundle-reports" / f"{request.bundle_id}.json"),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/registry/bundles/install", status_code=202)
+def registry_bundle_install(request: RemoteBundleInstallRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    cache_root = resolve_local_target_path(settings.repo_root, request.cache_root, "dist/backend-remote-cache")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "install_remote_bundle.py"),
+        request.bundle_id,
+        "--registry",
+        request.registry_url,
+        "--target-root",
+        str(target_root),
+        "--cache-root",
+        str(cache_root),
+    ]
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="registry-bundle-install",
+        command=command,
+        summary={
+            "bundle_id": request.bundle_id,
+            "registry_url": request.registry_url,
+            "mode": "dry-run" if request.dry_run else "install",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "cache_root": str(cache_root),
             "bundle_report": str(target_root / "bundle-reports" / f"{request.bundle_id}.json"),
         },
         request_payload=request.model_dump(),

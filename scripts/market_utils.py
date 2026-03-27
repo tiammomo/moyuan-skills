@@ -385,7 +385,7 @@ def validate_install_spec_payload(payload: dict, label: str) -> list[str]:
     return errors
 
 
-def validate_provenance_payload(payload: dict, label: str) -> list[str]:
+def validate_provenance_payload(payload: dict, label: str, *, require_local_paths: bool = True) -> list[str]:
     errors: list[str] = []
 
     required_string(payload, "attestation_format", errors, label, min_length=5)
@@ -421,7 +421,7 @@ def validate_provenance_payload(payload: dict, label: str) -> list[str]:
             errors.append(f"{label}:package: 'checksum_sha256' must be a lowercase 64-character SHA256 digest")
         if not isinstance(size_bytes, int) or size_bytes <= 0:
             errors.append(f"{label}:package: 'size_bytes' must be a positive integer")
-        if package_path and not (ROOT / package_path).is_file():
+        if require_local_paths and package_path and not (ROOT / package_path).is_file():
             errors.append(f"{label}:package: missing package artifact '{package_path}'")
 
     quality = payload.get("quality")
@@ -461,7 +461,7 @@ def validate_provenance_payload(payload: dict, label: str) -> list[str]:
             file_checksum = required_string(item, "sha256", errors, f"{label}:files[{index}]", min_length=64)
             if file_checksum and not SHA256_RE.match(file_checksum):
                 errors.append(f"{label}:files[{index}]: 'sha256' must be a lowercase 64-character SHA256 digest")
-            if file_path and not (ROOT / file_path).is_file():
+            if require_local_paths and file_path and not (ROOT / file_path).is_file():
                 errors.append(f"{label}:files[{index}]: missing source file '{file_path}'")
 
     return errors
@@ -911,11 +911,18 @@ def build_provenance_payload(manifest: dict, package_path: Path, package_checksu
     }
 
 
-def verify_provenance_against_install_spec(provenance: dict, install_spec: dict, label: str) -> list[str]:
+def verify_provenance_against_install_spec(
+    provenance: dict,
+    install_spec: dict,
+    label: str,
+    *,
+    expected_package_path: str | None = None,
+) -> list[str]:
     errors: list[str] = []
     package = provenance.get("package", {})
     lifecycle = provenance.get("lifecycle", {})
     quality = provenance.get("quality", {})
+    package_path = expected_package_path or str(install_spec.get("package_path", ""))
 
     if provenance.get("skill_id") != install_spec.get("skill_id"):
         errors.append(f"{label}: provenance skill_id does not match install spec")
@@ -927,7 +934,7 @@ def verify_provenance_against_install_spec(provenance: dict, install_spec: dict,
         errors.append(f"{label}: provenance version does not match install spec")
     if provenance.get("channel") != install_spec.get("channel"):
         errors.append(f"{label}: provenance channel does not match install spec")
-    if package.get("path") != install_spec.get("package_path"):
+    if package.get("path") != package_path:
         errors.append(f"{label}: provenance package path does not match install spec")
     if package.get("checksum_sha256") != install_spec.get("checksum_sha256"):
         errors.append(f"{label}: provenance package checksum does not match install spec")

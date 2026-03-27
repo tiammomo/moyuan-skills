@@ -361,6 +361,31 @@ python scripts/skills_market.py prune-installed-baseline-history dist/installed-
 
 这样“可安装”就进一步推进到了“可巡检、可维护”。
 
+## Remote Registry Install
+
+The hosted registry output is now consumable as a real remote install source, not only a static metadata export.
+
+Current remote-install entrypoints:
+
+```text
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
+python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
+```
+
+What happens in the first pass:
+
+- the installer resolves the remote skill or bundle from the hosted registry over HTTP
+- install specs, package artifacts, and provenance payloads are downloaded into `dist/remote-registry-cache/`
+- the local installer then reuses the staged artifacts, so checksum and lifecycle checks still run before extraction
+- backend also exposes matching job APIs:
+  - `POST /api/v1/registry/skills/install`
+  - `POST /api/v1/registry/bundles/install`
+
+What is still intentionally deferred:
+
+- trust/approval prompts beyond the current checksum and lifecycle boundaries
+- a frontend UI for entering registry URLs and launching remote install jobs
+
 ## 相关文件
 
 - [market-spec.md](./market-spec.md)
