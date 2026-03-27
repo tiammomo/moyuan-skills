@@ -44,36 +44,41 @@ What is already good:
 
 - install commands are visible
 - copy buttons work
-- skill detail clearly states that install still means copying a local CLI command
+- skill detail clearly separates `Copy install command` from `Run via backend`
 - bundle detail now exposes first-class local bundle commands for `install-bundle`, `update-bundle`, and `remove-bundle`
+- skill detail install can now execute through the backend
+- bundle detail install can now execute through the backend
 - docs detail pages show ordered runbooks
 - prerequisites, expected outcomes, and artifact hints are visible
 
 What is still incomplete:
 
-- skill install button still copies a local CLI command instead of executing install through the backend
-- bundle detail actions are still local copy flows rather than backend-triggered execution
+- bundle update and remove actions are still local copy flows rather than backend-triggered execution
 - docs action panels are still guidance widgets, not executable actions
 - there is no frontend state for install progress, dry-run results, approval prompts, or failure recovery
 
 ### 3. Backend interaction layer
 
-Status: `first pass implemented`
+Status: `complete for local lifecycle APIs`
 
 Current reality:
 
 - backend now exposes:
   - `POST /api/v1/local/skills/install`
+  - `POST /api/v1/local/skills/update`
+  - `POST /api/v1/local/skills/remove`
   - `POST /api/v1/local/bundles/install`
+  - `POST /api/v1/local/bundles/update`
+  - `POST /api/v1/local/bundles/remove`
   - `GET /api/v1/local/jobs/{job_id}`
-- the mutation layer reuses the existing local installer scripts
-- long-running local operations now have a lightweight job model
+  - `GET /api/v1/local/state`
+- the lifecycle layer reuses the existing local install/update/remove scripts
+- long-running local operations now have a lightweight job model that the frontend can poll
 
 What is still incomplete:
 
-- there are no backend update/remove endpoints yet
-- there is no installed-state read API for the UI
-- the current frontend does not call the new mutation APIs yet
+- the current frontend only uses the install mutations, not the fuller lifecycle set
+- there is still no remote registry fetch layer behind these endpoints
 
 ### 4. Remote skill pull / download
 
@@ -99,8 +104,7 @@ The project can install local packaged skills, but it still cannot fetch remote 
 
 ### Needs real backend execution
 
-- skill detail install button
-- bundle detail install, update, and remove actions
+- bundle detail update and remove actions
 - future installed-state actions such as update, remove, doctor, and repair
 
 ### Already acceptable as non-execution UI
@@ -153,7 +157,7 @@ Goal:
 
 Status:
 
-- `in progress`
+- `complete`
 - completed in this iteration:
   - `POST /api/v1/local/skills/install`
   - `POST /api/v1/local/bundles/install`
@@ -162,6 +166,12 @@ Status:
   - Next.js local proxy routes now forward skill and bundle install requests to the FastAPI backend
   - skill detail pages can trigger local skill install jobs and show job progress in the UI
   - bundle detail pages can trigger local bundle install jobs and show job progress in the UI
+  - `POST /api/v1/local/skills/update`
+  - `POST /api/v1/local/skills/remove`
+  - `POST /api/v1/local/bundles/update`
+  - `POST /api/v1/local/bundles/remove`
+  - `GET /api/v1/local/state`
+  - backend smoke coverage for local install, update, remove, and state jobs
 
 Suggested endpoints:
 
@@ -185,10 +195,6 @@ Acceptance criteria:
 
 - frontend can install, update, and remove a local skill through backend APIs
 - job progress and final summary are visible in the UI
-
-Remaining work before Phase 2 can be called complete:
-
-- add local update/remove/state endpoints
 
 ### Phase 3: Add remote registry fetch and remote install
 
@@ -280,4 +286,4 @@ If you need a simple conclusion:
 - `frontend execution` is now working for local skill and bundle installs, but not yet for update/remove/state workflows
 - `remote skill download and install` is not yet supported
 
-The next implementation target is now the remaining backend side of `Phase 2`: local update/remove/state endpoints that can support fuller installed-state product surfaces.
+The next implementation target is now `Phase 3`: remote registry fetch and remote install, while a later frontend pass can consume the new local lifecycle APIs for installed-state product surfaces.

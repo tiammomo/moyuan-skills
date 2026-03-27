@@ -25,7 +25,7 @@ The current frontend already has a clear information architecture:
 This backend keeps those shapes stable while moving file access out of the frontend.
 
 The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and copy-friendly action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs. The frontend now turns those commands into lightweight ordered runbooks with prerequisite, expected-outcome, and artifact/output cues directly in the doc detail UI.
-The backend now also exposes the first local mutation APIs for skill and bundle installation jobs, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing the installer logic.
+The backend now exposes the first complete local lifecycle API layer for skills and bundles, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing installer or lifecycle logic.
 
 ## Run
 
@@ -62,8 +62,13 @@ GET /api/v1/market/tags
 GET /api/v1/market/bundles
 GET /api/v1/market/bundles/{bundle_id}
 POST /api/v1/local/skills/install
+POST /api/v1/local/skills/update
+POST /api/v1/local/skills/remove
 POST /api/v1/local/bundles/install
+POST /api/v1/local/bundles/update
+POST /api/v1/local/bundles/remove
 GET /api/v1/local/jobs/{job_id}
+GET /api/v1/local/state
 GET /api/v1/docs/catalog
 GET /api/v1/docs/teaching/{doc_id}
 GET /api/v1/docs/project/{doc_id}
@@ -71,12 +76,12 @@ GET /api/v1/docs/project/{doc_id}
 `GET /api/v1/docs/catalog` now returns per-family doc arrays plus a flattened `all_docs` list for frontend filtering.
 ```
 
-Local mutation notes:
+Local lifecycle notes:
 
-- the first pass intentionally covers local install jobs only
-- the backend reuses `scripts/install_skill.py` and `scripts/install_skill_bundle.py`
+- the backend reuses the existing lifecycle scripts under `scripts/`
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
 - the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
+- update/remove/state APIs are now available for future frontend lifecycle surfaces
 
 ## Suggested frontend mapping
 
@@ -126,11 +131,10 @@ npm run capture:readme-screenshots --prefix frontend
 What is now available:
 
 - repo-backed read APIs for market, bundle, and docs flows
-- local mutation APIs for skill install, bundle install, and job polling
-- backend smoke coverage for both repository reads and local install jobs
+- local lifecycle APIs for skill and bundle install, update, remove, state, and job polling
+- backend smoke coverage for repository reads plus install, update, remove, and state jobs
 
 What is still next:
 
-- local update and remove mutation APIs
-- installed-state read APIs and follow-up lifecycle actions
+- frontend lifecycle surfaces for update/remove/state
 - remote registry download and install support

@@ -142,6 +142,7 @@ Then it validates:
 - bundle detail pages expose bundle-level local `install-bundle`, `update-bundle`, and `remove-bundle` commands
 - skill detail pages can now run local install jobs through the backend and poll job progress in-page
 - bundle detail pages can now run local bundle install jobs through the backend and poll job progress in-page
+- backend now also exposes local update/remove/state APIs for future installed-state product surfaces
 
 Run:
 
@@ -196,14 +197,14 @@ What is already complete:
 - repo-backed detail pages
 - command-copy, runbook, prerequisite, expected-outcome, and artifact hints
 - honest local-command wording for skill install and bundle-level local actions
-- backend local mutation APIs for first-pass skill and bundle install jobs
+- backend local lifecycle APIs for skill/bundle install, update, remove, state, and job polling
 - end-to-end verification with Playwright
 
 What is still partial:
 
 - frontend now supports backend execution for local skill install and local bundle install, but update/remove/state actions still remain copy-first
 - docs action panels are guidance-oriented and do not execute commands
-- backend still does not expose update/remove/state mutation endpoints
+- backend lifecycle APIs are ahead of the current frontend, so installed-state UI still needs another iteration
 - the current installer still expects a local install spec JSON file and does not fetch remote market artifacts over HTTP
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

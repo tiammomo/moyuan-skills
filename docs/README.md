@@ -50,7 +50,7 @@
 - [frontend-backend-integration.md](./frontend-backend-integration.md)
   现有前端如何对接 Python backend 与 repo-backed docs，并把命令、产物、honest local install 提示、以及新的 local install job API 一起展示到详情页。
 - [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md)
-  盘点当前前后端交互闭环、未补完的按钮能力，以及“是否能直接从远端拉取 skill 到本地”的后续路线；当前已完成 honest local command UI、bundle-level local actions、第一批 backend local mutation API，以及 skill / bundle 详情页上的本地执行 UI。
+  盘点当前前后端交互闭环、未补完的按钮能力，以及“是否能直接从远端拉取 skill 到本地”的后续路线；当前已完成 honest local command UI、bundle-level local actions、skill / bundle 详情页上的本地执行 UI，以及 backend local lifecycle API。
 
 ## 业务案例文档
 
