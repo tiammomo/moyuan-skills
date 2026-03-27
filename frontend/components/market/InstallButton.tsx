@@ -1,30 +1,87 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
 import type { InstallSpec } from '@/types/market';
 
 interface InstallButtonProps {
   installSpec: InstallSpec;
 }
 
+async function copyCommandText(value: string): Promise<void> {
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return;
+    } catch {
+      // Fall back to in-page copy when clipboard permissions are unavailable.
+    }
+  }
+
+  if (typeof document === 'undefined') {
+    throw new Error('Clipboard is not available in this environment.');
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = value;
+  textarea.setAttribute('readonly', 'true');
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  textarea.style.pointerEvents = 'none';
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, value.length);
+  const succeeded = document.execCommand('copy');
+  document.body.removeChild(textarea);
+
+  if (!succeeded) {
+    throw new Error('Unable to copy command text.');
+  }
+}
+
 export function InstallButton({ installSpec }: InstallButtonProps) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   const installCommand = `python scripts/skills_market.py install dist/market/install/${installSpec.skill_name}-${installSpec.version}.json`;
 
+  useEffect(() => {
+    if (!copied && !copyFailed) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCopied(false);
+      setCopyFailed(false);
+    }, 1800);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [copied, copyFailed]);
+
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(installCommand);
+      await copyCommandText(installCommand);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setCopyFailed(false);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error('Failed to copy install command:', err);
+      setCopied(false);
+      setCopyFailed(true);
     }
   };
 
   return (
     <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <Chip variant="keyword" data-testid="install-command-mode-note">
+          Local CLI only
+        </Chip>
+        <Chip variant="internal">Manual step required</Chip>
+      </div>
+      <p data-testid="install-command-honesty-note" className="text-sm text-muted">
+        This page copies a local install command. It does not execute through the backend yet.
+      </p>
       <div className="flex items-center gap-2">
         <code
           data-testid="install-command"
@@ -33,25 +90,11 @@ export function InstallButton({ installSpec }: InstallButtonProps) {
           {installCommand}
         </code>
         <Button data-testid="install-command-copy" onClick={handleCopy} variant="secondary" size="sm">
-          {copied ? (
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4 text-olive" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              已复制
-            </span>
-          ) : (
-            <span className="flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              复制
-            </span>
-          )}
+          {copied ? 'Copied' : copyFailed ? 'Retry copy' : 'Copy install command'}
         </Button>
       </div>
       <p data-testid="install-package-meta" className="text-xs text-muted">
-        包: {installSpec.package_path.split('/').pop()} ({installSpec.checksum_sha256.slice(0, 12)}...)
+        Package: {installSpec.package_path.split('/').pop()} ({installSpec.checksum_sha256.slice(0, 12)}...)
       </p>
     </div>
   );

@@ -9,12 +9,33 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('skill-search-input').fill('release');
   await expect(page.locator('[data-testid="skill-card-release-note-writer"]')).toBeVisible();
 
-  await page.locator('[data-testid="skill-card-release-note-writer"]').first().click();
+  await Promise.all([
+    page.waitForURL(/\/skills\/release-note-writer$/),
+    page.locator('[data-testid="skill-card-release-note-writer"]').first().click(),
+  ]);
+  await expect(page.getByTestId('install-command-mode-note')).toContainText('Local CLI only');
+  await expect(page.getByTestId('install-command-honesty-note')).toContainText(
+    'does not execute through the backend yet'
+  );
   await expect(page.getByTestId('install-command')).toContainText('release-note-writer-0.1.0.json');
+  await expect(page.getByTestId('install-command-copy')).toContainText('Copy install command');
 
   await page.goto('/bundles');
   await expect(page.getByTestId('bundle-card-release-engineering-starter')).toBeVisible();
-  await page.getByTestId('bundle-link-release-engineering-starter').click();
+  await Promise.all([
+    page.waitForURL(/\/bundles\/release-engineering-starter$/),
+    page.getByTestId('bundle-link-release-engineering-starter').click(),
+  ]);
+  await expect(page.getByTestId('bundle-local-command-panel')).toBeVisible();
+  await expect(page.getByTestId('bundle-action-install')).toContainText(
+    'python scripts/skills_market.py install-bundle release-engineering-starter'
+  );
+  await expect(page.getByTestId('bundle-action-update')).toContainText(
+    'python scripts/skills_market.py update-bundle release-engineering-starter'
+  );
+  await expect(page.getByTestId('bundle-action-remove')).toContainText(
+    'python scripts/skills_market.py remove-bundle release-engineering-starter'
+  );
   await expect(page.getByTestId('install-command').first()).toContainText('release-note-writer-0.1.0.json');
 
   await page.goto('/docs');
@@ -22,7 +43,10 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('docs-search-input').fill('frontend backend');
   await expect(page.getByTestId('docs-result-project-frontend-backend-integration')).toBeVisible();
   await expect(page.getByTestId('docs-results-count')).toContainText('Showing 1');
-  await page.getByTestId('docs-result-project-frontend-backend-integration').click();
+  await Promise.all([
+    page.waitForURL(/\/docs\/project\/frontend-backend-integration$/),
+    page.getByTestId('docs-result-project-frontend-backend-integration').click(),
+  ]);
   await expect(page.getByRole('heading', { name: /frontend \/ backend integration/i }).first()).toBeVisible();
   await expect(page.getByTestId('doc-action-panel')).toBeVisible();
   await expect(page.getByTestId('doc-action-runbook-hint')).toContainText('Recommended run order');
@@ -57,7 +81,10 @@ test('frontend works against the Python backend across core market flows', async
 
   await page.goto('/docs');
   await expect(page.getByTestId('skill-doc-card-release-note-writer')).toBeVisible();
-  await page.getByTestId('skill-doc-card-release-note-writer').click();
+  await Promise.all([
+    page.waitForURL(/\/docs\/release-note-writer$/),
+    page.getByTestId('skill-doc-card-release-note-writer').click(),
+  ]);
   await expect(page.getByRole('heading', { name: /release note writer/i }).first()).toBeVisible();
   await expect(page.getByTestId('doc-action-skill-install')).toContainText('python scripts/skills_market.py install');
   await expect(page.getByTestId('doc-action-skill-checker')).toContainText('check_release_note_writer.py');
@@ -65,7 +92,10 @@ test('frontend works against the Python backend across core market flows', async
 
   await page.goto('/docs/teaching');
   await expect(page.getByTestId('teaching-doc-link-14-first-hour-onboarding')).toBeVisible();
-  await page.getByTestId('teaching-doc-link-14-first-hour-onboarding').click();
+  await Promise.all([
+    page.waitForURL(/\/docs\/teaching\/14-first-hour-onboarding$/),
+    page.getByTestId('teaching-doc-link-14-first-hour-onboarding').click(),
+  ]);
   await expect(page.getByRole('heading', { name: /first hour|onboarding/i }).first()).toBeVisible();
   await expect(page.getByTestId('doc-action-teaching-primary')).toContainText('python scripts/check_progressive_skills.py');
   await expect(page.getByTestId('doc-context-teaching-position')).toBeVisible();

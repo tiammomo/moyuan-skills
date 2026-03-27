@@ -45,8 +45,17 @@ export function SkillsClient({ skills, categories, tags }: SkillsClientProps) {
     if (selectedChannels.length) params.set('channel', selectedChannels.join(','));
     if (selectedCategories.length) params.set('category', selectedCategories.join(','));
     if (selectedTags.length) params.set('tag', selectedTags.join(','));
-    router.push(`/skills?${params.toString()}`, { scroll: false });
-  }, [query, selectedChannels, selectedCategories, selectedTags, router]);
+
+    const nextQueryString = params.toString();
+    const currentQueryString = searchParams.toString();
+
+    if (nextQueryString === currentQueryString) {
+      return;
+    }
+
+    const nextPath = nextQueryString ? `/skills?${nextQueryString}` : '/skills';
+    router.replace(nextPath, { scroll: false });
+  }, [query, searchParams, selectedChannels, selectedCategories, selectedTags, router]);
 
   const filteredSkills = skills.filter((skill) => {
     // Text search
@@ -118,7 +127,7 @@ export function SkillsClient({ skills, categories, tags }: SkillsClientProps) {
 
       {/* Search and Filter Toggle */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <SearchBar className="flex-1" placeholder="搜索技能..." />
+        <SearchBar className="flex-1" placeholder="搜索技能..." value={query} onChange={setQuery} />
         <Button
           variant="secondary"
           onClick={() => setShowFilters(!showFilters)}

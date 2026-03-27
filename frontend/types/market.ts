@@ -80,6 +80,15 @@ export interface InstallSpec {
   install_target: string;
 }
 
+export interface MarketCommandAction {
+  label: string;
+  command: string;
+  description: string;
+  expectedOutcome?: string;
+  artifacts?: string[];
+  testId?: string;
+}
+
 export interface ChannelIndex {
   channel: Channel;
   generated_at: string;
