@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getBundleDetail, getBundles } from '@/lib/data';
 import { InstallButton } from '@/components/market/InstallButton';
+import { InstalledStatePanel } from '@/components/market/InstalledStatePanel';
 import { LocalExecutionCard } from '@/components/market/LocalExecutionCard';
 import { LocalCommandPanel } from '@/components/market/LocalCommandPanel';
 import { SkillCard } from '@/components/market/SkillCard';
@@ -44,6 +45,7 @@ export default async function BundleDetailPage({ params }: Props) {
 
   const { bundle, skills, install_specs: installSpecs } = detail;
   const installedTargetRoot = 'dist/installed-market';
+  const localTargetRoot = `dist/frontend-local-execution/bundles/${bundle.id}`;
   const bundleActions = [
     {
       label: 'Install bundle locally',
@@ -123,7 +125,7 @@ export default async function BundleDetailPage({ params }: Props) {
             <LocalCommandPanel
               panelTestId="bundle-local-command-panel"
               title="Bundle local commands"
-              description="These actions still run through the local CLI. Keep using them when you want explicit copy-first control or when you need bundle update/remove flows that are not wired to the backend yet."
+              description="These actions still run through the local CLI. Keep using them when you want explicit copy-first control even though install, update, and remove now also have backend execution panels below."
               actions={bundleActions}
             />
           </section>
@@ -136,10 +138,10 @@ export default async function BundleDetailPage({ params }: Props) {
               requestPath="/api/local/bundles/install"
               requestBody={{
                 bundle_id: bundle.id,
-                target_root: `dist/frontend-local-execution/bundles/${bundle.id}`,
+                target_root: localTargetRoot,
                 market_dir: 'dist/market',
               }}
-              fallbackNote="Bundle update and remove remain copy-first CLI actions for now; only bundle install is wired to backend execution in this pass."
+              fallbackNote="This card focuses on bundle install. Update and remove now live in the installed-state lifecycle panel below, while the copy-first CLI commands stay visible above."
             />
           </section>
 
@@ -167,6 +169,57 @@ export default async function BundleDetailPage({ params }: Props) {
                 },
               ]}
               fallbackNote="This first frontend remote pass only covers bundle install. Update, remove, trust approval, and deeper recovery UI still live in later roadmap phases."
+            />
+          </section>
+
+          <section className="animate-fade-in-delay-2">
+            <InstalledStatePanel
+              panelTestId="bundle-installed-state"
+              title="Local lifecycle state"
+              description="This panel reads the backend installed-state snapshot for the current frontend bundle target root and lets you run update or remove without leaving the detail page."
+              targetRoot={localTargetRoot}
+              bundleId={bundle.id}
+              actions={[
+                {
+                  panelTestId: 'bundle-update-execution',
+                  title: 'Update this installed bundle through the backend',
+                  description:
+                    'This refreshes the installed bundle membership from the current market directory and reconciles the bundle-owned sources in the same frontend target root.',
+                  requestPath: '/api/local/bundles/update',
+                  requestBody: {
+                    bundle_id: bundle.id,
+                    target_root: localTargetRoot,
+                    market_dir: 'dist/market',
+                  },
+                  fallbackNote:
+                    'This lifecycle surface only covers update/remove. Doctor, repair, and baseline governance remain later frontend product passes.',
+                  modeLabel: 'Installed-state execution',
+                  badges: ['Refreshes current bundle membership', 'Copy-first commands stay visible above'],
+                  runButtonLabel: 'Update via backend',
+                  dryRunButtonLabel: 'Dry run update',
+                  runningLabel: 'Running update...',
+                  dryRunRunningLabel: 'Running update dry run...',
+                },
+                {
+                  panelTestId: 'bundle-remove-execution',
+                  title: 'Remove this installed bundle through the backend',
+                  description:
+                    'This removes bundle ownership from the current frontend target root while preserving direct installs that still belong to some other source.',
+                  requestPath: '/api/local/bundles/remove',
+                  requestBody: {
+                    bundle_id: bundle.id,
+                    target_root: localTargetRoot,
+                  },
+                  fallbackNote:
+                    'Removal is scoped to this frontend target root and follows the same bundle ownership rules as the CLI lifecycle.',
+                  modeLabel: 'Installed-state execution',
+                  badges: ['Local bundle remove flow', 'Scoped to this target root'],
+                  runButtonLabel: 'Remove via backend',
+                  dryRunButtonLabel: 'Preview remove',
+                  runningLabel: 'Running remove...',
+                  dryRunRunningLabel: 'Running remove dry run...',
+                },
+              ]}
             />
           </section>
 

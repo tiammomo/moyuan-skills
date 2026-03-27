@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Shell } from '@/components/ui/Shell';
 import { InstallButton } from '@/components/market/InstallButton';
+import { InstalledStatePanel } from '@/components/market/InstalledStatePanel';
 import { LocalExecutionCard } from '@/components/market/LocalExecutionCard';
 import { PermissionsList } from '@/components/market/PermissionsList';
 import { SkillCard } from '@/components/market/SkillCard';
@@ -63,6 +64,7 @@ export default async function SkillDetailPage({ params }: Props) {
     doc_markdown: docContent,
     related_skills: relatedSkills,
   } = detail;
+  const localTargetRoot = `dist/frontend-local-execution/skills/${manifest.name}`;
 
   const { content: markdownContent } = docContent ? parseMarkdown(docContent) : { content: '' };
   const headings = extractHeadings(markdownContent);
@@ -146,7 +148,7 @@ export default async function SkillDetailPage({ params }: Props) {
                     requestPath="/api/local/skills/install"
                     requestBody={{
                       name: manifest.name,
-                      target_root: `dist/frontend-local-execution/skills/${manifest.name}`,
+                      target_root: localTargetRoot,
                     }}
                     fallbackNote="This path only runs the local install spec already packaged in the repo. Use the registry-backed card below when you want the backend to fetch the skill remotely first."
                   />
@@ -179,6 +181,58 @@ export default async function SkillDetailPage({ params }: Props) {
               </Card>
             </section>
           )}
+
+          <section className="animate-fade-in-delay-3">
+            <InstalledStatePanel
+              panelTestId="skill-installed-state"
+              title="Local lifecycle state"
+              description="This panel reads the backend installed-state snapshot for the local frontend target root and lets you run update or remove without leaving the detail page."
+              targetRoot={localTargetRoot}
+              skillId={manifest.id}
+              skillName={manifest.name}
+              actions={[
+                {
+                  panelTestId: 'skill-update-execution',
+                  title: 'Update this installed skill through the backend',
+                  description:
+                    'This resolves the latest install spec from the current channel index and reruns the normal skill installer against the existing frontend target root.',
+                  requestPath: '/api/local/skills/update',
+                  requestBody: {
+                    skill: manifest.id,
+                    target_root: localTargetRoot,
+                    index: `dist/market/channels/${manifest.channel}.json`,
+                  },
+                  fallbackNote:
+                    'This is the first installed-state lifecycle pass. Doctor, repair, and baseline governance still live in later frontend iterations.',
+                  modeLabel: 'Installed-state execution',
+                  badges: ['Updates the current local target root', 'Copy-first commands stay available above'],
+                  runButtonLabel: 'Update via backend',
+                  dryRunButtonLabel: 'Dry run update',
+                  runningLabel: 'Running update...',
+                  dryRunRunningLabel: 'Running update dry run...',
+                },
+                {
+                  panelTestId: 'skill-remove-execution',
+                  title: 'Remove this installed skill through the backend',
+                  description:
+                    'This removes the installed skill from the current frontend target root and updates the lock state without asking you to retype the CLI command.',
+                  requestPath: '/api/local/skills/remove',
+                  requestBody: {
+                    skill: manifest.id,
+                    target_root: localTargetRoot,
+                  },
+                  fallbackNote:
+                    'Removal is scoped to the current frontend local target root. Other installs or remote execution targets are not touched by this action.',
+                  modeLabel: 'Installed-state execution',
+                  badges: ['Local remove flow', 'Scoped to this target root'],
+                  runButtonLabel: 'Remove via backend',
+                  dryRunButtonLabel: 'Preview remove',
+                  runningLabel: 'Running remove...',
+                  dryRunRunningLabel: 'Running remove dry run...',
+                },
+              ]}
+            />
+          </section>
         </div>
 
         <div className="space-y-6">

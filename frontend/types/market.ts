@@ -106,6 +106,43 @@ export interface LocalJobRecord {
   error: string | null;
 }
 
+export interface LocalInstalledSkillRecord {
+  skill_id: string;
+  skill_name: string;
+  publisher: string;
+  version: string;
+  channel: Channel;
+  install_target: string;
+  review_status: string;
+  lifecycle_status: string;
+  install_spec: string;
+  provenance_path: string;
+  installed_at: string;
+  sources: Array<{
+    kind: string;
+    id: string;
+  }>;
+}
+
+export interface LocalInstalledBundleRecord {
+  bundle_id: string;
+  title: string;
+  generated_at: string;
+  report_path: string;
+  target_root: string;
+  skill_count: number;
+  active_skill_ids: string[];
+}
+
+export interface LocalInstalledState {
+  target_root: string;
+  lock_path: string;
+  installed_count: number;
+  bundle_count: number;
+  installed: LocalInstalledSkillRecord[];
+  bundles: LocalInstalledBundleRecord[];
+}
+
 export interface MarketCommandAction {
   label: string;
   command: string;

@@ -7,13 +7,17 @@ import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Input } from '@/components/ui/Input';
 
-type ExecutionRequestPath =
+export type ExecutionRequestPath =
   | '/api/local/skills/install'
+  | '/api/local/skills/update'
+  | '/api/local/skills/remove'
   | '/api/local/bundles/install'
+  | '/api/local/bundles/update'
+  | '/api/local/bundles/remove'
   | '/api/registry/skills/install'
   | '/api/registry/bundles/install';
 
-interface ExecutionField {
+export interface ExecutionField {
   name: string;
   label: string;
   description?: string;
@@ -22,7 +26,7 @@ interface ExecutionField {
   required?: boolean;
 }
 
-interface LocalExecutionCardProps {
+export interface LocalExecutionCardProps {
   panelTestId: string;
   title: string;
   description: string;
@@ -32,6 +36,11 @@ interface LocalExecutionCardProps {
   modeLabel?: string;
   badges?: string[];
   fields?: ExecutionField[];
+  runButtonLabel?: string;
+  dryRunButtonLabel?: string;
+  runningLabel?: string;
+  dryRunRunningLabel?: string;
+  onJobSettled?: (job: LocalJobRecord) => void;
 }
 
 function formatValue(value: unknown): string {
@@ -81,11 +90,17 @@ export function LocalExecutionCard({
   modeLabel = 'Backend execution',
   badges = ['Copy fallback stays available'],
   fields = [],
+  runButtonLabel = 'Run via backend',
+  dryRunButtonLabel = 'Dry run via backend',
+  runningLabel = 'Running...',
+  dryRunRunningLabel = 'Running dry run...',
+  onJobSettled,
 }: LocalExecutionCardProps) {
   const [availability, setAvailability] = useState<LocalBackendStatus | null>(null);
   const [job, setJob] = useState<LocalJobRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'install' | 'dry-run' | null>(null);
+  const [reportedCompletionJobId, setReportedCompletionJobId] = useState<string | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((field) => [field.name, field.defaultValue ?? '']))
   );
@@ -181,6 +196,17 @@ export function LocalExecutionCard({
     }
   }, [job?.status]);
 
+  useEffect(() => {
+    if (!job || (job.status !== 'succeeded' && job.status !== 'failed')) {
+      return;
+    }
+    if (reportedCompletionJobId === job.job_id) {
+      return;
+    }
+    setReportedCompletionJobId(job.job_id);
+    onJobSettled?.(job);
+  }, [job, onJobSettled, reportedCompletionJobId]);
+
   function updateFieldValue(fieldName: string, value: string) {
     setFieldValues((currentValues) => ({
       ...currentValues,
@@ -218,6 +244,7 @@ export function LocalExecutionCard({
       if (!response.ok) {
         setJob(null);
         setActiveMode(null);
+        setReportedCompletionJobId(null);
         setErrorMessage(
           payload && 'detail' in payload ? payload.detail ?? 'Backend execution failed.' : 'Backend execution failed.'
         );
@@ -225,9 +252,11 @@ export function LocalExecutionCard({
       }
 
       setJob(payload as LocalJobRecord);
+      setReportedCompletionJobId(null);
     } catch (error) {
       setJob(null);
       setActiveMode(null);
+      setReportedCompletionJobId(null);
       setErrorMessage(`Backend execution request failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -294,8 +323,8 @@ export function LocalExecutionCard({
           data-testid={`${panelTestId}-run`}
         >
           {activeMode === 'install' && (!job || job.status === 'queued' || job.status === 'running')
-            ? 'Running install...'
-            : 'Run via backend'}
+            ? runningLabel
+            : runButtonLabel}
         </Button>
         <Button
           type="button"
@@ -305,8 +334,8 @@ export function LocalExecutionCard({
           data-testid={`${panelTestId}-dry-run`}
         >
           {activeMode === 'dry-run' && (!job || job.status === 'queued' || job.status === 'running')
-            ? 'Running dry-run...'
-            : 'Dry run via backend'}
+            ? dryRunRunningLabel
+            : dryRunButtonLabel}
         </Button>
       </div>
 

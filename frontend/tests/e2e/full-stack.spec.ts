@@ -24,6 +24,16 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('skill-backend-execution-run').click();
   await expect(page.getByTestId('skill-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-backend-execution-summary')).toContainText('release-note-writer');
+  await expect(page.getByTestId('skill-installed-state')).toBeVisible();
+  await expect(page.getByTestId('skill-installed-state-status')).toContainText('Installed in target root', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-summary')).toContainText('release-note-writer');
+  await page.getByTestId('skill-remove-execution-run').click();
+  await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+  await expect(page.getByTestId('skill-installed-state-status')).toContainText('Not installed yet', {
+    timeout: 20000,
+  });
   await expect(page.getByTestId('skill-registry-execution')).toBeVisible();
   await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
   await page.getByTestId('skill-registry-execution-run').click();
@@ -53,6 +63,16 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('bundle-backend-execution-run').click();
   await expect(page.getByTestId('bundle-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('bundle-backend-execution-summary')).toContainText('release-engineering-starter');
+  await expect(page.getByTestId('bundle-installed-state')).toBeVisible();
+  await expect(page.getByTestId('bundle-installed-state-status')).toContainText('Installed in target root', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('bundle-installed-state-summary')).toContainText('release-engineering-starter');
+  await page.getByTestId('bundle-remove-execution-run').click();
+  await expect(page.getByTestId('bundle-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+  await expect(page.getByTestId('bundle-installed-state-status')).toContainText('Not installed yet', {
+    timeout: 20000,
+  });
   await expect(page.getByTestId('bundle-registry-execution')).toBeVisible();
   await page.getByTestId('bundle-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
   await page.getByTestId('bundle-registry-execution-run').click();
