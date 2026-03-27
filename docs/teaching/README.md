@@ -1,98 +1,84 @@
-# Teaching 目录总览
+# Skills Market Teaching
 
-`docs/teaching/` 是这个仓库的课程化学习区。
+`docs/teaching/` 现在被明确定位为“整个 skills market 的教学目录”。
 
-如果说根目录 `README.md` 负责回答“这个项目是什么”，`docs/` 负责回答“有哪些方法论文档”，那么 `docs/teaching/` 负责回答：
+这里不只是若干篇零散教程，而是一套从 skill 设计逻辑出发，逐步走到 market 分发、client lifecycle、governance 和前后端交付的课程化路径。
 
-- 应该按什么顺序学
-- 每一阶段要掌握什么
-- 怎样从阅读过渡到实践
+## 这套教学内容解决什么问题
 
-## 如果你只有 1 小时
+- 新人不知道应该先学 skill、还是先学 market。
+- 读者能看懂单个 skill，但看不清整个 skills market 是怎么连起来的。
+- 维护者知道脚本很多，却不知道哪些脚本属于 packaging、client、governance 或 delivery。
+- 项目 owner 需要一套可以持续 onboarding 和教学复用的目录。
 
-给新成员最省力的入口不是直接丢一串文档，而是先走这条短路径：
+## 推荐进入方式
+
+### 如果你只有 1 小时
 
 1. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
 2. [15-newcomer-faq.md](./15-newcomer-faq.md)
-3. [02-read-the-repo.md](./02-read-the-repo.md)
-4. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
-5. [10-learner-path.md](./10-learner-path.md)
+3. [18-skills-market-learning-map.md](./18-skills-market-learning-map.md)
 
-## 推荐学习顺序
+### 如果你想完整学一遍整个 skills market
 
 1. [01-learning-map.md](./01-learning-map.md)
-2. [02-read-the-repo.md](./02-read-the-repo.md)
-3. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
-4. [04-progressive-disclosure-workshop.md](./04-progressive-disclosure-workshop.md)
-5. [05-harness-roadmap.md](./05-harness-roadmap.md)
-6. [06-exercises-and-capstone.md](./06-exercises-and-capstone.md)
-7. [07-case-gradient.md](./07-case-gradient.md)
-8. [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
-9. [09-project-learning-roadmap.md](./09-project-learning-roadmap.md)
-10. [10-learner-path.md](./10-learner-path.md)
-11. [11-skill-author-path.md](./11-skill-author-path.md)
-12. [12-maintainer-path.md](./12-maintainer-path.md)
-13. [13-harness-builder-path.md](./13-harness-builder-path.md)
-14. [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
-15. [15-newcomer-faq.md](./15-newcomer-faq.md)
-16. [16-skills-market-evolution.md](./16-skills-market-evolution.md)
-17. [17-market-registry-and-federation.md](./17-market-registry-and-federation.md)
+2. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
+3. [05-harness-roadmap.md](./05-harness-roadmap.md)
+4. [07-case-gradient.md](./07-case-gradient.md)
+5. [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
+6. [16-skills-market-evolution.md](./16-skills-market-evolution.md)
+7. [17-market-registry-and-federation.md](./17-market-registry-and-federation.md)
+8. [18-skills-market-learning-map.md](./18-skills-market-learning-map.md)
+9. [19-market-packaging-and-publishing.md](./19-market-packaging-and-publishing.md)
+10. [20-market-client-operations.md](./20-market-client-operations.md)
+11. [21-market-governance-and-delivery.md](./21-market-governance-and-delivery.md)
 
-## 这个目录解决什么问题
+### 如果你已经知道自己的角色
 
-### 对初学者
+- 学习者：[10-learner-path.md](./10-learner-path.md)
+- Skill 作者：[11-skill-author-path.md](./11-skill-author-path.md)
+- 维护者：[12-maintainer-path.md](./12-maintainer-path.md)
+- Harness 设计者：[13-harness-builder-path.md](./13-harness-builder-path.md)
 
-帮助你快速理解：
+## 全量课程目录
 
-- 什么是 skill
-- 为什么这个仓库强调渐进式披露
-- skill 和 harness 有什么区别
+### 模块 1：理解 skill 与渐进式披露
 
-### 对实践者
+- [01-learning-map.md](./01-learning-map.md)
+- [02-read-the-repo.md](./02-read-the-repo.md)
+- [03-build-your-first-skill.md](./03-build-your-first-skill.md)
+- [04-progressive-disclosure-workshop.md](./04-progressive-disclosure-workshop.md)
+- [05-harness-roadmap.md](./05-harness-roadmap.md)
 
-帮助你完成：
+### 模块 2：练习、案例与基础设施
 
-- 第一个 skill 设计练习
-- 一个已有 skill 的拆层重构
-- 一个面向未来 harness 的思考练习
+- [06-exercises-and-capstone.md](./06-exercises-and-capstone.md)
+- [07-case-gradient.md](./07-case-gradient.md)
+- [08-evals-and-prototypes.md](./08-evals-and-prototypes.md)
+- [09-project-learning-roadmap.md](./09-project-learning-roadmap.md)
 
-### 对维护者
+### 模块 3：角色化上手
 
-帮助你统一：
+- [10-learner-path.md](./10-learner-path.md)
+- [11-skill-author-path.md](./11-skill-author-path.md)
+- [12-maintainer-path.md](./12-maintainer-path.md)
+- [13-harness-builder-path.md](./13-harness-builder-path.md)
+- [14-first-hour-onboarding.md](./14-first-hour-onboarding.md)
+- [15-newcomer-faq.md](./15-newcomer-faq.md)
 
-- 项目教学口径
-- 新成员 onboarding 路径
-- 后续课程和案例的扩展结构
+### 模块 4：Skills Market 专题
 
-### 对项目 owner / curriculum 设计者
+- [16-skills-market-evolution.md](./16-skills-market-evolution.md)
+- [17-market-registry-and-federation.md](./17-market-registry-and-federation.md)
+- [18-skills-market-learning-map.md](./18-skills-market-learning-map.md)
+- [19-market-packaging-and-publishing.md](./19-market-packaging-and-publishing.md)
+- [20-market-client-operations.md](./20-market-client-operations.md)
+- [21-market-governance-and-delivery.md](./21-market-governance-and-delivery.md)
 
-帮助你继续判断：
+## 学完之后应该具备什么能力
 
-- 这个仓库现在已经补到了哪一层
-- 下一阶段最值得补的是课程、案例、lint、eval 还是 harness
-- 如何把学习路径和工程演进路线放到同一张图里
-
-## 角色化入口
-
-如果你已经知道自己的目标，比按编号顺序读更快的入口是：
-
-- 初学者：从 [10-learner-path.md](./10-learner-path.md) 开始
-- Skill 作者：从 [11-skill-author-path.md](./11-skill-author-path.md) 开始
-- 维护者：从 [12-maintainer-path.md](./12-maintainer-path.md) 开始
-- Harness 设计者：从 [13-harness-builder-path.md](./13-harness-builder-path.md) 开始
-- 带新人 onboarding：从 [14-first-hour-onboarding.md](./14-first-hour-onboarding.md) 开始
-- 想先补术语和常见问题：从 [15-newcomer-faq.md](./15-newcomer-faq.md) 开始
-- 想理解项目为什么会继续走向 skills market：从 [16-skills-market-evolution.md](./16-skills-market-evolution.md) 开始
-
-## 学习完成后的预期能力
-
-完成这一组内容后，应该至少能做到：
-
-- 看懂这个仓库每一层文件的作用
-- 自己设计一个最小可用 skill
-- 判断内容该放在 `SKILL.md`、`references/`、`scripts/` 还是 `assets/`
-- 理解 skill 为什么会继续走向 harness engineering
-- 按练习与 capstone 路径完成一次从 skill 到 harness 的完整设计演练
-- 理解真实业务案例怎样形成案例梯度
-- 看懂 eval harness、tool contract、safety gate、automation 原型之间的关系
-- 能把整个项目按“学习层、案例层、校验层、系统层”四个维度讲清楚
+- 能解释一个 skill 为什么要拆成 frontmatter、`SKILL.md`、`references/`、`scripts/` 和 `assets/`
+- 能解释 skill 为什么会继续走向 harness
+- 能说明 market manifest、install spec、provenance、bundle、registry 各自解决什么问题
+- 能跑通 package、install、bundle、doctor、baseline、governance、frontend/backend 联调
+- 能把这个仓库当成 onboarding 教材，而不是只把它当成一组脚本集合
