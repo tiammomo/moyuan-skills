@@ -3,18 +3,37 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from fastapi.testclient import TestClient
+
+from backend.app.main import app
 from backend.app.repository import MarketRepository
+
+
+def wait_for_job(client: TestClient, job_id: str, timeout_seconds: float = 20.0) -> dict:
+    deadline = time.time() + timeout_seconds
+    while time.time() < deadline:
+        response = client.get(f"/api/v1/local/jobs/{job_id}")
+        if response.status_code != 200:
+            raise RuntimeError(f"job lookup failed for {job_id}: {response.status_code} {response.text}")
+        payload = response.json()
+        if payload.get("status") in {"succeeded", "failed"}:
+            return payload
+        time.sleep(0.2)
+    raise RuntimeError(f"timed out while waiting for job {job_id}")
 
 
 def main() -> int:
     repository = MarketRepository()
+    client = TestClient(app)
 
     index = repository.get_market_index()
     if "channels" not in index:
@@ -73,11 +92,63 @@ def main() -> int:
         print("ERROR: temporary iteration notes should not leak through the project docs API")
         return 1
 
+    local_target_root = ROOT / "dist" / "backend-api-check"
+    if local_target_root.exists():
+        shutil.rmtree(local_target_root)
+
+    skill_response = client.post(
+        "/api/v1/local/skills/install",
+        json={
+            "name": "release-note-writer",
+            "target_root": str(local_target_root / "skills"),
+            "dry_run": False,
+        },
+    )
+    if skill_response.status_code != 202:
+        print(f"ERROR: backend local skill install should return 202, got {skill_response.status_code}")
+        return 1
+    skill_job = wait_for_job(client, skill_response.json()["job_id"])
+    if skill_job.get("status") != "succeeded":
+        print("ERROR: backend local skill install job should succeed")
+        print(skill_job.get("stdout", ""))
+        print(skill_job.get("stderr", ""))
+        return 1
+    expected_entrypoint = local_target_root / "skills" / "release-note-writer" / "SKILL.md"
+    if not expected_entrypoint.is_file():
+        print(f"ERROR: expected installed skill entrypoint is missing: {expected_entrypoint}")
+        return 1
+
+    bundle_response = client.post(
+        "/api/v1/local/bundles/install",
+        json={
+            "bundle_id": "release-engineering-starter",
+            "target_root": str(local_target_root / "bundles"),
+            "market_dir": "dist/market",
+            "dry_run": False,
+        },
+    )
+    if bundle_response.status_code != 202:
+        print(f"ERROR: backend local bundle install should return 202, got {bundle_response.status_code}")
+        return 1
+    bundle_job = wait_for_job(client, bundle_response.json()["job_id"])
+    if bundle_job.get("status") != "succeeded":
+        print("ERROR: backend local bundle install job should succeed")
+        print(bundle_job.get("stdout", ""))
+        print(bundle_job.get("stderr", ""))
+        return 1
+    expected_bundle_report = local_target_root / "bundles" / "bundle-reports" / "release-engineering-starter.json"
+    if not expected_bundle_report.is_file():
+        print(f"ERROR: expected bundle report is missing: {expected_bundle_report}")
+        return 1
+
+    shutil.rmtree(local_target_root, ignore_errors=True)
+
     print(
         "Python market backend check passed for "
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
-        f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s)."
+        f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
+        "plus local skill and bundle install jobs."
     )
     return 0
 

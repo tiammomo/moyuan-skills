@@ -88,7 +88,7 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByRole('heading', { name: /release note writer/i }).first()).toBeVisible();
   await expect(page.getByTestId('doc-action-skill-install')).toContainText('python scripts/skills_market.py install');
   await expect(page.getByTestId('doc-action-skill-checker')).toContainText('check_release_note_writer.py');
-  await expect(page.getByTestId('doc-context-skill-entrypoint')).toContainText('skills/release-note-writer/SKILL.md');
+  await expect(page.getByTestId('doc-context-skill-entrypoint')).toContainText('release-note-writer/SKILL.md');
 
   await page.goto('/docs/teaching');
   await expect(page.getByTestId('teaching-doc-link-14-first-hour-onboarding')).toBeVisible();

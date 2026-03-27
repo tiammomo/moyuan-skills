@@ -28,6 +28,9 @@ Core endpoints:
 - `GET /api/v1/market/tags`
 - `GET /api/v1/market/bundles`
 - `GET /api/v1/market/bundles/{bundle_id}`
+- `POST /api/v1/local/skills/install`
+- `POST /api/v1/local/bundles/install`
+- `GET /api/v1/local/jobs/{job_id}`
 - `GET /api/v1/docs/catalog`
 - `GET /api/v1/docs/teaching/{doc_id}`
 - `GET /api/v1/docs/project/{doc_id}`
@@ -35,6 +38,7 @@ Core endpoints:
 The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
 That same shared payload now also supports detail-page related navigation, context panels, and copy-friendly ordered action panels with prerequisite, expected-outcome, and artifact/output cues without requiring separate recommendations or metadata endpoints.
 Skill detail and bundle detail pages now also distinguish local CLI copy flows from future backend execution flows, so the current UI does not over-promise one-click installation.
+The backend now also exposes the first mutation/job layer for local skill and bundle installs, while the frontend still keeps copy-first fallbacks until execution UI wiring is ready.
 
 The repository layer reads these real assets directly:
 
@@ -177,6 +181,7 @@ It is now implemented as:
 - shared action panels with ordered runbook cues, prerequisite hints, expected-outcome hints, artifact/output hints, and command-copy affordances on detail pages
 - honest local install messaging on skill detail pages
 - bundle-level local command panels on bundle detail pages
+- backend local install job APIs for skill and bundle execution
 - Playwright end-to-end coverage for the core market path
 
 ## Current gaps
@@ -189,14 +194,14 @@ What is already complete:
 - repo-backed detail pages
 - command-copy, runbook, prerequisite, expected-outcome, and artifact hints
 - honest local-command wording for skill install and bundle-level local actions
+- backend local mutation APIs for first-pass skill and bundle install jobs
 - end-to-end verification with Playwright
 
 What is still partial:
 
-- install buttons still copy local CLI commands instead of calling a backend mutation API
-- bundle detail still copies local CLI commands rather than calling a backend mutation API
+- frontend buttons still copy local CLI commands instead of calling the new backend mutation APIs
 - docs action panels are guidance-oriented and do not execute commands
-- backend is still read-only and does not expose install/update/remove job endpoints
+- backend still does not expose update/remove/state mutation endpoints
 - the current installer still expects a local install spec JSON file and does not fetch remote market artifacts over HTTP
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

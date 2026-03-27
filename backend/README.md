@@ -25,6 +25,7 @@ The current frontend already has a clear information architecture:
 This backend keeps those shapes stable while moving file access out of the frontend.
 
 The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and copy-friendly action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs. The frontend now turns those commands into lightweight ordered runbooks with prerequisite, expected-outcome, and artifact/output cues directly in the doc detail UI.
+The backend now also exposes the first local mutation APIs for skill and bundle installation jobs, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing the installer logic.
 
 ## Run
 
@@ -60,12 +61,22 @@ GET /api/v1/market/categories
 GET /api/v1/market/tags
 GET /api/v1/market/bundles
 GET /api/v1/market/bundles/{bundle_id}
+POST /api/v1/local/skills/install
+POST /api/v1/local/bundles/install
+GET /api/v1/local/jobs/{job_id}
 GET /api/v1/docs/catalog
 GET /api/v1/docs/teaching/{doc_id}
 GET /api/v1/docs/project/{doc_id}
 
 `GET /api/v1/docs/catalog` now returns per-family doc arrays plus a flattened `all_docs` list for frontend filtering.
 ```
+
+Local mutation notes:
+
+- the first pass intentionally covers local install jobs only
+- the backend reuses `scripts/install_skill.py` and `scripts/install_skill_bundle.py`
+- the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
+- the frontend still uses copy-first buttons today; execution UI wiring is the next iteration
 
 ## Suggested frontend mapping
 
@@ -109,3 +120,17 @@ npm run build --prefix frontend
 npm run e2e --prefix frontend
 npm run capture:readme-screenshots --prefix frontend
 ```
+
+## Current execution status
+
+What is now available:
+
+- repo-backed read APIs for market, bundle, and docs flows
+- local mutation APIs for skill install, bundle install, and job polling
+- backend smoke coverage for both repository reads and local install jobs
+
+What is still next:
+
+- frontend execution buttons that call the new mutation APIs
+- local update and remove mutation APIs
+- remote registry download and install support
