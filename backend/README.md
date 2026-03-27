@@ -76,7 +76,7 @@ Local mutation notes:
 - the first pass intentionally covers local install jobs only
 - the backend reuses `scripts/install_skill.py` and `scripts/install_skill_bundle.py`
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
-- the frontend still uses copy-first buttons today; execution UI wiring is the next iteration
+- the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
 
 ## Suggested frontend mapping
 
@@ -131,6 +131,6 @@ What is now available:
 
 What is still next:
 
-- frontend execution buttons that call the new mutation APIs
 - local update and remove mutation APIs
+- installed-state read APIs and follow-up lifecycle actions
 - remote registry download and install support

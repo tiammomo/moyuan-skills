@@ -106,9 +106,9 @@
 - 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - Playwright 已覆盖首页、skills、bundles、docs 与详情页联调
 - backend 现在已经补了第一批本地执行接口：`POST /api/v1/local/skills/install`、`POST /api/v1/local/bundles/install` 和 `GET /api/v1/local/jobs/{job_id}`
-- skill 详情页和 bundle 详情页已经明确标注 `Local CLI only`，bundle 级本地 `install-bundle / update-bundle / remove-bundle` 命令也已接入页面
+- skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端仍然以“浏览、检索、复制本地命令”为主，尚未把这些按钮接到新的 backend mutation API；远端拉取下载也还没补完。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端已经能对 skill install 和 bundle install 走真实 backend 本地执行，但 update/remove/state 以及远端拉取下载还没补完。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 

@@ -122,10 +122,13 @@ Goal:
 
 Status:
 
-- `in progress`
+- `complete for current local install surfaces`
 - completed in this iteration:
-  - skill install UI now says `Local CLI only` and explains that backend execution is not available yet
+  - the skill copy-install card now clearly says it only copies the local install command
   - bundle detail now includes first-class local commands for `install-bundle`, `update-bundle`, and `remove-bundle`
+  - skill detail now keeps `Copy install command` visible while also offering `Run via backend`
+  - bundle detail now keeps copy-first bundle commands visible while also offering backend bundle install execution
+  - frontend now shows queued, running, succeeded, and failed states for local install jobs
 
 Deliverables:
 
@@ -142,11 +145,6 @@ Acceptance criteria:
 - no install-like button appears to be one-click if it still only copies text
 - every install, update, or remove action in the UI has an honest label
 
-Remaining work before Phase 1 can be called complete:
-
-- add explicit pending, success, failed, and approval-needed states for future execution buttons
-- align docs action panels with the same copy-vs-execute distinction once backend mutation APIs exist
-
 ### Phase 2: Add backend mutation APIs for local operations
 
 Goal:
@@ -161,6 +159,9 @@ Status:
   - `POST /api/v1/local/bundles/install`
   - `GET /api/v1/local/jobs/{job_id}`
   - backend smoke coverage for local install jobs
+  - Next.js local proxy routes now forward skill and bundle install requests to the FastAPI backend
+  - skill detail pages can trigger local skill install jobs and show job progress in the UI
+  - bundle detail pages can trigger local bundle install jobs and show job progress in the UI
 
 Suggested endpoints:
 
@@ -188,7 +189,6 @@ Acceptance criteria:
 Remaining work before Phase 2 can be called complete:
 
 - add local update/remove/state endpoints
-- wire the existing frontend install surfaces to the new mutation APIs
 
 ### Phase 3: Add remote registry fetch and remote install
 
@@ -277,7 +277,7 @@ Why:
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is not yet complete
+- `frontend execution` is now working for local skill and bundle installs, but not yet for update/remove/state workflows
 - `remote skill download and install` is not yet supported
 
-The next implementation target is now the frontend side of `Phase 2`: execution buttons that can call the new local mutation APIs.
+The next implementation target is now the remaining backend side of `Phase 2`: local update/remove/state endpoints that can support fuller installed-state product surfaces.

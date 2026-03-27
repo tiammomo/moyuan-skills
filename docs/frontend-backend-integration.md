@@ -37,8 +37,8 @@ Core endpoints:
 
 The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
 That same shared payload now also supports detail-page related navigation, context panels, and copy-friendly ordered action panels with prerequisite, expected-outcome, and artifact/output cues without requiring separate recommendations or metadata endpoints.
-Skill detail and bundle detail pages now also distinguish local CLI copy flows from future backend execution flows, so the current UI does not over-promise one-click installation.
-The backend now also exposes the first mutation/job layer for local skill and bundle installs, while the frontend still keeps copy-first fallbacks until execution UI wiring is ready.
+Skill detail and bundle detail pages now distinguish copy-first CLI fallbacks from true backend execution flows, so the current UI stays honest while still exposing one-click local install for the flows that are already wired.
+The backend now exposes the first mutation/job layer for local skill and bundle installs, and the frontend now proxies those operations through local Next.js API routes so users can launch installs and watch job progress without leaving the page.
 
 The repository layer reads these real assets directly:
 
@@ -140,6 +140,8 @@ Then it validates:
 - doc detail pages expose action panels with concrete repo commands, ordered runbook cues, prerequisite hints, expected-outcome hints, artifact/output hints, copy buttons, and next-step links
 - skill detail pages show honest `Local CLI only` install messaging
 - bundle detail pages expose bundle-level local `install-bundle`, `update-bundle`, and `remove-bundle` commands
+- skill detail pages can now run local install jobs through the backend and poll job progress in-page
+- bundle detail pages can now run local bundle install jobs through the backend and poll job progress in-page
 
 Run:
 
@@ -199,7 +201,7 @@ What is already complete:
 
 What is still partial:
 
-- frontend buttons still copy local CLI commands instead of calling the new backend mutation APIs
+- frontend now supports backend execution for local skill install and local bundle install, but update/remove/state actions still remain copy-first
 - docs action panels are guidance-oriented and do not execute commands
 - backend still does not expose update/remove/state mutation endpoints
 - the current installer still expects a local install spec JSON file and does not fetch remote market artifacts over HTTP
