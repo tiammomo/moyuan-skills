@@ -9,12 +9,12 @@ Current status:
 - frontend and backend browsing are already usable
 - Playwright-covered detail flows already work
 - command guidance in docs is already strong
-- skill and bundle install entry points now use honest `local CLI only` language
+- skill and bundle install entry points now clearly distinguish copy-first local commands, local backend execution, and registry-backed execution
 
 The two biggest gaps are now:
 
-1. many frontend buttons are guidance or command-copy affordances, not true execution flows
-2. the frontend still does not expose the new remote registry install APIs even though backend and CLI support are now in place
+1. many frontend buttons are guidance or command-copy affordances, not true lifecycle execution flows
+2. installed-state UI and remote install trust / approval / recovery surfaces are still not productized
 
 ## Current-state assessment
 
@@ -48,6 +48,9 @@ What is already good:
 - bundle detail now exposes first-class local bundle commands for `install-bundle`, `update-bundle`, and `remove-bundle`
 - skill detail install can now execute through the backend
 - bundle detail install can now execute through the backend
+- skill detail install can now execute from a remote registry through the backend
+- bundle detail install can now execute from a remote registry through the backend
+- local and remote runs now share the same in-page job polling and summary UI
 - docs detail pages show ordered runbooks
 - prerequisites, expected outcomes, and artifact hints are visible
 
@@ -55,7 +58,7 @@ What is still incomplete:
 
 - bundle update and remove actions are still local copy flows rather than backend-triggered execution
 - docs action panels are still guidance widgets, not executable actions
-- there is no frontend state for install progress, dry-run results, approval prompts, or failure recovery
+- there is no frontend state for installed-state lifecycle, approval prompts, or failure recovery
 
 ### 3. Backend interaction layer
 
@@ -78,11 +81,10 @@ Current reality:
 What is still incomplete:
 
 - the current frontend only uses the install mutations, not the fuller lifecycle set
-- the frontend still does not consume the new remote registry install endpoints
 
 ### 4. Remote skill pull / download
 
-Status: `complete for CLI and backend`
+Status: `complete for CLI, backend, and first frontend execution surfaces`
 
 Current reality:
 
@@ -96,9 +98,9 @@ Current reality:
 
 Short answer:
 
-`yes, from CLI and backend`
+`yes, from CLI, backend, and frontend install surfaces`
 
-The project can now fetch and install remote market artifacts directly, but the frontend still needs a dedicated UI pass to consume those APIs.
+The project can now fetch and install remote market artifacts directly from CLI, backend APIs, and the first skill / bundle detail-page execution cards in the frontend.
 
 ## Buttons that are still not fully closed-loop
 
@@ -204,7 +206,11 @@ Goal:
 
 Status:
 
-- `complete for CLI and backend`
+- `complete for CLI, backend, and first frontend execution surfaces`
+- completed in this iteration:
+  - skill detail now exposes registry-backed remote install execution
+  - bundle detail now exposes registry-backed remote bundle install execution
+  - Playwright now stands up a temporary hosted registry fixture and verifies both remote flows
 
 Suggested CLI shape:
 
@@ -268,26 +274,22 @@ Acceptance criteria:
 
 Recommended execution order:
 
-1. Phase 1
-2. Phase 2
-3. Phase 5
-4. Phase 4
+1. Phase 5
+2. Phase 4
 
 Why:
 
-- first make the UI honest
-- then make local execution possible
-- then expose the deeper installed-state surfaces that the frontend still does not consume
-- then harden remote install further with trust and approval
+- first expose the deeper installed-state surfaces that the frontend still does not consume
+- then harden remote install further with trust, approval, and recovery
 
 ## Short answer for project status
 
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle installs, but not yet for update/remove/state or remote-registry workflows
-- `remote skill download and install` is now supported from CLI and backend APIs
+- `frontend execution` is now working for local skill and bundle installs plus the first remote-registry install flows, but not yet for update/remove/state
+- `remote skill download and install` is now supported from CLI, backend APIs, and frontend install surfaces
 
-The next implementation target is now the frontend pass that consumes the completed remote registry install APIs, while a later product pass can expose deeper installed-state lifecycle surfaces.
+The next implementation target is now the frontend pass that exposes installed-state lifecycle surfaces, while a later product pass can harden trust, approval, and recovery.
 
-The current next implementation note is [frontend-remote-execution-ui-iteration.md](./frontend-remote-execution-ui-iteration.md).
+The current next implementation note is [frontend-installed-state-ui-iteration.md](./frontend-installed-state-ui-iteration.md).

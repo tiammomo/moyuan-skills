@@ -50,7 +50,7 @@
 - [frontend-backend-integration.md](./frontend-backend-integration.md)
   现有前端如何对接 Python backend 与 repo-backed docs，并把命令、产物、honest local install 提示、local install job API，以及新的 remote registry install API 一起纳入整体集成设计。
 - [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md)
-  盘点当前前后端交互闭环、未补完的按钮能力，以及“是否能直接从远端拉取 skill 到本地”的后续路线；当前已完成 honest local command UI、bundle-level local actions、skill / bundle 详情页上的本地执行 UI、backend local lifecycle API，以及 CLI/backend 侧的 remote registry install。
+  盘点当前前后端交互闭环、未补完的按钮能力，以及“是否能直接从远端拉取 skill 到本地”的后续路线；当前已完成 honest local command UI、bundle-level local actions、skill / bundle 详情页上的本地执行 UI、backend local lifecycle API，以及 CLI / backend / frontend 侧的 remote registry install。
 
 ## 业务案例文档
 
