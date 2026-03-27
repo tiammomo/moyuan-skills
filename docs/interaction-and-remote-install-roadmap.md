@@ -11,10 +11,10 @@ Current status:
 - command guidance in docs is already strong
 - skill and bundle install entry points now use honest `local CLI only` language
 
-The two biggest gaps are still:
+The two biggest gaps are now:
 
 1. many frontend buttons are guidance or command-copy affordances, not true execution flows
-2. the installer still expects local install spec files and cannot directly pull a skill from a remote registry over HTTP
+2. the frontend still does not expose the new remote registry install APIs even though backend and CLI support are now in place
 
 ## Current-state assessment
 
@@ -78,27 +78,27 @@ Current reality:
 What is still incomplete:
 
 - the current frontend only uses the install mutations, not the fuller lifecycle set
-- there is still no remote registry fetch layer behind these endpoints
+- the frontend still does not consume the new remote registry install endpoints
 
 ### 4. Remote skill pull / download
 
-Status: `not implemented`
+Status: `complete for CLI and backend`
 
 Current reality:
 
-- `install_skill.py` installs from a local install spec path
-- `skills_market.py install` forwards to the same local-file workflow
-- there is no support for:
-  - remote registry URL
-  - skill id plus channel resolution from a remote host
-  - HTTP download of install spec, package, or provenance
-  - local cache management for downloaded artifacts
+- `skills_market.py install <skill> --registry <url>` can now resolve a remote skill id or name over HTTP
+- `skills_market.py install-bundle <bundle> --registry <url>` can now resolve a remote bundle over HTTP
+- remote install specs, packages, and provenance artifacts are now staged under `dist/remote-registry-cache/`
+- FastAPI now exposes:
+  - `POST /api/v1/registry/skills/install`
+  - `POST /api/v1/registry/bundles/install`
+- the remote path reuses the existing installer after staging, so checksum and lifecycle checks still run locally
 
 Short answer:
 
-`not yet`
+`yes, from CLI and backend`
 
-The project can install local packaged skills, but it still cannot fetch remote market artifacts directly.
+The project can now fetch and install remote market artifacts directly, but the frontend still needs a dedicated UI pass to consume those APIs.
 
 ## Buttons that are still not fully closed-loop
 
@@ -202,6 +202,10 @@ Goal:
 
 - install a skill without needing a preexisting local install spec file
 
+Status:
+
+- `complete for CLI and backend`
+
 Suggested CLI shape:
 
 ```text
@@ -266,24 +270,24 @@ Recommended execution order:
 
 1. Phase 1
 2. Phase 2
-3. Phase 3
+3. Phase 5
 4. Phase 4
-5. Phase 5
 
 Why:
 
 - first make the UI honest
 - then make local execution possible
-- then add remote install
-- then harden it with trust and approval
-- then expose deeper lifecycle and governance surfaces
+- then expose the deeper installed-state surfaces that the frontend still does not consume
+- then harden remote install further with trust and approval
 
 ## Short answer for project status
 
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle installs, but not yet for update/remove/state workflows
-- `remote skill download and install` is not yet supported
+- `frontend execution` is now working for local skill and bundle installs, but not yet for update/remove/state or remote-registry workflows
+- `remote skill download and install` is now supported from CLI and backend APIs
 
-The next implementation target is now `Phase 3`: remote registry fetch and remote install, while a later frontend pass can consume the new local lifecycle APIs for installed-state product surfaces.
+The next implementation target is now the frontend pass that consumes the completed remote registry install APIs, while a later product pass can expose deeper installed-state lifecycle surfaces.
+
+The current next implementation note is [frontend-remote-execution-ui-iteration.md](./frontend-remote-execution-ui-iteration.md).
