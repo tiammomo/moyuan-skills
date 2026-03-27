@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Shell } from '@/components/ui/Shell';
 import { InstallButton } from '@/components/market/InstallButton';
+import { LocalExecutionCard } from '@/components/market/LocalExecutionCard';
 import { PermissionsList } from '@/components/market/PermissionsList';
 import { SkillCard } from '@/components/market/SkillCard';
 
@@ -135,8 +136,21 @@ export default async function SkillDetailPage({ params }: Props) {
           {installSpec && (
             <section className="animate-fade-in-delay-3">
               <Card className="p-6 sm:p-8">
-                <h2 className="text-lg font-semibold text-ink mb-4">Local install command</h2>
-                <InstallButton installSpec={installSpec} />
+                <h2 className="text-lg font-semibold text-ink mb-4">Local install options</h2>
+                <div className="space-y-5">
+                  <InstallButton installSpec={installSpec} />
+                  <LocalExecutionCard
+                    panelTestId="skill-backend-execution"
+                    title="Run this install through the backend"
+                    description="This executes the existing local installer through the FastAPI mutation layer and keeps the copy-command fallback visible above."
+                    requestPath="/api/local/skills/install"
+                    requestBody={{
+                      name: manifest.name,
+                      target_root: `dist/frontend-local-execution/skills/${manifest.name}`,
+                    }}
+                    fallbackNote="Remote registry download is still out of scope here. This button only runs the local install spec already packaged in the repo."
+                  />
+                </div>
               </Card>
             </section>
           )}

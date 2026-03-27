@@ -13,12 +13,17 @@ test('frontend works against the Python backend across core market flows', async
     page.waitForURL(/\/skills\/release-note-writer$/),
     page.locator('[data-testid="skill-card-release-note-writer"]').first().click(),
   ]);
-  await expect(page.getByTestId('install-command-mode-note')).toContainText('Local CLI only');
+  await expect(page.getByTestId('install-command-mode-note')).toContainText('Copy install command');
   await expect(page.getByTestId('install-command-honesty-note')).toContainText(
-    'does not execute through the backend yet'
+    'Use the backend execution panel'
   );
   await expect(page.getByTestId('install-command')).toContainText('release-note-writer-0.1.0.json');
   await expect(page.getByTestId('install-command-copy')).toContainText('Copy install command');
+  await expect(page.getByTestId('skill-backend-execution')).toBeVisible();
+  await expect(page.getByTestId('skill-backend-execution-availability')).toContainText('Backend execution is ready');
+  await page.getByTestId('skill-backend-execution-run').click();
+  await expect(page.getByTestId('skill-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+  await expect(page.getByTestId('skill-backend-execution-summary')).toContainText('release-note-writer');
 
   await page.goto('/bundles');
   await expect(page.getByTestId('bundle-card-release-engineering-starter')).toBeVisible();
@@ -37,6 +42,11 @@ test('frontend works against the Python backend across core market flows', async
     'python scripts/skills_market.py remove-bundle release-engineering-starter'
   );
   await expect(page.getByTestId('install-command').first()).toContainText('release-note-writer-0.1.0.json');
+  await expect(page.getByTestId('bundle-backend-execution')).toBeVisible();
+  await expect(page.getByTestId('bundle-backend-execution-availability')).toContainText('Backend execution is ready');
+  await page.getByTestId('bundle-backend-execution-run').click();
+  await expect(page.getByTestId('bundle-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+  await expect(page.getByTestId('bundle-backend-execution-summary')).toContainText('release-engineering-starter');
 
   await page.goto('/docs');
   await page.getByTestId('docs-filter-project').click();

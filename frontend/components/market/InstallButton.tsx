@@ -75,12 +75,13 @@ export function InstallButton({ installSpec }: InstallButtonProps) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <Chip variant="keyword" data-testid="install-command-mode-note">
-          Local CLI only
+          Copy install command
         </Chip>
-        <Chip variant="internal">Manual step required</Chip>
+        <Chip variant="internal">CLI fallback</Chip>
       </div>
       <p data-testid="install-command-honesty-note" className="text-sm text-muted">
-        This page copies a local install command. It does not execute through the backend yet.
+        This card only copies the local install command. Use the backend execution panel if you want the frontend to run
+        the install for you.
       </p>
       <div className="flex items-center gap-2">
         <code

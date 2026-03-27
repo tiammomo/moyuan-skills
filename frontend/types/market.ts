@@ -80,6 +80,32 @@ export interface InstallSpec {
   install_target: string;
 }
 
+export interface LocalBackendStatus {
+  available: boolean;
+  configured: boolean;
+  message: string;
+}
+
+export type LocalJobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+
+export interface LocalJobRecord {
+  job_id: string;
+  kind: string;
+  status: LocalJobStatus;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  command: string[];
+  command_text: string;
+  summary: Record<string, unknown>;
+  artifacts: Record<string, unknown>;
+  request: Record<string, unknown>;
+  stdout: string;
+  stderr: string;
+  exit_code: number | null;
+  error: string | null;
+}
+
 export interface MarketCommandAction {
   label: string;
   command: string;

@@ -100,7 +100,7 @@ export function LocalCommandPanel({
       <div className="mb-5">
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <Chip variant="keyword">Local CLI only</Chip>
-          <Chip variant="internal">Manual step required</Chip>
+          <Chip variant="internal">Copy-first fallback</Chip>
         </div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-2">{title}</h3>
         <p className="text-sm text-muted">{description}</p>

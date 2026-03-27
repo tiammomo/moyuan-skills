@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getBundleDetail, getBundles } from '@/lib/data';
 import { InstallButton } from '@/components/market/InstallButton';
+import { LocalExecutionCard } from '@/components/market/LocalExecutionCard';
 import { LocalCommandPanel } from '@/components/market/LocalCommandPanel';
 import { SkillCard } from '@/components/market/SkillCard';
 import { Card } from '@/components/ui/Card';
@@ -122,12 +123,27 @@ export default async function BundleDetailPage({ params }: Props) {
             <LocalCommandPanel
               panelTestId="bundle-local-command-panel"
               title="Bundle local commands"
-              description="These actions still run through the local CLI. Use them when you want a single bundle-level workflow before backend execution APIs exist."
+              description="These actions still run through the local CLI. Keep using them when you want explicit copy-first control or when you need bundle update/remove flows that are not wired to the backend yet."
               actions={bundleActions}
             />
           </section>
 
           <section className="animate-fade-in-delay-1">
+            <LocalExecutionCard
+              panelTestId="bundle-backend-execution"
+              title="Run bundle install through the backend"
+              description="This uses the FastAPI mutation layer to execute the current bundle install and poll the background job until it finishes."
+              requestPath="/api/local/bundles/install"
+              requestBody={{
+                bundle_id: bundle.id,
+                target_root: `dist/frontend-local-execution/bundles/${bundle.id}`,
+                market_dir: 'dist/market',
+              }}
+              fallbackNote="Bundle update and remove remain copy-first CLI actions for now; only bundle install is wired to backend execution in this pass."
+            />
+          </section>
+
+          <section className="animate-fade-in-delay-2">
             <Card className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">
                 Per-skill local install commands
@@ -146,7 +162,7 @@ export default async function BundleDetailPage({ params }: Props) {
             </Card>
           </section>
 
-          <section className="animate-fade-in-delay-2">
+          <section className="animate-fade-in-delay-3">
             <Card className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">
                 Bundle info
