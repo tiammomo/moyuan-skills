@@ -57,6 +57,71 @@ class LocalBundleInstallRequest(BaseModel):
     dry_run: bool = Field(default=False, description="Resolve the bundle install through the backend without extracting files.")
 
 
+class LocalSkillUpdateRequest(BaseModel):
+    skill: str = Field(..., min_length=1, description="Installed skill id, name, or install target.")
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Target directory for the local install lifecycle.",
+    )
+    index: str | None = Field(
+        default="dist/market/channels/stable.json",
+        description="Channel index JSON used to resolve the latest install spec.",
+    )
+    dry_run: bool = Field(default=False, description="Resolve the update without extracting files.")
+
+
+class LocalSkillRemoveRequest(BaseModel):
+    skill: str = Field(..., min_length=1, description="Installed skill id, name, or install target.")
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Target directory for the local install lifecycle.",
+    )
+    dry_run: bool = Field(default=False, description="Show the removal plan without deleting files.")
+
+
+class LocalBundleUpdateRequest(BaseModel):
+    bundle_id: str = Field(..., min_length=1, description="Bundle id or title.")
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Target directory for the local bundle lifecycle.",
+    )
+    market_dir: str | None = Field(
+        default="dist/market",
+        description="Generated market artifact directory used by the bundle updater.",
+    )
+    org_policy: str | None = Field(
+        default=None,
+        description="Optional org market policy JSON file.",
+    )
+    dry_run: bool = Field(default=False, description="Resolve the bundle update without extracting files.")
+
+
+class LocalBundleRemoveRequest(BaseModel):
+    bundle_id: str = Field(..., min_length=1, description="Bundle id or title.")
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Target directory for the local bundle lifecycle.",
+    )
+    dry_run: bool = Field(default=False, description="Show the removal plan without deleting files.")
+
+
+def _create_local_job(
+    *,
+    kind: str,
+    command: list[str],
+    summary: dict,
+    artifacts: dict,
+    request_payload: dict,
+) -> dict:
+    return job_store.create_subprocess_job(
+        kind=kind,
+        command=command,
+        summary=summary,
+        artifacts=artifacts,
+        request_payload=request_payload,
+    )
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -175,7 +240,7 @@ def local_skill_install(request: LocalSkillInstallRequest) -> dict:
     if request.dry_run:
         command.append("--dry-run")
 
-    job = job_store.create_subprocess_job(
+    job = _create_local_job(
         kind="skill-install",
         command=command,
         summary={
@@ -190,6 +255,66 @@ def local_skill_install(request: LocalSkillInstallRequest) -> dict:
             "target_root": str(target_root),
             "install_spec": str(install_spec_path),
             "entrypoint": install_spec["entrypoint"],
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/skills/update", status_code=202)
+def local_skill_update(request: LocalSkillUpdateRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    index_path = resolve_local_target_path(settings.repo_root, request.index, "dist/market/channels/stable.json")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "update_installed_skill.py"),
+        request.skill,
+        "--index",
+        str(index_path),
+        "--target-root",
+        str(target_root),
+    ]
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="skill-update",
+        command=command,
+        summary={
+            "skill": request.skill,
+            "mode": "dry-run" if request.dry_run else "update",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "index": str(index_path),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/skills/remove", status_code=202)
+def local_skill_remove(request: LocalSkillRemoveRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "remove_skill.py"),
+        request.skill,
+        "--target-root",
+        str(target_root),
+    ]
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="skill-remove",
+        command=command,
+        summary={
+            "skill": request.skill,
+            "mode": "dry-run" if request.dry_run else "remove",
+        },
+        artifacts={
+            "target_root": str(target_root),
         },
         request_payload=request.model_dump(),
     )
@@ -217,7 +342,7 @@ def local_bundle_install(request: LocalBundleInstallRequest) -> dict:
     if request.dry_run:
         command.append("--dry-run")
 
-    job = job_store.create_subprocess_job(
+    job = _create_local_job(
         kind="bundle-install",
         command=command,
         summary={
@@ -237,12 +362,84 @@ def local_bundle_install(request: LocalBundleInstallRequest) -> dict:
     return job
 
 
+@app.post("/api/v1/local/bundles/update", status_code=202)
+def local_bundle_update(request: LocalBundleUpdateRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    market_dir = resolve_local_target_path(settings.repo_root, request.market_dir, "dist/market")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "update_skill_bundle.py"),
+        request.bundle_id,
+        "--market-dir",
+        str(market_dir),
+        "--target-root",
+        str(target_root),
+    ]
+    org_policy_path = None
+    if request.org_policy:
+        org_policy_path = resolve_local_target_path(settings.repo_root, request.org_policy, request.org_policy)
+        command.extend(["--org-policy", str(org_policy_path)])
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="bundle-update",
+        command=command,
+        summary={
+            "bundle_id": request.bundle_id,
+            "mode": "dry-run" if request.dry_run else "update",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "market_dir": str(market_dir),
+            "org_policy": str(org_policy_path) if org_policy_path else "",
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/bundles/remove", status_code=202)
+def local_bundle_remove(request: LocalBundleRemoveRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "remove_skill_bundle.py"),
+        request.bundle_id,
+        "--target-root",
+        str(target_root),
+    ]
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="bundle-remove",
+        command=command,
+        summary={
+            "bundle_id": request.bundle_id,
+            "mode": "dry-run" if request.dry_run else "remove",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "bundle_report": str(target_root / "bundle-reports" / f"{request.bundle_id}.json"),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
 @app.get("/api/v1/local/jobs/{job_id}")
 def local_job_detail(job_id: str) -> dict:
     payload = job_store.get_job(job_id)
     if not payload:
         raise _not_found("job", job_id)
     return payload
+
+
+@app.get("/api/v1/local/state")
+def local_state(target_root: str = "dist/backend-installed-market") -> dict:
+    resolved_root = resolve_local_target_path(settings.repo_root, target_root, "dist/backend-installed-market")
+    return repository.get_installed_state(resolved_root)
 
 
 @app.get("/api/v1/docs/catalog")

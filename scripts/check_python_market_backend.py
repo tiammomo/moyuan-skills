@@ -141,6 +141,125 @@ def main() -> int:
         print(f"ERROR: expected bundle report is missing: {expected_bundle_report}")
         return 1
 
+    skill_state_response = client.get(
+        "/api/v1/local/state",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if skill_state_response.status_code != 200:
+        print(f"ERROR: backend local state should return 200, got {skill_state_response.status_code}")
+        return 1
+    skill_state = skill_state_response.json()
+    if skill_state.get("installed_count") != 1 or skill_state.get("bundle_count") != 0:
+        print("ERROR: backend local state should reflect the installed standalone skill")
+        return 1
+
+    bundle_state_response = client.get(
+        "/api/v1/local/state",
+        params={"target_root": str(local_target_root / "bundles")},
+    )
+    if bundle_state_response.status_code != 200:
+        print(f"ERROR: backend bundle state should return 200, got {bundle_state_response.status_code}")
+        return 1
+    bundle_state = bundle_state_response.json()
+    if bundle_state.get("bundle_count") != 1 or bundle_state.get("installed_count", 0) < 1:
+        print("ERROR: backend local state should reflect the installed bundle and its managed skills")
+        return 1
+
+    skill_update_response = client.post(
+        "/api/v1/local/skills/update",
+        json={
+            "skill": "release-note-writer",
+            "target_root": str(local_target_root / "skills"),
+            "dry_run": True,
+        },
+    )
+    if skill_update_response.status_code != 202:
+        print(f"ERROR: backend local skill update should return 202, got {skill_update_response.status_code}")
+        return 1
+    skill_update_job = wait_for_job(client, skill_update_response.json()["job_id"])
+    if skill_update_job.get("status") != "succeeded":
+        print("ERROR: backend local skill update dry-run job should succeed")
+        print(skill_update_job.get("stdout", ""))
+        print(skill_update_job.get("stderr", ""))
+        return 1
+
+    bundle_update_response = client.post(
+        "/api/v1/local/bundles/update",
+        json={
+            "bundle_id": "release-engineering-starter",
+            "target_root": str(local_target_root / "bundles"),
+            "market_dir": "dist/market",
+            "dry_run": True,
+        },
+    )
+    if bundle_update_response.status_code != 202:
+        print(f"ERROR: backend local bundle update should return 202, got {bundle_update_response.status_code}")
+        return 1
+    bundle_update_job = wait_for_job(client, bundle_update_response.json()["job_id"])
+    if bundle_update_job.get("status") != "succeeded":
+        print("ERROR: backend local bundle update dry-run job should succeed")
+        print(bundle_update_job.get("stdout", ""))
+        print(bundle_update_job.get("stderr", ""))
+        return 1
+
+    skill_remove_response = client.post(
+        "/api/v1/local/skills/remove",
+        json={
+            "skill": "release-note-writer",
+            "target_root": str(local_target_root / "skills"),
+            "dry_run": False,
+        },
+    )
+    if skill_remove_response.status_code != 202:
+        print(f"ERROR: backend local skill remove should return 202, got {skill_remove_response.status_code}")
+        return 1
+    skill_remove_job = wait_for_job(client, skill_remove_response.json()["job_id"])
+    if skill_remove_job.get("status") != "succeeded":
+        print("ERROR: backend local skill remove job should succeed")
+        print(skill_remove_job.get("stdout", ""))
+        print(skill_remove_job.get("stderr", ""))
+        return 1
+    if expected_entrypoint.exists():
+        print(f"ERROR: removed skill entrypoint should no longer exist: {expected_entrypoint}")
+        return 1
+
+    removed_skill_state = client.get(
+        "/api/v1/local/state",
+        params={"target_root": str(local_target_root / "skills")},
+    ).json()
+    if removed_skill_state.get("installed_count") != 0:
+        print("ERROR: backend local state should show zero installed skills after removal")
+        return 1
+
+    bundle_remove_response = client.post(
+        "/api/v1/local/bundles/remove",
+        json={
+            "bundle_id": "release-engineering-starter",
+            "target_root": str(local_target_root / "bundles"),
+            "dry_run": False,
+        },
+    )
+    if bundle_remove_response.status_code != 202:
+        print(f"ERROR: backend local bundle remove should return 202, got {bundle_remove_response.status_code}")
+        return 1
+    bundle_remove_job = wait_for_job(client, bundle_remove_response.json()["job_id"])
+    if bundle_remove_job.get("status") != "succeeded":
+        print("ERROR: backend local bundle remove job should succeed")
+        print(bundle_remove_job.get("stdout", ""))
+        print(bundle_remove_job.get("stderr", ""))
+        return 1
+    if expected_bundle_report.exists():
+        print(f"ERROR: removed bundle report should no longer exist: {expected_bundle_report}")
+        return 1
+
+    removed_bundle_state = client.get(
+        "/api/v1/local/state",
+        params={"target_root": str(local_target_root / "bundles")},
+    ).json()
+    if removed_bundle_state.get("bundle_count") != 0:
+        print("ERROR: backend local state should show zero installed bundles after removal")
+        return 1
+
     shutil.rmtree(local_target_root, ignore_errors=True)
 
     print(
@@ -148,7 +267,7 @@ def main() -> int:
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local skill and bundle install jobs."
+        "plus local install, update, remove, and state jobs."
     )
     return 0
 

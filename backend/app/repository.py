@@ -333,3 +333,55 @@ class MarketRepository:
                 "project_doc_count": len(self.get_docs_catalog().get("project_docs", [])),
             },
         }
+
+    def get_installed_state(self, target_root: Path) -> dict[str, Any]:
+        resolved_root = target_root.resolve()
+        lock_path = resolved_root / "skills.lock.json"
+        if lock_path.is_file():
+            lock_payload = _read_json(lock_path)
+        else:
+            lock_payload = {"installed": []}
+
+        installed = sorted(
+            [
+                entry
+                for entry in lock_payload.get("installed", [])
+                if isinstance(entry, dict) and str(entry.get("skill_id", "")).strip()
+            ],
+            key=lambda item: (
+                str(item.get("skill_id", "")).lower(),
+                str(item.get("install_target", "")).lower(),
+            ),
+        )
+
+        bundles: list[dict[str, Any]] = []
+        bundle_reports_dir = resolved_root / "bundle-reports"
+        if bundle_reports_dir.is_dir():
+            for report_path in sorted(bundle_reports_dir.glob("*.json")):
+                report = _read_json(report_path)
+                results = report.get("results", [])
+                active_skill_ids = sorted(
+                    str(item.get("skill_id", "")).strip()
+                    for item in results
+                    if isinstance(item, dict) and item.get("status") == "installed" and str(item.get("skill_id", "")).strip()
+                )
+                bundles.append(
+                    {
+                        "bundle_id": str(report.get("bundle_id", report_path.stem)),
+                        "title": str(report.get("title", report_path.stem)),
+                        "generated_at": str(report.get("generated_at", "")),
+                        "report_path": str(report_path),
+                        "target_root": str(resolved_root),
+                        "skill_count": len(active_skill_ids),
+                        "active_skill_ids": active_skill_ids,
+                    }
+                )
+
+        return {
+            "target_root": str(resolved_root),
+            "lock_path": str(lock_path),
+            "installed_count": len(installed),
+            "bundle_count": len(bundles),
+            "installed": installed,
+            "bundles": bundles,
+        }
