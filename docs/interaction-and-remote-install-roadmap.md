@@ -14,7 +14,7 @@ Current status:
 The two biggest gaps are now:
 
 1. many deeper governance buttons are still guidance or command-copy affordances, not true lifecycle execution flows
-2. remote install recovery and rollback surfaces are still not productized in the frontend
+2. remote install policy gating and rollback surfaces are still not productized in the frontend
 
 ## Current-state assessment
 
@@ -56,9 +56,9 @@ What is already good:
 
 What is still incomplete:
 
-- doctor / repair / baseline / governance actions are still not exposed as frontend-installed-state surfaces
+- baseline / governance actions are still not exposed as frontend-installed-state surfaces
 - docs action panels are still guidance widgets, not executable actions
-- there is no frontend recovery or rollback state yet for remote execution failures
+- rollback and deeper policy gating still are not exposed for remote execution failures
 
 ### 3. Backend interaction layer
 
@@ -73,14 +73,16 @@ Current reality:
   - `POST /api/v1/local/bundles/install`
   - `POST /api/v1/local/bundles/update`
   - `POST /api/v1/local/bundles/remove`
+  - `POST /api/v1/local/state/doctor`
+  - `POST /api/v1/local/state/repair`
   - `GET /api/v1/local/jobs/{job_id}`
   - `GET /api/v1/local/state`
-- the lifecycle layer reuses the existing local install/update/remove scripts
+- the lifecycle layer reuses the existing local install/update/remove/doctor/repair scripts
 - long-running local operations now have a lightweight job model that the frontend can poll
 
 What is still incomplete:
 
-- the current frontend only uses the first install/update/remove/state surfaces, not the deeper doctor/repair/baseline flows
+- the current frontend now uses install/update/remove/state/doctor/repair surfaces, but not yet the deeper baseline/governance flows
 
 ### 4. Remote skill pull / download
 
@@ -106,7 +108,7 @@ The project can now fetch and install remote market artifacts directly from CLI,
 
 ### Needs real backend execution
 
-- future installed-state actions such as doctor, repair, baseline, and governance review
+- future installed-state actions such as baseline, history, and governance review
 
 ### Already acceptable as non-execution UI
 
@@ -183,6 +185,7 @@ Suggested endpoints:
 - `POST /api/v1/local/bundles/update`
 - `POST /api/v1/local/bundles/remove`
 - `POST /api/v1/local/state/doctor`
+- `POST /api/v1/local/state/repair`
 - `GET /api/v1/local/jobs/{job_id}`
 - `GET /api/v1/local/state`
 
@@ -246,6 +249,10 @@ Status:
   - remote bundle install cards now show publisher mix, review coverage, lifecycle mix, human-review, and provenance hints before execution
   - frontend remote execution now requires explicit in-page approval before the backend job can start
   - Playwright now verifies that remote skill and bundle installs stay blocked until approval is given
+  - remote skill install cards now classify failed registry runs into recovery-oriented categories
+  - remote skill install cards now expose retry and staged-file cleanup after failed registry runs
+  - backend now exposes a cleanup endpoint for remote cache and target-root recovery
+  - Playwright now verifies one failed-then-retried remote skill install path
 
 Deliverables:
 
@@ -286,7 +293,9 @@ Status:
   - bundle detail now reads installed-state from the backend
   - skill detail can now launch backend update/remove jobs
   - bundle detail can now launch backend update/remove jobs
-  - Playwright now verifies installed-state lifecycle transitions in-page
+  - backend now exposes installed-state doctor and repair job endpoints
+  - skill and bundle detail pages now expose installed-state doctor plus low-risk repair in-page
+  - Playwright now verifies installed-state lifecycle transitions plus one drifted-then-repaired target root in-page
 
 ## Priority recommendation
 
@@ -297,17 +306,17 @@ Recommended execution order:
 
 Why:
 
-- first continue from detail-page lifecycle cards into deeper installed-state product surfaces
-- then harden remote install further with recovery, rollback, and failure-handling UX now that trust and approval are visible
+- remote install now has first-pass trust, approval, retry, and cleanup
+- the next higher-value product gap is deeper installed-state UI, while remote install can later come back for stronger policy gating and rollback
 
 ## Short answer for project status
 
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle install/update/remove plus remote-registry install flows with trust summaries and explicit approval
+- `frontend execution` is now working for local skill and bundle install/update/remove, installed-state doctor/repair, plus remote-registry install flows with trust summaries, explicit approval, retry, and cleanup
 - `remote skill download and install` is now supported from CLI, backend APIs, and frontend install surfaces
 
-The next implementation target is now the remote-install recovery pass, while a later product pass can keep deepening installed-state product surfaces beyond the detail pages.
+The next implementation target is now the first installed-state baseline history pass, while a later product pass can keep strengthening remote policy gating and rollback beyond the detail pages.
 
-The current next implementation note is [remote-install-recovery-iteration.md](./remote-install-recovery-iteration.md).
+The current next implementation note is [frontend-installed-baseline-iteration.md](./frontend-installed-baseline-iteration.md).

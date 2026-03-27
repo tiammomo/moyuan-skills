@@ -164,6 +164,12 @@ export default async function SkillDetailPage({ params }: Props) {
                       target_root: `dist/frontend-remote-execution/skills/${manifest.name}`,
                       cache_root: 'dist/frontend-remote-execution/cache',
                     }}
+                    cleanupRequestPath="/api/registry/cleanup"
+                    cleanupRequestBody={{
+                      target_root: `dist/frontend-remote-execution/skills/${manifest.name}`,
+                      cache_root: 'dist/frontend-remote-execution/cache',
+                      scope: `remote-skill:${manifest.id}`,
+                    }}
                     modeLabel="Registry-backed execution"
                     badges={['Remote download via backend', 'Local install spec still available above']}
                     remoteTrust={remoteTrust}
@@ -177,7 +183,7 @@ export default async function SkillDetailPage({ params }: Props) {
                         required: true,
                       },
                     ]}
-                    fallbackNote="This frontend pass now exposes trust and approval for remote install. Recovery, rollback, and deeper policy gating still live in later roadmap phases."
+                    fallbackNote="This frontend pass now exposes trust, approval, retry, and cleanup for remote install. Rollback and deeper policy gating still live in later roadmap phases."
                   />
                 </div>
               </Card>
@@ -188,7 +194,7 @@ export default async function SkillDetailPage({ params }: Props) {
             <InstalledStatePanel
               panelTestId="skill-installed-state"
               title="Local lifecycle state"
-              description="This panel reads the backend installed-state snapshot for the local frontend target root and lets you run update or remove without leaving the detail page."
+              description="This panel reads the backend installed-state snapshot for the local frontend target root, lets you run doctor and low-risk repair, and still keeps update/remove on the same detail page."
               targetRoot={localTargetRoot}
               skillId={manifest.id}
               skillName={manifest.name}
@@ -205,7 +211,7 @@ export default async function SkillDetailPage({ params }: Props) {
                     index: `dist/market/channels/${manifest.channel}.json`,
                   },
                   fallbackNote:
-                    'This is the first installed-state lifecycle pass. Doctor, repair, and baseline governance still live in later frontend iterations.',
+                    'Doctor and low-risk repair now live in this installed-state panel. Baseline and deeper governance still stay in later frontend iterations.',
                   modeLabel: 'Installed-state execution',
                   badges: ['Updates the current local target root', 'Copy-first commands stay available above'],
                   runButtonLabel: 'Update via backend',

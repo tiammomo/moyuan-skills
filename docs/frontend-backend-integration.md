@@ -29,10 +29,18 @@ Core endpoints:
 - `GET /api/v1/market/bundles`
 - `GET /api/v1/market/bundles/{bundle_id}`
 - `POST /api/v1/local/skills/install`
+- `POST /api/v1/local/skills/update`
+- `POST /api/v1/local/skills/remove`
 - `POST /api/v1/local/bundles/install`
+- `POST /api/v1/local/bundles/update`
+- `POST /api/v1/local/bundles/remove`
+- `POST /api/v1/local/state/doctor`
+- `POST /api/v1/local/state/repair`
 - `POST /api/v1/registry/skills/install`
 - `POST /api/v1/registry/bundles/install`
+- `POST /api/v1/registry/cleanup`
 - `GET /api/v1/local/jobs/{job_id}`
+- `GET /api/v1/local/state`
 - `GET /api/v1/docs/catalog`
 - `GET /api/v1/docs/teaching/{doc_id}`
 - `GET /api/v1/docs/project/{doc_id}`
@@ -41,7 +49,7 @@ The docs catalog now carries both grouped arrays and a flattened `all_docs` list
 That same shared payload now also supports detail-page related navigation, context panels, and copy-friendly ordered action panels with prerequisite, expected-outcome, and artifact/output cues without requiring separate recommendations or metadata endpoints.
 Skill detail and bundle detail pages now distinguish copy-first CLI fallbacks from true backend execution flows, so the current UI stays honest while still exposing one-click local install for the flows that are already wired.
 The backend now exposes both the local mutation/job layer and the first remote registry install job layer; the frontend now proxies the local install flows plus the first registry-backed skill and bundle install flows.
-The remote execution cards now also surface a first trust layer and require explicit approval before those registry-backed jobs can start, so the UI no longer implies that a network install is fire-and-forget.
+The remote execution cards now also surface a first trust layer, require explicit approval before those registry-backed jobs can start, and expose a first recovery layer with retry plus staged-file cleanup, so the UI no longer implies that a network install is fire-and-forget.
 
 The repository layer reads these real assets directly:
 
@@ -158,8 +166,10 @@ Then it validates:
 - bundle detail pages can now launch registry-backed remote bundle install jobs through the backend
 - remote skill and bundle execution cards now show trust metadata before execution
 - remote skill and bundle execution cards now require explicit approval before the run button becomes available
+- remote skill execution now covers failed-then-retried registry installs plus backend cleanup for staged files
 - skill detail pages can now read installed-state and launch update/remove jobs through the backend
 - bundle detail pages can now read installed-state and launch update/remove jobs through the backend
+- skill and bundle detail pages can now run installed-state doctor checks plus low-risk repair through the backend
 
 Run:
 
@@ -223,9 +233,9 @@ What is already complete:
 
 What is still partial:
 
-- frontend now supports backend execution for local skill and bundle install/update/remove plus installed-state reads on detail pages
+- frontend now supports backend execution for local skill and bundle install/update/remove plus installed-state reads, doctor, and low-risk repair on detail pages
 - docs action panels are guidance-oriented and do not execute commands
-- deeper installed-state UI such as doctor/repair/baseline still needs another iteration
-- remote trust and approval are now present, but recovery and rollback UX for remote installs still needs another iteration
+- deeper installed-state UI such as baseline/governance still needs another iteration
+- remote trust, approval, retry, and cleanup are now present, but deeper policy gating and rollback UX for remote installs still needs another iteration
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

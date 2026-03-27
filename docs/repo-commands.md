@@ -148,6 +148,7 @@ python scripts/skills_market.py registry
 python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --dry-run
 python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
 python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
+python scripts/cleanup_remote_install.py --target-root dist/frontend-remote-execution/skills/release-note-writer --cache-root dist/frontend-remote-execution/cache
 python scripts/skills_market.py smoke
 ```
 

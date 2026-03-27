@@ -5,6 +5,7 @@ import type { LocalInstalledSkillRecord, LocalInstalledState } from '@/types/mar
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
+import { InstalledDoctorPanel } from '@/components/market/InstalledDoctorPanel';
 import { LocalExecutionCard, type LocalExecutionCardProps } from '@/components/market/LocalExecutionCard';
 
 interface InstalledStatePanelProps {
@@ -226,6 +227,12 @@ export function InstalledStatePanel({
           )}
         </div>
       </Card>
+
+      <InstalledDoctorPanel
+        panelTestId={`${panelTestId}-doctor`}
+        targetRoot={targetRoot}
+        onRepairSettled={refreshState}
+      />
 
       {actions.map((action) => (
         <LocalExecutionCard

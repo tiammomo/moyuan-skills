@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import contextlib
 import http.server
+import json
 import shutil
 import socket
 import subprocess
@@ -364,6 +365,136 @@ def main() -> int:
             print(f"ERROR: expected remote-installed bundle report is missing: {remote_bundle_report}")
             return 1
 
+        cleanup_target_root = local_target_root / "cleanup-target"
+        cleanup_cache_root = local_target_root / "cleanup-cache"
+        (cleanup_target_root / "partial").mkdir(parents=True, exist_ok=True)
+        (cleanup_cache_root / "staged").mkdir(parents=True, exist_ok=True)
+        cleanup_response = client.post(
+            "/api/v1/registry/cleanup",
+            json={
+                "target_root": str(cleanup_target_root),
+                "cache_root": str(cleanup_cache_root),
+                "scope": "backend-smoke",
+            },
+        )
+        if cleanup_response.status_code != 202:
+            print(
+                "ERROR: backend remote cleanup should return 202, "
+                f"got {cleanup_response.status_code}"
+            )
+            return 1
+        cleanup_job = wait_for_job(client, cleanup_response.json()["job_id"])
+        if cleanup_job.get("status") != "succeeded":
+            print("ERROR: backend remote cleanup job should succeed")
+            print(cleanup_job.get("stdout", ""))
+            print(cleanup_job.get("stderr", ""))
+            return 1
+        if cleanup_target_root.exists() or cleanup_cache_root.exists():
+            print("ERROR: backend remote cleanup job should remove target and cache roots")
+            return 1
+
+        doctor_target_root = local_target_root / "doctor-repair"
+        doctor_report_path = doctor_target_root / "bundle-reports" / "stale-bundle.json"
+        (doctor_target_root / "orphan-skill").mkdir(parents=True, exist_ok=True)
+        doctor_report_path.parent.mkdir(parents=True, exist_ok=True)
+        doctor_report_path.write_text(
+            json.dumps(
+                {
+                    "bundle_id": "stale-bundle",
+                    "title": "Stale bundle",
+                    "generated_at": "2026-03-27T00:00:00+00:00",
+                    "results": [
+                        {
+                            "skill_id": "moyuan.release-note-writer",
+                            "status": "installed",
+                        }
+                    ],
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+        doctor_response = client.post(
+            "/api/v1/local/state/doctor",
+            json={
+                "target_root": str(doctor_target_root),
+                "scope": "backend-smoke",
+            },
+        )
+        if doctor_response.status_code != 202:
+            print(
+                "ERROR: backend installed-state doctor should return 202, "
+                f"got {doctor_response.status_code}"
+            )
+            return 1
+        doctor_job = wait_for_job(client, doctor_response.json()["job_id"])
+        if doctor_job.get("status") != "succeeded":
+            print("ERROR: backend installed-state doctor job should succeed")
+            print(doctor_job.get("stdout", ""))
+            print(doctor_job.get("stderr", ""))
+            return 1
+        doctor_payload = json.loads(doctor_job.get("stdout", "{}"))
+        if doctor_payload.get("summary", {}).get("doctor_finding_count", 0) < 2:
+            print("ERROR: backend installed-state doctor should surface drift findings")
+            return 1
+        if doctor_payload.get("summary", {}).get("repairable_finding_count", 0) < 2:
+            print("ERROR: backend installed-state doctor should expose repairable findings in the snapshot")
+            return 1
+
+        repair_response = client.post(
+            "/api/v1/local/state/repair",
+            json={
+                "target_root": str(doctor_target_root),
+                "scope": "backend-smoke",
+            },
+        )
+        if repair_response.status_code != 202:
+            print(
+                "ERROR: backend installed-state repair should return 202, "
+                f"got {repair_response.status_code}"
+            )
+            return 1
+        repair_job = wait_for_job(client, repair_response.json()["job_id"])
+        if repair_job.get("status") != "succeeded":
+            print("ERROR: backend installed-state repair job should succeed")
+            print(repair_job.get("stdout", ""))
+            print(repair_job.get("stderr", ""))
+            return 1
+        repair_payload = json.loads(repair_job.get("stdout", "{}"))
+        if repair_payload.get("applied_count") != 2:
+            print("ERROR: backend installed-state repair should remove the low-risk drift artifacts")
+            return 1
+        if (doctor_target_root / "orphan-skill").exists() or doctor_report_path.exists():
+            print("ERROR: backend installed-state repair should remove orphan directories and stale bundle reports")
+            return 1
+
+        repaired_doctor_response = client.post(
+            "/api/v1/local/state/doctor",
+            json={
+                "target_root": str(doctor_target_root),
+                "scope": "backend-smoke",
+            },
+        )
+        if repaired_doctor_response.status_code != 202:
+            print(
+                "ERROR: backend installed-state doctor rerun should return 202, "
+                f"got {repaired_doctor_response.status_code}"
+            )
+            return 1
+        repaired_doctor_job = wait_for_job(client, repaired_doctor_response.json()["job_id"])
+        if repaired_doctor_job.get("status") != "succeeded":
+            print("ERROR: backend installed-state doctor rerun should succeed")
+            print(repaired_doctor_job.get("stdout", ""))
+            print(repaired_doctor_job.get("stderr", ""))
+            return 1
+        repaired_doctor_payload = json.loads(repaired_doctor_job.get("stdout", "{}"))
+        if repaired_doctor_payload.get("summary", {}).get("doctor_finding_count") != 0:
+            print("ERROR: backend installed-state doctor should report a healthy target root after repair")
+            return 1
+
     shutil.rmtree(local_target_root, ignore_errors=True)
     shutil.rmtree(local_registry_root, ignore_errors=True)
 
@@ -372,7 +503,7 @@ def main() -> int:
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local and remote install lifecycle jobs."
+        "plus local, remote, doctor, repair, and cleanup lifecycle jobs."
     )
     return 0
 

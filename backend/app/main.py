@@ -134,6 +134,35 @@ class RemoteBundleInstallRequest(BaseModel):
     dry_run: bool = Field(default=False, description="Resolve the remote bundle install without extracting files.")
 
 
+class RemoteCleanupRequest(BaseModel):
+    target_root: str | None = Field(
+        default=None,
+        description="Installed target directory to clean up after a failed or abandoned remote run.",
+    )
+    cache_root: str | None = Field(
+        default=None,
+        description="Remote cache directory to clear after a failed or abandoned remote run.",
+    )
+    scope: str = Field(default="remote-registry-execution", description="UI scope label for the cleanup action.")
+
+
+class LocalStateDoctorRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory to inspect with the doctor snapshot.",
+    )
+    scope: str = Field(default="installed-state-doctor", description="UI scope label for the doctor action.")
+
+
+class LocalStateRepairRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory to repair when low-risk drift is found.",
+    )
+    dry_run: bool = Field(default=False, description="Only print the low-risk repair plan without changing files.")
+    scope: str = Field(default="installed-state-repair", description="UI scope label for the repair action.")
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -465,6 +494,43 @@ def registry_bundle_install(request: RemoteBundleInstallRequest) -> dict:
     return job
 
 
+@app.post("/api/v1/registry/cleanup", status_code=202)
+def registry_cleanup(request: RemoteCleanupRequest) -> dict:
+    target_root = (
+        resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+        if request.target_root
+        else None
+    )
+    cache_root = (
+        resolve_local_target_path(settings.repo_root, request.cache_root, "dist/backend-remote-cache")
+        if request.cache_root
+        else None
+    )
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "cleanup_remote_install.py"),
+    ]
+    if target_root is not None:
+        command.extend(["--target-root", str(target_root)])
+    if cache_root is not None:
+        command.extend(["--cache-root", str(cache_root)])
+
+    job = _create_local_job(
+        kind="registry-cleanup",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "cleanup",
+        },
+        artifacts={
+            "target_root": str(target_root) if target_root is not None else "",
+            "cache_root": str(cache_root) if cache_root is not None else "",
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
 @app.post("/api/v1/local/bundles/update", status_code=202)
 def local_bundle_update(request: LocalBundleUpdateRequest) -> dict:
     target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
@@ -543,6 +609,60 @@ def local_job_detail(job_id: str) -> dict:
 def local_state(target_root: str = "dist/backend-installed-market") -> dict:
     resolved_root = resolve_local_target_path(settings.repo_root, target_root, "dist/backend-installed-market")
     return repository.get_installed_state(resolved_root)
+
+
+@app.post("/api/v1/local/state/doctor", status_code=202)
+def local_state_doctor(request: LocalStateDoctorRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "snapshot_installed_market_state.py"),
+        "--target-root",
+        str(target_root),
+        "--json",
+    ]
+
+    job = _create_local_job(
+        kind="state-doctor",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "doctor",
+        },
+        artifacts={
+            "target_root": str(target_root),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/state/repair", status_code=202)
+def local_state_repair(request: LocalStateRepairRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "repair_installed_market_state.py"),
+        "--target-root",
+        str(target_root),
+        "--json",
+    ]
+    if request.dry_run:
+        command.append("--dry-run")
+
+    job = _create_local_job(
+        kind="state-repair",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "repair-dry-run" if request.dry_run else "repair",
+        },
+        artifacts={
+            "target_root": str(target_root),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
 
 
 @app.get("/api/v1/docs/catalog")

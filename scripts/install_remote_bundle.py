@@ -22,6 +22,20 @@ from remote_registry_utils import (
 DEFAULT_TARGET = Path("dist/installed-skills")
 
 
+def infer_remote_error_kind(message: str) -> str:
+    lowered = message.lower()
+    if (
+        "checksum mismatch" in lowered
+        or "provenance" in lowered
+        or "blocked" in lowered
+        or "archived" in lowered
+        or "human review" in lowered
+        or "not installable" in lowered
+    ):
+        return "trust"
+    return "download"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Install a starter bundle directly from a hosted remote registry.")
     parser.add_argument("bundle", help="Remote bundle id or title.")
@@ -74,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
         client = RemoteRegistryClient(args.registry)
         bundle = resolve_remote_bundle_payload(client, args.bundle)
     except RemoteRegistryError as error:
+        print(f"RECOVERY_KIND: {infer_remote_error_kind(str(error))}")
         print(f"ERROR: {error}")
         return 1
 
@@ -160,6 +175,7 @@ def main(argv: list[str] | None = None) -> int:
                 client=client,
             )
         except RemoteRegistryError as error:
+            print(f"RECOVERY_KIND: {infer_remote_error_kind(str(error))}")
             report["results"].append(
                 _result_entry(
                     skill_id=skill_id,

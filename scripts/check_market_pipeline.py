@@ -272,6 +272,24 @@ def main(argv: list[str] | None = None) -> int:
             print("ERROR: remote install should stage a local install spec cache artifact")
             return 1
 
+        cleanup_target_root = output_root / "remote-cleanup-target"
+        cleanup_cache_fixture = output_root / "remote-cleanup-cache"
+        (cleanup_target_root / "partial").mkdir(parents=True, exist_ok=True)
+        (cleanup_cache_fixture / "staged").mkdir(parents=True, exist_ok=True)
+        require_success(
+            "cleanup remote install staging",
+            [
+                "scripts/cleanup_remote_install.py",
+                "--target-root",
+                repo_relative_path(cleanup_target_root),
+                "--cache-root",
+                repo_relative_path(cleanup_cache_fixture),
+            ],
+        )
+        if cleanup_target_root.exists() or cleanup_cache_fixture.exists():
+            print("ERROR: cleanup_remote_install.py should remove both target-root and cache-root when requested")
+            return 1
+
     stable_index = market_root / "channels" / "stable.json"
     search_output = require_success(
         "search stable index",

@@ -143,6 +143,74 @@ export interface LocalInstalledState {
   bundles: LocalInstalledBundleRecord[];
 }
 
+export interface LocalInstalledDoctorFinding {
+  kind: string;
+  severity: string;
+  skill_id?: string;
+  bundle_id?: string;
+  message: string;
+}
+
+export interface LocalInstalledDoctorSnapshot {
+  generated_at: string;
+  target_root: string;
+  lock_path: string;
+  summary: {
+    installed_count: number;
+    bundle_count: number;
+    doctor_finding_count: number;
+    repairable_finding_count: number;
+    skipped_finding_count: number;
+  };
+  counts: {
+    channels: Record<string, number>;
+    lifecycle_statuses: Record<string, number>;
+    source_kinds: Record<string, number>;
+    finding_severities: Record<string, number>;
+  };
+  doctor: {
+    target_root: string;
+    lock_path: string;
+    installed_count: number;
+    bundle_report_count: number;
+    finding_count: number;
+    findings: LocalInstalledDoctorFinding[];
+    infos: string[];
+  };
+  repair_preview: {
+    repairable_finding_count: number;
+    orphan_directories: string[];
+    stale_bundle_reports: Array<{
+      bundle_id: string;
+      path: string;
+      title: string;
+    }>;
+    skipped_finding_count: number;
+    skipped_findings: LocalInstalledDoctorFinding[];
+  };
+}
+
+export interface LocalInstalledRepairPayload {
+  target_root: string;
+  dry_run: boolean;
+  doctor_finding_count: number;
+  repairable_finding_count: number;
+  repairable_findings: LocalInstalledDoctorFinding[];
+  orphan_directories: string[];
+  stale_bundle_reports: Array<{
+    bundle_id: string;
+    path: string;
+    title: string;
+  }>;
+  skipped_finding_count: number;
+  skipped_findings: LocalInstalledDoctorFinding[];
+  applied: {
+    removed_orphan_directories: string[];
+    removed_bundle_reports: string[];
+  };
+  applied_count: number;
+}
+
 export interface MarketCommandAction {
   label: string;
   command: string;

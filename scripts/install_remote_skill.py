@@ -14,6 +14,20 @@ from remote_registry_utils import DEFAULT_REMOTE_CACHE, RemoteRegistryError, sta
 DEFAULT_TARGET = ROOT / "dist" / "installed-skills"
 
 
+def infer_remote_error_kind(message: str) -> str:
+    lowered = message.lower()
+    if (
+        "checksum mismatch" in lowered
+        or "provenance" in lowered
+        or "blocked" in lowered
+        or "archived" in lowered
+        or "human review" in lowered
+        or "not installable" in lowered
+    ):
+        return "trust"
+    return "download"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Install a skill directly from a remote hosted registry.")
     parser.add_argument("skill", help="Remote skill id or skill name.")
@@ -37,6 +51,7 @@ def main(argv: list[str] | None = None) -> int:
             cache_root=args.cache_root,
         )
     except RemoteRegistryError as error:
+        print(f"RECOVERY_KIND: {infer_remote_error_kind(str(error))}")
         print(f"ERROR: {error}")
         return 1
 

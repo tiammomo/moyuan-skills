@@ -157,6 +157,12 @@ export default async function BundleDetailPage({ params }: Props) {
                 target_root: `dist/frontend-remote-execution/bundles/${bundle.id}`,
                 cache_root: 'dist/frontend-remote-execution/cache',
               }}
+              cleanupRequestPath="/api/registry/cleanup"
+              cleanupRequestBody={{
+                target_root: `dist/frontend-remote-execution/bundles/${bundle.id}`,
+                cache_root: 'dist/frontend-remote-execution/cache',
+                scope: `remote-bundle:${bundle.id}`,
+              }}
               modeLabel="Registry-backed execution"
               badges={['Remote download via backend', 'Copy-first bundle commands still stay visible']}
               remoteTrust={remoteTrust}
@@ -170,7 +176,7 @@ export default async function BundleDetailPage({ params }: Props) {
                   required: true,
                 },
               ]}
-              fallbackNote="This frontend pass now exposes trust and approval for remote bundle install. Update, remove, and deeper recovery UI still live in later roadmap phases."
+              fallbackNote="This frontend pass now exposes trust, approval, retry, and cleanup for remote bundle install. Update, remove, and deeper recovery UI still live in later roadmap phases."
             />
           </section>
 
@@ -178,7 +184,7 @@ export default async function BundleDetailPage({ params }: Props) {
             <InstalledStatePanel
               panelTestId="bundle-installed-state"
               title="Local lifecycle state"
-              description="This panel reads the backend installed-state snapshot for the current frontend bundle target root and lets you run update or remove without leaving the detail page."
+              description="This panel reads the backend installed-state snapshot for the current frontend bundle target root, exposes doctor and low-risk repair, and keeps update/remove on the same detail page."
               targetRoot={localTargetRoot}
               bundleId={bundle.id}
               actions={[
@@ -194,7 +200,7 @@ export default async function BundleDetailPage({ params }: Props) {
                     market_dir: 'dist/market',
                   },
                   fallbackNote:
-                    'This lifecycle surface only covers update/remove. Doctor, repair, and baseline governance remain later frontend product passes.',
+                    'Doctor and low-risk repair now live in this lifecycle panel. Baseline and deeper governance remain later frontend product passes.',
                   modeLabel: 'Installed-state execution',
                   badges: ['Refreshes current bundle membership', 'Copy-first commands stay visible above'],
                   runButtonLabel: 'Update via backend',

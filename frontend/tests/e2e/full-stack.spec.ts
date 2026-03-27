@@ -1,4 +1,8 @@
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
 import { expect, test } from '@playwright/test';
+
+const repoRoot = path.resolve(process.cwd(), '..');
 
 test('frontend works against the Python backend across core market flows', async ({ page }) => {
   await page.goto('/');
@@ -29,6 +33,42 @@ test('frontend works against the Python backend across core market flows', async
     timeout: 20000,
   });
   await expect(page.getByTestId('skill-installed-state-summary')).toContainText('release-note-writer');
+  const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
+  const staleBundleReport = path.join(skillTargetRoot, 'bundle-reports', 'stale-bundle.json');
+  await fs.mkdir(path.join(skillTargetRoot, 'orphan-skill'), { recursive: true });
+  await fs.mkdir(path.dirname(staleBundleReport), { recursive: true });
+  await fs.writeFile(
+    staleBundleReport,
+    JSON.stringify(
+      {
+        bundle_id: 'stale-bundle',
+        title: 'Stale bundle',
+        generated_at: '2026-03-27T00:00:00+00:00',
+        results: [
+          {
+            skill_id: 'moyuan.release-note-writer',
+            status: 'installed',
+          },
+        ],
+      },
+      null,
+      2
+    ) + '\n',
+    'utf-8'
+  );
+  await page.getByTestId('skill-installed-state-doctor-run').click();
+  await expect(page.getByTestId('skill-installed-state-doctor-status')).toContainText('Repairable drift', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-doctor-orphan-directories')).toContainText('orphan-skill');
+  await expect(page.getByTestId('skill-installed-state-doctor-stale-bundle-reports')).toContainText('stale-bundle');
+  await page.getByTestId('skill-installed-state-doctor-repair').click();
+  await expect(page.getByTestId('skill-installed-state-doctor-repair-summary')).toContainText('Applied changes', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-doctor-status')).toContainText('Healthy', {
+    timeout: 20000,
+  });
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-installed-state-status')).toContainText('Not installed yet', {
@@ -42,12 +82,25 @@ test('frontend works against the Python backend across core market flows', async
     'Waiting for explicit approval'
   );
   await expect(page.getByTestId('skill-registry-execution-run')).toBeDisabled();
-  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38766');
   await page.getByTestId('skill-registry-execution-approval-checkbox').check();
   await expect(page.getByTestId('skill-registry-execution-approval-state')).toContainText(
     'Approval captured for remote execution'
   );
   await page.getByTestId('skill-registry-execution-run').click();
+  await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Failed', { timeout: 20000 });
+  await expect(page.getByTestId('skill-registry-execution-recovery-kind')).toContainText('download');
+  await expect(page.getByTestId('skill-registry-execution-recovery-summary')).toContainText(
+    'could not resolve or download'
+  );
+  await expect(page.getByTestId('skill-registry-execution-retry')).toBeVisible();
+  await expect(page.getByTestId('skill-registry-execution-cleanup')).toBeVisible();
+  await page.getByTestId('skill-registry-execution-cleanup').click();
+  await expect(page.getByTestId('skill-registry-execution-cleanup-status')).toContainText('Succeeded', {
+    timeout: 20000,
+  });
+  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('skill-registry-execution-retry').click();
   await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('moyuan.release-note-writer');
   await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('http://127.0.0.1:38765');
@@ -79,6 +132,7 @@ test('frontend works against the Python backend across core market flows', async
     timeout: 20000,
   });
   await expect(page.getByTestId('bundle-installed-state-summary')).toContainText('release-engineering-starter');
+  await expect(page.getByTestId('bundle-installed-state-doctor')).toBeVisible();
   await page.getByTestId('bundle-remove-execution-run').click();
   await expect(page.getByTestId('bundle-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('bundle-installed-state-status')).toContainText('Not installed yet', {
@@ -140,6 +194,7 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.locator('h1').first()).toBeVisible();
 
   await page.goto('/docs/project/frontend-backend-integration');
+  await page.getByTestId('doc-context-project-center').scrollIntoViewIfNeeded();
   await page.getByTestId('doc-context-project-center').click();
   await expect(page.getByTestId('docs-search-input')).toBeVisible();
 

@@ -67,8 +67,11 @@ POST /api/v1/local/skills/remove
 POST /api/v1/local/bundles/install
 POST /api/v1/local/bundles/update
 POST /api/v1/local/bundles/remove
+POST /api/v1/local/state/doctor
+POST /api/v1/local/state/repair
 POST /api/v1/registry/skills/install
 POST /api/v1/registry/bundles/install
+POST /api/v1/registry/cleanup
 GET /api/v1/local/jobs/{job_id}
 GET /api/v1/local/state
 GET /api/v1/docs/catalog
@@ -83,7 +86,7 @@ Local lifecycle notes:
 - the backend reuses the existing lifecycle scripts under `scripts/`
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
 - the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
-- update/remove/state APIs are now consumed by the first frontend installed-state lifecycle surfaces on skill and bundle detail pages
+- update/remove/state/doctor/repair APIs are now consumed by the first frontend installed-state lifecycle surfaces on skill and bundle detail pages
 
 Remote registry notes:
 
@@ -93,6 +96,7 @@ Remote registry notes:
 - the frontend skill and bundle detail pages now proxy these remote install jobs through Next.js API routes
 - the frontend now requires explicit in-page approval before those remote jobs are submitted
 - remote execution cards now surface publisher verification, review status, lifecycle status, and provenance hints before execution starts
+- the backend now also exposes a cleanup job endpoint so the frontend can clear staged cache or failed target roots after a failed remote run
 
 ## Suggested frontend mapping
 
@@ -142,13 +146,14 @@ npm run capture:readme-screenshots --prefix frontend
 What is now available:
 
 - repo-backed read APIs for market, bundle, and docs flows
-- local lifecycle APIs for skill and bundle install, update, remove, state, and job polling
+- local lifecycle APIs for skill and bundle install, update, remove, state, doctor, repair, and job polling
 - remote registry install APIs for skill and bundle downloads over HTTP
 - frontend-consumable remote install flows for skill and bundle detail pages
-- frontend-consumable installed-state read, update, and remove flows on skill and bundle detail pages
-- backend smoke coverage for repository reads plus local and remote lifecycle jobs
+- frontend trust, approval, retry, and cleanup affordances for the first remote install failure paths
+- frontend-consumable installed-state read, update, remove, doctor, and low-risk repair flows on skill and bundle detail pages
+- backend smoke coverage for repository reads plus local, remote, doctor, repair, and cleanup lifecycle jobs
 
 What is still next:
 
-- deeper installed-state product surfaces such as doctor/repair/baseline views
-- recovery, rollback, and failure-handling surfaces for remote installs
+- deeper installed-state product surfaces such as baseline history and governance views
+- deeper remote policy gating and rollback/reconciliation surfaces for remote installs
