@@ -17,7 +17,7 @@
 
 当前仓库自带的检查脚本都只依赖 Python 标准库。
 
-如果你还想运行外部 skill-creator 里的 `quick_validate.py`，或者希望本地依赖和仓库文档保持一致，建议安装 `requirements-dev.txt` 里的依赖。
+如果你还想运行外部 skill-creator 里的 `quick_validate.py`，或者希望本地依赖和仓库文档保持一致，建议安装 `backend/requirements-dev.txt` 里的依赖。
 
 ## 推荐初始化步骤
 
@@ -44,7 +44,7 @@ source .venv/bin/activate
 如果你需要跑额外的 YAML 相关工具，再安装：
 
 ```text
-python -m pip install -r requirements-dev.txt
+python -m pip install -r backend/requirements-dev.txt
 ```
 
 ## 第一轮建议跑什么

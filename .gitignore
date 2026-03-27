@@ -4,6 +4,7 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+*.ps1
 dist/
 examples/harness-prototypes/runtime-output/
 frontend/.next/

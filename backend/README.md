@@ -34,6 +34,12 @@ pip install -r backend/requirements.txt
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 38083
 ```
 
+Optional Python-only developer helpers are grouped under:
+
+```text
+pip install -r backend/requirements-dev.txt
+```
+
 If the repo root is not the current working directory, set:
 
 ```text

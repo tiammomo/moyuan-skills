@@ -13,6 +13,9 @@ The current frontend product surface now supports:
 
 The next gap is deeper installed-state governance surfaces plus stronger remote policy gating and rollback. Track that work in [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md).
 
+Python-only developer helper dependencies now live in `backend/requirements-dev.txt` so the repo root stays focused on primary project entry files.
+Tracked PowerShell helper scripts are intentionally ignored so repository tooling stays cross-platform instead of drifting toward Windows-only entrypoints.
+
 
 `moyuan-skills` 现在不只是一个 skills 示例仓库，而是一套面向 `skills market` 的教学型参考实现。
 
@@ -158,6 +161,8 @@ python scripts/skills_market.py install-bundle release-engineering-starter --reg
 ```text
 .
 |- backend/
+|  |- requirements.txt
+|  `- requirements-dev.txt
 |- frontend/
 |- bundles/
 |- docs/
