@@ -13,8 +13,8 @@ Current status:
 
 The two biggest gaps are now:
 
-1. many frontend buttons are guidance or command-copy affordances, not true lifecycle execution flows
-2. installed-state UI and remote install trust / approval / recovery surfaces are still not productized
+1. many deeper governance buttons are still guidance or command-copy affordances, not true lifecycle execution flows
+2. remote install recovery and rollback surfaces are still not productized in the frontend
 
 ## Current-state assessment
 
@@ -58,7 +58,7 @@ What is still incomplete:
 
 - doctor / repair / baseline / governance actions are still not exposed as frontend-installed-state surfaces
 - docs action panels are still guidance widgets, not executable actions
-- there is no frontend state yet for approval prompts or failure recovery
+- there is no frontend recovery or rollback state yet for remote execution failures
 
 ### 3. Backend interaction layer
 
@@ -238,6 +238,15 @@ Goal:
 
 - make remote install safe enough for repeated use
 
+Status:
+
+- `started`
+- completed in this iteration:
+  - remote skill install cards now show publisher, review, lifecycle, human-review, and provenance hints before execution
+  - remote bundle install cards now show publisher mix, review coverage, lifecycle mix, human-review, and provenance hints before execution
+  - frontend remote execution now requires explicit in-page approval before the backend job can start
+  - Playwright now verifies that remote skill and bundle installs stay blocked until approval is given
+
 Deliverables:
 
 - approval prompt before shell, network, or high-risk install
@@ -289,16 +298,16 @@ Recommended execution order:
 Why:
 
 - first continue from detail-page lifecycle cards into deeper installed-state product surfaces
-- then harden remote install further with trust, approval, and recovery
+- then harden remote install further with recovery, rollback, and failure-handling UX now that trust and approval are visible
 
 ## Short answer for project status
 
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle install/update/remove plus the first remote-registry install flows
+- `frontend execution` is now working for local skill and bundle install/update/remove plus remote-registry install flows with trust summaries and explicit approval
 - `remote skill download and install` is now supported from CLI, backend APIs, and frontend install surfaces
 
-The next implementation target is now the remote-install trust and approval pass, while a later product pass can keep deepening installed-state product surfaces beyond the detail pages.
+The next implementation target is now the remote-install recovery pass, while a later product pass can keep deepening installed-state product surfaces beyond the detail pages.
 
-The current next implementation note is [remote-install-trust-approval-iteration.md](./remote-install-trust-approval-iteration.md).
+The current next implementation note is [remote-install-recovery-iteration.md](./remote-install-recovery-iteration.md).
