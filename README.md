@@ -109,7 +109,7 @@
 - backend 现在也已经补了第一版远端 registry install 接口：`POST /api/v1/registry/skills/install` 和 `POST /api/v1/registry/bundles/install`
 - skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端已经能对 skill install 和 bundle install 走真实 backend 本地执行；backend 则已经补齐 local lifecycle API 和 remote registry install API。还没补完的是前端对 update/remove/state 的消费，以及前端里的远端 registry install UI。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端已经能对 skill install 和 bundle install 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API 和 remote registry install API。还没补完的是前端对 update/remove/state 的消费，以及 trust / approval / recovery 这类更深的安装治理 UI。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 
@@ -132,6 +132,12 @@ python scripts/skills_market.py install-bundle release-engineering-starter --reg
 ```
 
 这条链路会先把 install spec、package、provenance 下载到 `dist/remote-registry-cache/` 再落地安装，本地 install spec 模式仍然保持不变。
+
+前端现在也已经补上了第一版远端入口：
+
+- skill 详情页可以填写 registry URL 后直接触发远端 skill install job
+- bundle 详情页可以填写 registry URL 后直接触发远端 bundle install job
+- Playwright 会在 E2E 里临时拉起一个 hosted registry fixture，验证这两条 UI 链路
 
 ## 仓库结构
 
@@ -162,6 +168,12 @@ python scripts/skills_market.py install-bundle release-engineering-starter --reg
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
 set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
 npm run dev:local --prefix frontend
+```
+
+如果你要手动验证前端里的远端 registry install UI，可以再开一个终端启动临时 hosted registry fixture：
+
+```text
+python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean
 ```
 
 ## 常用校验命令

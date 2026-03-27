@@ -40,7 +40,7 @@ Core endpoints:
 The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
 That same shared payload now also supports detail-page related navigation, context panels, and copy-friendly ordered action panels with prerequisite, expected-outcome, and artifact/output cues without requiring separate recommendations or metadata endpoints.
 Skill detail and bundle detail pages now distinguish copy-first CLI fallbacks from true backend execution flows, so the current UI stays honest while still exposing one-click local install for the flows that are already wired.
-The backend now exposes both the local mutation/job layer and the first remote registry install job layer; the frontend currently proxies the local install flows, while the new remote install endpoints are ready for a later UI pass.
+The backend now exposes both the local mutation/job layer and the first remote registry install job layer; the frontend now proxies the local install flows plus the first registry-backed skill and bundle install flows.
 
 The repository layer reads these real assets directly:
 
@@ -106,6 +106,12 @@ set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
 npm run dev:local --prefix frontend
 ```
 
+If you also want to manually test the registry-backed install UI, start a hosted registry fixture in a second terminal:
+
+```text
+python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean
+```
+
 ### Frontend in filesystem mode
 
 ```text
@@ -126,6 +132,7 @@ The test starts:
 
 - FastAPI on a dedicated backend port
 - Next.js on a dedicated frontend port through `npm run dev:local`
+- a temporary hosted registry fixture for remote install flows
 
 Then it validates:
 
@@ -145,7 +152,9 @@ Then it validates:
 - skill detail pages can now run local install jobs through the backend and poll job progress in-page
 - bundle detail pages can now run local bundle install jobs through the backend and poll job progress in-page
 - backend now also exposes local update/remove/state APIs for future installed-state product surfaces
-- backend now also exposes remote registry install APIs for future remote execution surfaces
+- backend now also exposes remote registry install APIs that the skill and bundle detail pages can execute through today
+- skill detail pages can now launch registry-backed remote install jobs through the backend
+- bundle detail pages can now launch registry-backed remote bundle install jobs through the backend
 
 Run:
 
@@ -188,6 +197,7 @@ It is now implemented as:
 - honest local install messaging on skill detail pages
 - bundle-level local command panels on bundle detail pages
 - backend local install job APIs for skill and bundle execution
+- registry-backed remote install execution cards on skill and bundle detail pages
 - Playwright end-to-end coverage for the core market path
 
 ## Current gaps
@@ -202,6 +212,7 @@ What is already complete:
 - honest local-command wording for skill install and bundle-level local actions
 - backend local lifecycle APIs for skill/bundle install, update, remove, state, and job polling
 - backend remote registry install APIs for skill/bundle downloads over HTTP
+- frontend registry-backed install execution on skill and bundle detail pages
 - end-to-end verification with Playwright
 
 What is still partial:
@@ -209,6 +220,6 @@ What is still partial:
 - frontend now supports backend execution for local skill install and local bundle install, but update/remove/state actions still remain copy-first
 - docs action panels are guidance-oriented and do not execute commands
 - backend lifecycle APIs are ahead of the current frontend, so installed-state UI still needs another iteration
-- frontend still does not expose a remote registry install UI even though the backend can now run those jobs
+- trust, approval, and recovery UX for remote installs still needs another iteration
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

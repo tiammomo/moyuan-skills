@@ -104,7 +104,7 @@ npm run e2e --prefix frontend
 npm run capture:readme-screenshots --prefix frontend
 ```
 
-其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend 和 Next.js frontend，验证首页、skills、bundle、docs 搜索/筛选、teaching、project docs，以及详情页 related navigation、context panel、ordered action panel、prerequisites、expected outcome 提示和命令复制交互这几条核心前后端链路。
+其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend、Next.js frontend 和一个临时 hosted registry fixture，验证首页、skills、bundle、docs 搜索/筛选、teaching、project docs，以及详情页 related navigation、context panel、ordered action panel、prerequisites、expected outcome、artifact 提示、本地 backend execution 和远端 registry install 这几条核心前后端链路。
 `npm run capture:readme-screenshots --prefix frontend` 会额外生成一组 README 用的真实流程截图，输出到 `docs/assets/readme/`。
 
 标准本地端口约定：
@@ -118,6 +118,12 @@ npm run capture:readme-screenshots --prefix frontend
 python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
 set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
 npm run dev:local --prefix frontend
+```
+
+如果你还要手动验证前端里的远端 registry install UI，再补一条：
+
+```text
+python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean
 ```
 
 ## Skills Market 草案脚本

@@ -90,6 +90,7 @@ Remote registry notes:
 - the backend can now resolve `skill id + registry URL` and `bundle id + registry URL`
 - remote artifacts are downloaded into a deterministic cache root before install
 - remote install still reuses the same local installer semantics after staging, including checksum and lifecycle checks
+- the frontend skill and bundle detail pages now proxy these remote install jobs through Next.js API routes
 
 ## Suggested frontend mapping
 
@@ -125,7 +126,7 @@ Recommended local ports:
 
 ## Playwright end-to-end verification
 
-The repo now includes a Playwright flow that starts this FastAPI backend and the Next.js frontend together, then validates homepage, skills, bundle, docs search/filter, teaching, project-doc, ordered command-runbook, prerequisite, expected-outcome, artifact/output, and command-copy flows against the real API:
+The repo now includes a Playwright flow that starts this FastAPI backend, the Next.js frontend, and a temporary hosted registry fixture together, then validates homepage, skills, bundle, docs search/filter, teaching, project-doc, ordered command-runbook, prerequisite, expected-outcome, artifact/output, command-copy, and remote registry install flows against the real API:
 
 ```text
 npx playwright install chromium --prefix frontend
@@ -141,9 +142,10 @@ What is now available:
 - repo-backed read APIs for market, bundle, and docs flows
 - local lifecycle APIs for skill and bundle install, update, remove, state, and job polling
 - remote registry install APIs for skill and bundle downloads over HTTP
+- frontend-consumable remote install flows for skill and bundle detail pages
 - backend smoke coverage for repository reads plus local and remote lifecycle jobs
 
 What is still next:
 
 - frontend lifecycle surfaces for update/remove/state
-- frontend surfaces for remote registry install execution
+- trust, approval, and recovery surfaces for remote installs

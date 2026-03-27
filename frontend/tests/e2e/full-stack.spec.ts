@@ -24,6 +24,12 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('skill-backend-execution-run').click();
   await expect(page.getByTestId('skill-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-backend-execution-summary')).toContainText('release-note-writer');
+  await expect(page.getByTestId('skill-registry-execution')).toBeVisible();
+  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('skill-registry-execution-run').click();
+  await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+  await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('moyuan.release-note-writer');
+  await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('http://127.0.0.1:38765');
 
   await page.goto('/bundles');
   await expect(page.getByTestId('bundle-card-release-engineering-starter')).toBeVisible();
@@ -47,6 +53,12 @@ test('frontend works against the Python backend across core market flows', async
   await page.getByTestId('bundle-backend-execution-run').click();
   await expect(page.getByTestId('bundle-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('bundle-backend-execution-summary')).toContainText('release-engineering-starter');
+  await expect(page.getByTestId('bundle-registry-execution')).toBeVisible();
+  await page.getByTestId('bundle-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('bundle-registry-execution-run').click();
+  await expect(page.getByTestId('bundle-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+  await expect(page.getByTestId('bundle-registry-execution-summary')).toContainText('release-engineering-starter');
+  await expect(page.getByTestId('bundle-registry-execution-summary')).toContainText('http://127.0.0.1:38765');
 
   await page.goto('/docs');
   await page.getByTestId('docs-filter-project').click();

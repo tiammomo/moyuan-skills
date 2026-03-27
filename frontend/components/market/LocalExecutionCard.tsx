@@ -5,14 +5,33 @@ import type { LocalBackendStatus, LocalJobRecord } from '@/types/market';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
+import { Input } from '@/components/ui/Input';
+
+type ExecutionRequestPath =
+  | '/api/local/skills/install'
+  | '/api/local/bundles/install'
+  | '/api/registry/skills/install'
+  | '/api/registry/bundles/install';
+
+interface ExecutionField {
+  name: string;
+  label: string;
+  description?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  required?: boolean;
+}
 
 interface LocalExecutionCardProps {
   panelTestId: string;
   title: string;
   description: string;
-  requestPath: '/api/local/skills/install' | '/api/local/bundles/install';
+  requestPath: ExecutionRequestPath;
   requestBody: Record<string, unknown>;
   fallbackNote: string;
+  modeLabel?: string;
+  badges?: string[];
+  fields?: ExecutionField[];
 }
 
 function formatValue(value: unknown): string {
@@ -59,11 +78,17 @@ export function LocalExecutionCard({
   requestPath,
   requestBody,
   fallbackNote,
+  modeLabel = 'Backend execution',
+  badges = ['Copy fallback stays available'],
+  fields = [],
 }: LocalExecutionCardProps) {
   const [availability, setAvailability] = useState<LocalBackendStatus | null>(null);
   const [job, setJob] = useState<LocalJobRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'install' | 'dry-run' | null>(null);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>(() =>
+    Object.fromEntries(fields.map((field) => [field.name, field.defaultValue ?? '']))
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -82,7 +107,7 @@ export function LocalExecutionCard({
           setAvailability({
             available: false,
             configured: false,
-            message: `Unable to reach the frontend local execution proxy: ${
+            message: `Unable to reach the frontend backend execution proxy: ${
               error instanceof Error ? error.message : String(error)
             }`,
           });
@@ -128,14 +153,51 @@ export function LocalExecutionCard({
   }, [job]);
 
   useEffect(() => {
+    setFieldValues((currentValues) => {
+      const nextValues = { ...currentValues };
+      let changed = false;
+
+      for (const field of fields) {
+        if (!(field.name in nextValues)) {
+          nextValues[field.name] = field.defaultValue ?? '';
+          changed = true;
+        }
+      }
+
+      for (const key of Object.keys(nextValues)) {
+        if (!fields.some((field) => field.name === key)) {
+          delete nextValues[key];
+          changed = true;
+        }
+      }
+
+      return changed ? nextValues : currentValues;
+    });
+  }, [fields]);
+
+  useEffect(() => {
     if (job?.status === 'succeeded' || job?.status === 'failed') {
       setActiveMode(null);
     }
   }, [job?.status]);
 
+  function updateFieldValue(fieldName: string, value: string) {
+    setFieldValues((currentValues) => ({
+      ...currentValues,
+      [fieldName]: value,
+    }));
+  }
+
   async function runExecution(dryRun: boolean) {
     setErrorMessage(null);
     setActiveMode(dryRun ? 'dry-run' : 'install');
+
+    const missingField = fields.find((field) => field.required && !(fieldValues[field.name] ?? '').trim());
+    if (missingField) {
+      setActiveMode(null);
+      setErrorMessage(`${missingField.label} is required before this backend run can start.`);
+      return;
+    }
 
     try {
       const response = await fetch(requestPath, {
@@ -145,6 +207,9 @@ export function LocalExecutionCard({
         },
         body: JSON.stringify({
           ...requestBody,
+          ...Object.fromEntries(
+            Object.entries(fieldValues).map(([key, value]) => [key, value.trim()])
+          ),
           dry_run: dryRun,
         }),
       });
@@ -153,7 +218,9 @@ export function LocalExecutionCard({
       if (!response.ok) {
         setJob(null);
         setActiveMode(null);
-        setErrorMessage(payload && 'detail' in payload ? payload.detail ?? 'Local execution failed.' : 'Local execution failed.');
+        setErrorMessage(
+          payload && 'detail' in payload ? payload.detail ?? 'Backend execution failed.' : 'Backend execution failed.'
+        );
         return;
       }
 
@@ -161,7 +228,7 @@ export function LocalExecutionCard({
     } catch (error) {
       setJob(null);
       setActiveMode(null);
-      setErrorMessage(`Local execution request failed: ${error instanceof Error ? error.message : String(error)}`);
+      setErrorMessage(`Backend execution request failed: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -181,8 +248,12 @@ export function LocalExecutionCard({
     <Card className="p-5" data-testid={panelTestId}>
       <div className="mb-5 space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Chip variant="keyword">Backend execution</Chip>
-          <Chip variant="tag">Copy fallback stays available</Chip>
+          <Chip variant="keyword">{modeLabel}</Chip>
+          {badges.map((badge) => (
+            <Chip key={badge} variant="tag">
+              {badge}
+            </Chip>
+          ))}
         </div>
         <div>
           <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-2">{title}</h3>
@@ -192,6 +263,28 @@ export function LocalExecutionCard({
           {fallbackNote}
         </p>
       </div>
+
+      {fields.length > 0 && (
+        <div className="mb-4 space-y-3">
+          {fields.map((field) => (
+            <div key={field.name} className="space-y-1">
+              <Input
+                label={field.label}
+                value={fieldValues[field.name] ?? ''}
+                onChange={(event) => updateFieldValue(field.name, event.target.value)}
+                placeholder={field.placeholder}
+                required={field.required}
+                data-testid={`${panelTestId}-field-${field.name}`}
+              />
+              {field.description && (
+                <p className="text-xs text-muted" data-testid={`${panelTestId}-field-${field.name}-description`}>
+                  {field.description}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <Button

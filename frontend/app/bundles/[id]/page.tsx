@@ -144,6 +144,33 @@ export default async function BundleDetailPage({ params }: Props) {
           </section>
 
           <section className="animate-fade-in-delay-2">
+            <LocalExecutionCard
+              panelTestId="bundle-registry-execution"
+              title="Run bundle install from a remote registry"
+              description="This path downloads the bundle members from a hosted registry URL through the backend, stages the remote artifacts into the cache root, and then applies the normal bundle installer locally."
+              requestPath="/api/registry/bundles/install"
+              requestBody={{
+                bundle_id: bundle.id,
+                target_root: `dist/frontend-remote-execution/bundles/${bundle.id}`,
+                cache_root: 'dist/frontend-remote-execution/cache',
+              }}
+              modeLabel="Registry-backed execution"
+              badges={['Remote download via backend', 'Copy-first bundle commands still stay visible']}
+              fields={[
+                {
+                  name: 'registry_url',
+                  label: 'Registry URL',
+                  description:
+                    'Point this at a hosted registry base URL or directly at registry.json before starting the remote bundle job.',
+                  placeholder: 'http://127.0.0.1:38765',
+                  required: true,
+                },
+              ]}
+              fallbackNote="This first frontend remote pass only covers bundle install. Update, remove, trust approval, and deeper recovery UI still live in later roadmap phases."
+            />
+          </section>
+
+          <section className="animate-fade-in-delay-2">
             <Card className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">
                 Per-skill local install commands

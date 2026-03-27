@@ -136,7 +136,7 @@ export default async function SkillDetailPage({ params }: Props) {
           {installSpec && (
             <section className="animate-fade-in-delay-3">
               <Card className="p-6 sm:p-8">
-                <h2 className="text-lg font-semibold text-ink mb-4">Local install options</h2>
+                <h2 className="text-lg font-semibold text-ink mb-4">Install options</h2>
                 <div className="space-y-5">
                   <InstallButton installSpec={installSpec} />
                   <LocalExecutionCard
@@ -148,7 +148,32 @@ export default async function SkillDetailPage({ params }: Props) {
                       name: manifest.name,
                       target_root: `dist/frontend-local-execution/skills/${manifest.name}`,
                     }}
-                    fallbackNote="Remote registry download is still out of scope here. This button only runs the local install spec already packaged in the repo."
+                    fallbackNote="This path only runs the local install spec already packaged in the repo. Use the registry-backed card below when you want the backend to fetch the skill remotely first."
+                  />
+                  <LocalExecutionCard
+                    panelTestId="skill-registry-execution"
+                    title="Run this install from a remote registry"
+                    description="This path asks the backend to fetch the packaged skill from a hosted registry URL, stage the install spec and package locally, then run the normal installer."
+                    requestPath="/api/registry/skills/install"
+                    requestBody={{
+                      skill: manifest.id,
+                      channel: manifest.channel,
+                      target_root: `dist/frontend-remote-execution/skills/${manifest.name}`,
+                      cache_root: 'dist/frontend-remote-execution/cache',
+                    }}
+                    modeLabel="Registry-backed execution"
+                    badges={['Remote download via backend', 'Local install spec still available above']}
+                    fields={[
+                      {
+                        name: 'registry_url',
+                        label: 'Registry URL',
+                        description:
+                          'Point this at a hosted registry base URL or directly at registry.json before starting the remote install job.',
+                        placeholder: 'http://127.0.0.1:38765',
+                        required: true,
+                      },
+                    ]}
+                    fallbackNote="This is the first frontend pass for remote install. Trust, approval, and recovery hardening still live in later roadmap phases."
                   />
                 </div>
               </Card>

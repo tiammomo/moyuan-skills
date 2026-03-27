@@ -32,6 +32,14 @@ export default defineConfig({
       },
     },
     {
+      command:
+        'python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean',
+      cwd: repoRoot,
+      url: 'http://127.0.0.1:38765/registry.json',
+      reuseExistingServer: false,
+      timeout: 120000,
+    },
+    {
       command: 'npm run start:local',
       cwd: frontendRoot,
       url: 'http://127.0.0.1:33003',
