@@ -14,6 +14,7 @@ import { Chip } from '@/components/ui/Chip';
 interface InstalledDoctorPanelProps {
   panelTestId: string;
   targetRoot: string;
+  onDoctorSettled?: (snapshot: LocalInstalledDoctorSnapshot | null) => void;
   onRepairSettled?: () => void;
 }
 
@@ -80,7 +81,12 @@ function describeHealth(snapshot: LocalInstalledDoctorSnapshot | null): {
   };
 }
 
-export function InstalledDoctorPanel({ panelTestId, targetRoot, onRepairSettled }: InstalledDoctorPanelProps) {
+export function InstalledDoctorPanel({
+  panelTestId,
+  targetRoot,
+  onDoctorSettled,
+  onRepairSettled,
+}: InstalledDoctorPanelProps) {
   const [doctorJob, setDoctorJob] = useState<LocalJobRecord | null>(null);
   const [repairJob, setRepairJob] = useState<LocalJobRecord | null>(null);
   const [doctorSnapshot, setDoctorSnapshot] = useState<LocalInstalledDoctorSnapshot | null>(null);
@@ -97,7 +103,8 @@ export function InstalledDoctorPanel({ panelTestId, targetRoot, onRepairSettled 
     setErrorMessage(null);
     setDoctorPending(false);
     setRepairPending(false);
-  }, [targetRoot]);
+    onDoctorSettled?.(null);
+  }, [onDoctorSettled, targetRoot]);
 
   useEffect(() => {
     if (!doctorJob || (doctorJob.status !== 'queued' && doctorJob.status !== 'running')) {
@@ -161,13 +168,15 @@ export function InstalledDoctorPanel({ panelTestId, targetRoot, onRepairSettled 
     }
 
     try {
-      setDoctorSnapshot(parseJobPayload<LocalInstalledDoctorSnapshot>(doctorJob));
+      const snapshot = parseJobPayload<LocalInstalledDoctorSnapshot>(doctorJob);
+      setDoctorSnapshot(snapshot);
+      onDoctorSettled?.(snapshot);
     } catch (error) {
       setErrorMessage(
         `Unable to parse installed-state doctor output: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }, [doctorJob]);
+  }, [doctorJob, onDoctorSettled]);
 
   useEffect(() => {
     if (!repairJob || (repairJob.status !== 'succeeded' && repairJob.status !== 'failed')) {

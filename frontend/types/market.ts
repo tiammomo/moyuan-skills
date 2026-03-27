@@ -211,6 +211,78 @@ export interface LocalInstalledRepairPayload {
   applied_count: number;
 }
 
+export interface LocalInstalledBaselineHistoryEntry {
+  sequence: number;
+  promoted_at: string;
+  target_root: string;
+  baseline_path: string;
+  baseline_markdown_path: string;
+  summary: {
+    installed_count: number;
+    bundle_count: number;
+    doctor_finding_count: number;
+    repairable_finding_count: number;
+    skipped_finding_count: number;
+  };
+  replaced_existing_baseline: boolean;
+  transition_diff_path: string | null;
+  transition_diff_markdown_path: string | null;
+  transition_summary_delta: Record<string, { before: number; after: number }>;
+  archived_baseline_path: string;
+  archived_baseline_markdown_path: string;
+  archived_transition_diff_path: string | null;
+  archived_transition_diff_markdown_path: string | null;
+}
+
+export interface LocalInstalledBaselineState {
+  target_root: string;
+  snapshots_dir: string;
+  baseline_path: string;
+  baseline_markdown_path: string;
+  history_path: string;
+  history_markdown_path: string;
+  archive_dir: string;
+  baseline_exists: boolean;
+  history_exists: boolean;
+  history_entry_count: number;
+  next_sequence: number;
+  current_baseline: {
+    generated_at: string;
+    target_root: string;
+    summary: {
+      installed_count: number;
+      bundle_count: number;
+      doctor_finding_count: number;
+      repairable_finding_count: number;
+      skipped_finding_count: number;
+    };
+  } | null;
+  latest_entry: LocalInstalledBaselineHistoryEntry | null;
+  entries: LocalInstalledBaselineHistoryEntry[];
+}
+
+export interface LocalInstalledBaselinePromotePayload {
+  baseline_path: string;
+  target_root: string;
+  replaced_existing_baseline: boolean;
+  current_summary: {
+    installed_count: number;
+    bundle_count: number;
+    doctor_finding_count: number;
+    repairable_finding_count: number;
+    skipped_finding_count: number;
+  };
+  transition_diff_present: boolean;
+  transition_summary_delta: Record<string, { before: number; after: number }>;
+  baseline_markdown_path: string;
+  transition_diff_path: string | null;
+  transition_diff_markdown_path: string | null;
+  history_path: string;
+  history_markdown_path: string;
+  history_entry_count: number;
+  archive_dir: string;
+}
+
 export interface MarketCommandAction {
   label: string;
   command: string;

@@ -184,7 +184,7 @@ export default async function BundleDetailPage({ params }: Props) {
             <InstalledStatePanel
               panelTestId="bundle-installed-state"
               title="Local lifecycle state"
-              description="This panel reads the backend installed-state snapshot for the current frontend bundle target root, exposes doctor and low-risk repair, and keeps update/remove on the same detail page."
+              description="This panel reads the backend installed-state snapshot for the current frontend bundle target root, exposes doctor, low-risk repair, and baseline capture, and keeps update/remove on the same detail page."
               targetRoot={localTargetRoot}
               bundleId={bundle.id}
               actions={[
@@ -200,7 +200,7 @@ export default async function BundleDetailPage({ params }: Props) {
                     market_dir: 'dist/market',
                   },
                   fallbackNote:
-                    'Doctor and low-risk repair now live in this lifecycle panel. Baseline and deeper governance remain later frontend product passes.',
+                    'Doctor, low-risk repair, and baseline capture now live in this lifecycle panel. Deeper governance remains later frontend product passes.',
                   modeLabel: 'Installed-state execution',
                   badges: ['Refreshes current bundle membership', 'Copy-first commands stay visible above'],
                   runButtonLabel: 'Update via backend',

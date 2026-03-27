@@ -67,6 +67,8 @@ POST /api/v1/local/skills/remove
 POST /api/v1/local/bundles/install
 POST /api/v1/local/bundles/update
 POST /api/v1/local/bundles/remove
+GET /api/v1/local/state/baseline
+POST /api/v1/local/state/baseline/promote
 POST /api/v1/local/state/doctor
 POST /api/v1/local/state/repair
 POST /api/v1/registry/skills/install
@@ -86,7 +88,7 @@ Local lifecycle notes:
 - the backend reuses the existing lifecycle scripts under `scripts/`
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
 - the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
-- update/remove/state/doctor/repair APIs are now consumed by the first frontend installed-state lifecycle surfaces on skill and bundle detail pages
+- update/remove/state/doctor/repair/baseline APIs are now consumed by the first frontend installed-state lifecycle surfaces on skill and bundle detail pages
 
 Remote registry notes:
 
@@ -146,14 +148,14 @@ npm run capture:readme-screenshots --prefix frontend
 What is now available:
 
 - repo-backed read APIs for market, bundle, and docs flows
-- local lifecycle APIs for skill and bundle install, update, remove, state, doctor, repair, and job polling
+- local lifecycle APIs for skill and bundle install, update, remove, state, doctor, repair, baseline promotion, and job polling
 - remote registry install APIs for skill and bundle downloads over HTTP
 - frontend-consumable remote install flows for skill and bundle detail pages
 - frontend trust, approval, retry, and cleanup affordances for the first remote install failure paths
-- frontend-consumable installed-state read, update, remove, doctor, and low-risk repair flows on skill and bundle detail pages
-- backend smoke coverage for repository reads plus local, remote, doctor, repair, and cleanup lifecycle jobs
+- frontend-consumable installed-state read, update, remove, doctor, low-risk repair, and baseline-history flows on skill and bundle detail pages
+- backend smoke coverage for repository reads plus local, remote, doctor, repair, baseline, and cleanup lifecycle jobs
 
 What is still next:
 
-- deeper installed-state product surfaces such as baseline history and governance views
+- deeper installed-state product surfaces such as governance, waiver, and gate views
 - deeper remote policy gating and rollback/reconciliation surfaces for remote installs

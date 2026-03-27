@@ -385,3 +385,56 @@ class MarketRepository:
             "installed": installed,
             "bundles": bundles,
         }
+
+    def get_installed_baseline_state(self, target_root: Path) -> dict[str, Any]:
+        resolved_root = target_root.resolve()
+        snapshots_dir = resolved_root / "snapshots"
+        baseline_path = snapshots_dir / "baseline.json"
+        baseline_markdown_path = snapshots_dir / "baseline.md"
+        history_path = snapshots_dir / "baseline-history.json"
+        history_markdown_path = snapshots_dir / "baseline-history.md"
+        archive_dir = snapshots_dir / "baseline-archive"
+
+        baseline_payload = _read_json(baseline_path) if baseline_path.is_file() else None
+        raw_history_payload = _read_json(history_path) if history_path.is_file() else None
+        history_entries = (
+            raw_history_payload.get("entries", [])
+            if isinstance(raw_history_payload, dict) and isinstance(raw_history_payload.get("entries", []), list)
+            else []
+        )
+        normalized_entries = [
+            entry
+            for entry in history_entries
+            if isinstance(entry, dict)
+        ]
+        latest_entry = normalized_entries[-1] if normalized_entries else None
+        next_sequence = (
+            raw_history_payload.get("next_sequence", 1)
+            if isinstance(raw_history_payload, dict)
+            else 1
+        )
+
+        return {
+            "target_root": str(resolved_root),
+            "snapshots_dir": str(snapshots_dir),
+            "baseline_path": str(baseline_path),
+            "baseline_markdown_path": str(baseline_markdown_path),
+            "history_path": str(history_path),
+            "history_markdown_path": str(history_markdown_path),
+            "archive_dir": str(archive_dir),
+            "baseline_exists": baseline_path.is_file(),
+            "history_exists": history_path.is_file(),
+            "history_entry_count": len(normalized_entries),
+            "next_sequence": int(next_sequence) if str(next_sequence).isdigit() else 1,
+            "current_baseline": (
+                {
+                    "generated_at": str(baseline_payload.get("generated_at", "")),
+                    "target_root": str(baseline_payload.get("target_root", "")),
+                    "summary": baseline_payload.get("summary", {}),
+                }
+                if isinstance(baseline_payload, dict)
+                else None
+            ),
+            "latest_entry": latest_entry,
+            "entries": normalized_entries[-5:],
+        }

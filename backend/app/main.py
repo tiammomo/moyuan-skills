@@ -163,6 +163,14 @@ class LocalStateRepairRequest(BaseModel):
     scope: str = Field(default="installed-state-repair", description="UI scope label for the repair action.")
 
 
+class LocalStateBaselinePromoteRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory to snapshot into the promoted baseline history.",
+    )
+    scope: str = Field(default="installed-state-baseline", description="UI scope label for the baseline action.")
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -611,6 +619,12 @@ def local_state(target_root: str = "dist/backend-installed-market") -> dict:
     return repository.get_installed_state(resolved_root)
 
 
+@app.get("/api/v1/local/state/baseline")
+def local_state_baseline(target_root: str = "dist/backend-installed-market") -> dict:
+    resolved_root = resolve_local_target_path(settings.repo_root, target_root, "dist/backend-installed-market")
+    return repository.get_installed_baseline_state(resolved_root)
+
+
 @app.post("/api/v1/local/state/doctor", status_code=202)
 def local_state_doctor(request: LocalStateDoctorRequest) -> dict:
     target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
@@ -631,6 +645,44 @@ def local_state_doctor(request: LocalStateDoctorRequest) -> dict:
         },
         artifacts={
             "target_root": str(target_root),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/state/baseline/promote", status_code=202)
+def local_state_baseline_promote(request: LocalStateBaselinePromoteRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    snapshots_dir = target_root / "snapshots"
+    baseline_path = snapshots_dir / "baseline.json"
+    history_path = snapshots_dir / "baseline-history.json"
+    archive_dir = snapshots_dir / "baseline-archive"
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "promote_installed_market_baseline.py"),
+        str(baseline_path),
+        "--target-root",
+        str(target_root),
+        "--history-path",
+        str(history_path),
+        "--archive-dir",
+        str(archive_dir),
+        "--json",
+    ]
+
+    job = _create_local_job(
+        kind="state-baseline-promote",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "baseline-promote",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "baseline_path": str(baseline_path),
+            "history_path": str(history_path),
+            "archive_dir": str(archive_dir),
         },
         request_payload=request.model_dump(),
     )

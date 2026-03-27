@@ -202,6 +202,56 @@ def main() -> int:
         print("ERROR: backend local state should reflect the installed standalone skill")
         return 1
 
+    baseline_state_response = client.get(
+        "/api/v1/local/state/baseline",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if baseline_state_response.status_code != 200:
+        print(f"ERROR: backend local baseline state should return 200, got {baseline_state_response.status_code}")
+        return 1
+    baseline_state = baseline_state_response.json()
+    if baseline_state.get("baseline_exists"):
+        print("ERROR: backend baseline state should start empty before the first promotion")
+        return 1
+
+    baseline_promote_response = client.post(
+        "/api/v1/local/state/baseline/promote",
+        json={
+            "target_root": str(local_target_root / "skills"),
+            "scope": "backend-smoke",
+        },
+    )
+    if baseline_promote_response.status_code != 202:
+        print(
+            "ERROR: backend baseline promotion should return 202, "
+            f"got {baseline_promote_response.status_code}"
+        )
+        return 1
+    baseline_promote_job = wait_for_job(client, baseline_promote_response.json()["job_id"])
+    if baseline_promote_job.get("status") != "succeeded":
+        print("ERROR: backend baseline promotion job should succeed")
+        print(baseline_promote_job.get("stdout", ""))
+        print(baseline_promote_job.get("stderr", ""))
+        return 1
+
+    baseline_state_after_response = client.get(
+        "/api/v1/local/state/baseline",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if baseline_state_after_response.status_code != 200:
+        print(
+            "ERROR: backend local baseline state after promotion should return 200, "
+            f"got {baseline_state_after_response.status_code}"
+        )
+        return 1
+    baseline_state_after = baseline_state_after_response.json()
+    if not baseline_state_after.get("baseline_exists") or baseline_state_after.get("history_entry_count") != 1:
+        print("ERROR: backend baseline state should expose the first retained history entry after promotion")
+        return 1
+    if baseline_state_after.get("current_baseline", {}).get("summary", {}).get("installed_count") != 1:
+        print("ERROR: backend baseline state should surface the captured installed-skill count")
+        return 1
+
     bundle_state_response = client.get(
         "/api/v1/local/state",
         params={"target_root": str(local_target_root / "bundles")},
@@ -503,7 +553,7 @@ def main() -> int:
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local, remote, doctor, repair, and cleanup lifecycle jobs."
+        "plus local, remote, doctor, repair, baseline, and cleanup lifecycle jobs."
     )
     return 0
 

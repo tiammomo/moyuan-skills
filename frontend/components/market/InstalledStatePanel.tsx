@@ -1,7 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { LocalInstalledSkillRecord, LocalInstalledState } from '@/types/market';
+import type {
+  LocalInstalledDoctorSnapshot,
+  LocalInstalledSkillRecord,
+  LocalInstalledState,
+} from '@/types/market';
+import { InstalledBaselinePanel } from '@/components/market/InstalledBaselinePanel';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
@@ -37,6 +42,7 @@ export function InstalledStatePanel({
   actions,
 }: InstalledStatePanelProps) {
   const [statePayload, setStatePayload] = useState<LocalInstalledState | null>(null);
+  const [doctorSnapshot, setDoctorSnapshot] = useState<LocalInstalledDoctorSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -231,7 +237,14 @@ export function InstalledStatePanel({
       <InstalledDoctorPanel
         panelTestId={`${panelTestId}-doctor`}
         targetRoot={targetRoot}
+        onDoctorSettled={setDoctorSnapshot}
         onRepairSettled={refreshState}
+      />
+
+      <InstalledBaselinePanel
+        panelTestId={`${panelTestId}-baseline`}
+        targetRoot={targetRoot}
+        doctorSnapshot={doctorSnapshot}
       />
 
       {actions.map((action) => (

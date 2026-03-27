@@ -34,6 +34,8 @@ Core endpoints:
 - `POST /api/v1/local/bundles/install`
 - `POST /api/v1/local/bundles/update`
 - `POST /api/v1/local/bundles/remove`
+- `GET /api/v1/local/state/baseline`
+- `POST /api/v1/local/state/baseline/promote`
 - `POST /api/v1/local/state/doctor`
 - `POST /api/v1/local/state/repair`
 - `POST /api/v1/registry/skills/install`
@@ -160,7 +162,7 @@ Then it validates:
 - bundle detail pages expose bundle-level local `install-bundle`, `update-bundle`, and `remove-bundle` commands
 - skill detail pages can now run local install jobs through the backend and poll job progress in-page
 - bundle detail pages can now run local bundle install jobs through the backend and poll job progress in-page
-- backend now also exposes local update/remove/state APIs that the first installed-state lifecycle surfaces now consume
+- backend now also exposes local update/remove/state/baseline APIs that the first installed-state lifecycle surfaces now consume
 - backend now also exposes remote registry install APIs that the skill and bundle detail pages can execute through today
 - skill detail pages can now launch registry-backed remote install jobs through the backend
 - bundle detail pages can now launch registry-backed remote bundle install jobs through the backend
@@ -170,6 +172,7 @@ Then it validates:
 - skill detail pages can now read installed-state and launch update/remove jobs through the backend
 - bundle detail pages can now read installed-state and launch update/remove jobs through the backend
 - skill and bundle detail pages can now run installed-state doctor checks plus low-risk repair through the backend
+- skill and bundle detail pages can now capture retained installed-state baselines and read baseline history through the backend
 
 Run:
 
@@ -229,13 +232,14 @@ What is already complete:
 - backend local lifecycle APIs for skill/bundle install, update, remove, state, and job polling
 - backend remote registry install APIs for skill/bundle downloads over HTTP
 - frontend registry-backed install execution on skill and bundle detail pages
+- frontend installed-state doctor/repair/baseline execution on skill and bundle detail pages
 - end-to-end verification with Playwright
 
 What is still partial:
 
-- frontend now supports backend execution for local skill and bundle install/update/remove plus installed-state reads, doctor, and low-risk repair on detail pages
+- frontend now supports backend execution for local skill and bundle install/update/remove plus installed-state reads, doctor, low-risk repair, and baseline capture/history on detail pages
 - docs action panels are guidance-oriented and do not execute commands
-- deeper installed-state UI such as baseline/governance still needs another iteration
+- deeper installed-state UI such as governance/waiver/gate still needs another iteration
 - remote trust, approval, retry, and cleanup are now present, but deeper policy gating and rollback UX for remote installs still needs another iteration
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

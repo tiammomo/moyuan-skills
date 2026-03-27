@@ -5,6 +5,11 @@ import { expect, test } from '@playwright/test';
 const repoRoot = path.resolve(process.cwd(), '..');
 
 test('frontend works against the Python backend across core market flows', async ({ page }) => {
+  const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
+  const bundleTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'bundles', 'release-engineering-starter');
+  await fs.rm(skillTargetRoot, { recursive: true, force: true });
+  await fs.rm(bundleTargetRoot, { recursive: true, force: true });
+
   await page.goto('/');
 
   await expect(page.locator('[data-testid^="skill-card-"]').first()).toBeVisible();
@@ -33,7 +38,8 @@ test('frontend works against the Python backend across core market flows', async
     timeout: 20000,
   });
   await expect(page.getByTestId('skill-installed-state-summary')).toContainText('release-note-writer');
-  const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
+  await expect(page.getByTestId('skill-installed-state-baseline-status')).toContainText('No baseline yet');
+  await expect(page.getByTestId('skill-installed-state-baseline-capture')).toBeDisabled();
   const staleBundleReport = path.join(skillTargetRoot, 'bundle-reports', 'stale-bundle.json');
   await fs.mkdir(path.join(skillTargetRoot, 'orphan-skill'), { recursive: true });
   await fs.mkdir(path.dirname(staleBundleReport), { recursive: true });
@@ -69,6 +75,16 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-installed-state-doctor-status')).toContainText('Healthy', {
     timeout: 20000,
   });
+  await expect(page.getByTestId('skill-installed-state-baseline-capture')).toBeEnabled();
+  await page.getByTestId('skill-installed-state-baseline-capture').click();
+  await expect(page.getByTestId('skill-installed-state-baseline-capture-summary')).toContainText('History entries', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-baseline-status')).toContainText('Baseline recorded', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-baseline-summary')).toContainText('baseline-history.json');
+  await expect(page.getByTestId('skill-installed-state-baseline-history')).toContainText('#1');
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-installed-state-status')).toContainText('Not installed yet', {

@@ -1,16 +1,17 @@
 # Moyuan Skills Market
-## Remote Install Trust Status
+## Frontend Execution Status
 
 The current frontend product surface now supports:
 
 - local skill install, update, and remove through the backend
 - local bundle install, update, and remove through the backend
 - installed-state doctor plus low-risk repair on skill and bundle detail pages
+- installed-state baseline capture plus retained baseline history on skill and bundle detail pages
 - remote registry install for skills and bundles
 - explicit trust summaries plus approval before remote execution starts
 - retry plus staged-file cleanup after the first failed remote registry runs
 
-The next gap is deeper installed-state baseline/governance surfaces plus stronger remote policy gating and rollback. Track that work in [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md).
+The next gap is deeper installed-state governance surfaces plus stronger remote policy gating and rollback. Track that work in [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md).
 
 
 `moyuan-skills` 现在不只是一个 skills 示例仓库，而是一套面向 `skills market` 的教学型参考实现。
@@ -122,7 +123,7 @@ The next gap is deeper installed-state baseline/governance surfaces plus stronge
 - backend 现在也已经补了第一版远端 registry install 接口：`POST /api/v1/registry/skills/install` 和 `POST /api/v1/registry/bundles/install`
 - skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端已经能对 skill / bundle 的 install、update、remove 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API、installed-state doctor / repair API 和 remote registry install API。还没补完的是更深层的 installed-state 产品面，例如 baseline / gate，以及更深的远端安装治理 UI，例如 policy gating / rollback。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端已经能对 skill / bundle 的 install、update、remove 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API、installed-state doctor / repair / baseline API 和 remote registry install API。还没补完的是更深层的 installed-state 产品面，例如 waiver / gate / audit，以及更深的远端安装治理 UI，例如 policy gating / rollback。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 
