@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getAllSkills, getSkillDetail } from '@/lib/data';
+import { getAllSkills, getSkillDetail, getSkillRemoteTrustSummary } from '@/lib/data';
 import { extractHeadings, parseMarkdown, renderMarkdown } from '@/lib/markdown';
 import { Badge } from '@/components/ui/Badge';
 import { Card } from '@/components/ui/Card';
@@ -65,6 +65,7 @@ export default async function SkillDetailPage({ params }: Props) {
     related_skills: relatedSkills,
   } = detail;
   const localTargetRoot = `dist/frontend-local-execution/skills/${manifest.name}`;
+  const remoteTrust = await getSkillRemoteTrustSummary(detail);
 
   const { content: markdownContent } = docContent ? parseMarkdown(docContent) : { content: '' };
   const headings = extractHeadings(markdownContent);
@@ -165,6 +166,7 @@ export default async function SkillDetailPage({ params }: Props) {
                     }}
                     modeLabel="Registry-backed execution"
                     badges={['Remote download via backend', 'Local install spec still available above']}
+                    remoteTrust={remoteTrust}
                     fields={[
                       {
                         name: 'registry_url',
@@ -175,7 +177,7 @@ export default async function SkillDetailPage({ params }: Props) {
                         required: true,
                       },
                     ]}
-                    fallbackNote="This is the first frontend pass for remote install. Trust, approval, and recovery hardening still live in later roadmap phases."
+                    fallbackNote="This frontend pass now exposes trust and approval for remote install. Recovery, rollback, and deeper policy gating still live in later roadmap phases."
                   />
                 </div>
               </Card>

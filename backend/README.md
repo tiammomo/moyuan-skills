@@ -25,7 +25,7 @@ The current frontend already has a clear information architecture:
 This backend keeps those shapes stable while moving file access out of the frontend.
 
 The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and copy-friendly action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs. The frontend now turns those commands into lightweight ordered runbooks with prerequisite, expected-outcome, and artifact/output cues directly in the doc detail UI.
-The backend now exposes a complete local lifecycle API layer plus the first remote registry install API layer for skills and bundles, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing installer or lifecycle logic.
+The backend now exposes a complete local lifecycle API layer plus the first remote registry install API layer for skills and bundles, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing installer or lifecycle logic. The frontend remote execution cards now add a first trust-and-approval pass on top of those APIs, so remote jobs no longer look unconditional.
 
 ## Run
 
@@ -91,6 +91,8 @@ Remote registry notes:
 - remote artifacts are downloaded into a deterministic cache root before install
 - remote install still reuses the same local installer semantics after staging, including checksum and lifecycle checks
 - the frontend skill and bundle detail pages now proxy these remote install jobs through Next.js API routes
+- the frontend now requires explicit in-page approval before those remote jobs are submitted
+- remote execution cards now surface publisher verification, review status, lifecycle status, and provenance hints before execution starts
 
 ## Suggested frontend mapping
 
@@ -149,4 +151,4 @@ What is now available:
 What is still next:
 
 - deeper installed-state product surfaces such as doctor/repair/baseline views
-- trust, approval, and recovery surfaces for remote installs
+- recovery, rollback, and failure-handling surfaces for remote installs

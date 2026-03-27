@@ -192,6 +192,21 @@ export interface BundleDetailPayload {
   install_specs: InstallSpec[];
 }
 
+export interface RemoteTrustEntry {
+  label: string;
+  value: string;
+  tone?: 'default' | 'positive' | 'warning' | 'critical';
+}
+
+export interface RemoteExecutionTrustSummary {
+  title: string;
+  entries: RemoteTrustEntry[];
+  warnings: string[];
+  approval_required: boolean;
+  approval_label: string;
+  approval_help: string;
+}
+
 export interface SkillDetailPayload {
   manifest: SkillManifest;
   install_spec: InstallSpec | null;

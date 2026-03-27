@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { LocalBackendStatus, LocalJobRecord } from '@/types/market';
+import type { LocalBackendStatus, LocalJobRecord, RemoteExecutionTrustSummary } from '@/types/market';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
@@ -40,6 +40,7 @@ export interface LocalExecutionCardProps {
   dryRunButtonLabel?: string;
   runningLabel?: string;
   dryRunRunningLabel?: string;
+  remoteTrust?: RemoteExecutionTrustSummary | null;
   onJobSettled?: (job: LocalJobRecord) => void;
 }
 
@@ -94,6 +95,7 @@ export function LocalExecutionCard({
   dryRunButtonLabel = 'Dry run via backend',
   runningLabel = 'Running...',
   dryRunRunningLabel = 'Running dry run...',
+  remoteTrust = null,
   onJobSettled,
 }: LocalExecutionCardProps) {
   const [availability, setAvailability] = useState<LocalBackendStatus | null>(null);
@@ -101,9 +103,13 @@ export function LocalExecutionCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'install' | 'dry-run' | null>(null);
   const [reportedCompletionJobId, setReportedCompletionJobId] = useState<string | null>(null);
+  const [approvalChecked, setApprovalChecked] = useState(false);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(fields.map((field) => [field.name, field.defaultValue ?? '']))
   );
+
+  const approvalRequired = Boolean(remoteTrust?.approval_required);
+  const approvalMissing = approvalRequired && !approvalChecked;
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +224,12 @@ export function LocalExecutionCard({
     setErrorMessage(null);
     setActiveMode(dryRun ? 'dry-run' : 'install');
 
+    if (approvalMissing) {
+      setActiveMode(null);
+      setErrorMessage('Remote execution requires explicit approval before the backend job can start.');
+      return;
+    }
+
     const missingField = fields.find((field) => field.required && !(fieldValues[field.name] ?? '').trim());
     if (missingField) {
       setActiveMode(null);
@@ -261,7 +273,7 @@ export function LocalExecutionCard({
     }
   }
 
-  const buttonsDisabled = !availability?.available || activeMode !== null;
+  const buttonsDisabled = !availability?.available || activeMode !== null || approvalMissing;
   const status = formatStatus(job?.status ?? 'idle');
   const statusVariant =
     job?.status === 'succeeded' ? 'keyword' : job?.status === 'failed' ? 'internal' : 'tag';
@@ -293,6 +305,47 @@ export function LocalExecutionCard({
         </p>
       </div>
 
+      {remoteTrust && (
+        <div
+          className="mb-4 rounded-card border border-line bg-bg/70 px-4 py-4"
+          data-testid={`${panelTestId}-trust`}
+        >
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+            {remoteTrust.title}
+          </p>
+          <dl className="mt-3 space-y-2 text-xs text-ink">
+            {remoteTrust.entries.map((entry) => (
+              <div key={`${entry.label}-${entry.value}`} className="flex justify-between gap-3">
+                <dt className="text-muted">{entry.label}</dt>
+                <dd
+                  className={`text-right break-words ${
+                    entry.tone === 'positive'
+                      ? 'text-olive'
+                      : entry.tone === 'warning' || entry.tone === 'critical'
+                        ? 'text-accent'
+                        : 'text-ink'
+                  }`}
+                >
+                  {entry.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          {remoteTrust.warnings.length > 0 && (
+            <div className="mt-3 space-y-2" data-testid={`${panelTestId}-trust-warnings`}>
+              {remoteTrust.warnings.map((warning) => (
+                <p
+                  key={warning}
+                  className="rounded-card border border-[#f0d4b8] bg-[#fff4e8] px-3 py-2 text-xs text-accent"
+                >
+                  {warning}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {fields.length > 0 && (
         <div className="mb-4 space-y-3">
           {fields.map((field) => (
@@ -312,6 +365,32 @@ export function LocalExecutionCard({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {approvalRequired && (
+        <div
+          className="mb-4 rounded-card border border-line bg-bg/70 px-4 py-4"
+          data-testid={`${panelTestId}-approval-panel`}
+        >
+          <label className="flex items-start gap-3 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={approvalChecked}
+              onChange={(event) => setApprovalChecked(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border border-line"
+              data-testid={`${panelTestId}-approval-checkbox`}
+            />
+            <span>{remoteTrust?.approval_label}</span>
+          </label>
+          {remoteTrust?.approval_help && (
+            <p className="mt-2 text-xs text-muted" data-testid={`${panelTestId}-approval-help`}>
+              {remoteTrust.approval_help}
+            </p>
+          )}
+          <p className="mt-2 text-xs text-muted" data-testid={`${panelTestId}-approval-state`}>
+            {approvalMissing ? 'Waiting for explicit approval before remote execution.' : 'Approval captured for remote execution.'}
+          </p>
         </div>
       )}
 

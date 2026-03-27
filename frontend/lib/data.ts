@@ -13,6 +13,7 @@ import type {
   InstallSpec,
   MarketIndex,
   ProjectDocPayload,
+  RemoteExecutionTrustSummary,
   SkillDetailPayload,
   SkillManifest,
   SkillSummary,
@@ -60,6 +61,13 @@ type BundleFilePayload = {
   keywords: string[];
 };
 
+type PublisherProfile = {
+  id: string;
+  display_name: string;
+  verified?: boolean;
+  trust_level?: string;
+};
+
 export function getRepoRoot(): string {
   return DATA_ROOT;
 }
@@ -80,6 +88,209 @@ export async function fileExists(filePath: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function getPublisherProfile(publisherId: string): Promise<PublisherProfile | null> {
+  const filePath = path.join(DATA_ROOT, 'publishers', `${publisherId}.json`);
+  try {
+    return await readJson<PublisherProfile>(filePath);
+  } catch {
+    return null;
+  }
+}
+
+function formatReviewStatus(reviewStatus: string): string {
+  if (reviewStatus === 'reviewed') {
+    return 'Reviewed';
+  }
+  if (reviewStatus === 'deprecated') {
+    return 'Deprecated';
+  }
+  if (reviewStatus === 'draft') {
+    return 'Draft';
+  }
+  return reviewStatus || 'Unknown';
+}
+
+function formatLifecycleStatus(status: string): string {
+  if (status === 'active') {
+    return 'Active';
+  }
+  if (status === 'deprecated') {
+    return 'Deprecated';
+  }
+  if (status === 'blocked') {
+    return 'Blocked';
+  }
+  if (status === 'archived') {
+    return 'Archived';
+  }
+  return status || 'Unknown';
+}
+
+function formatPublisherLabel(profile: PublisherProfile | null, publisherId: string): string {
+  const baseLabel = profile?.display_name || publisherId;
+  if (profile?.verified) {
+    return `${baseLabel} (official verified)`;
+  }
+  return `${baseLabel} (unverified publisher)`;
+}
+
+async function hasPackagedProvenance(skillName: string, version: string): Promise<boolean> {
+  return fileExists(path.join(DATA_ROOT, 'dist', 'market', 'provenance', `${skillName}-${version}.json`));
+}
+
+export async function getSkillRemoteTrustSummary(
+  detail: SkillDetailPayload
+): Promise<RemoteExecutionTrustSummary> {
+  const manifest = detail.manifest;
+  const publisherProfile = await getPublisherProfile(manifest.publisher);
+  const reviewStatus = manifest.quality?.review_status || manifest.review_status;
+  const lifecycleStatus = manifest.lifecycle?.status || 'unknown';
+  const provenanceAvailable = await hasPackagedProvenance(manifest.name, manifest.version);
+  const warnings: string[] = [];
+
+  if (!publisherProfile?.verified) {
+    warnings.push('This publisher is not currently marked as verified in the local market governance data.');
+  }
+  if (reviewStatus !== 'reviewed') {
+    warnings.push(`This skill is currently marked as ${formatReviewStatus(reviewStatus).toLowerCase()}.`);
+  }
+  if (lifecycleStatus !== 'active') {
+    warnings.push(
+      `Lifecycle status is ${formatLifecycleStatus(lifecycleStatus).toLowerCase()}, so review the replacement or sunset notes before running the remote install.`
+    );
+  }
+  if (manifest.permissions?.human_review_required) {
+    warnings.push('This skill declares human review as part of its permission profile.');
+  }
+
+  return {
+    title: 'Remote trust summary',
+    entries: [
+      {
+        label: 'Publisher',
+        value: formatPublisherLabel(publisherProfile, manifest.publisher),
+        tone: publisherProfile?.verified ? 'positive' : 'warning',
+      },
+      {
+        label: 'Review status',
+        value: formatReviewStatus(reviewStatus),
+        tone: reviewStatus === 'reviewed' ? 'positive' : 'warning',
+      },
+      {
+        label: 'Lifecycle status',
+        value: formatLifecycleStatus(lifecycleStatus),
+        tone: lifecycleStatus === 'active' ? 'positive' : 'warning',
+      },
+      {
+        label: 'Human review',
+        value: manifest.permissions?.human_review_required ? 'Required by skill permissions' : 'Not requested by skill permissions',
+        tone: manifest.permissions?.human_review_required ? 'warning' : 'default',
+      },
+      {
+        label: 'Provenance hint',
+        value: provenanceAvailable
+          ? 'Packaged provenance is available and will be staged with the remote artifact download.'
+          : 'Registry-backed installs still stage install specs and packages locally before running the normal installer.',
+        tone: provenanceAvailable ? 'positive' : 'default',
+      },
+    ],
+    warnings,
+    approval_required: true,
+    approval_label:
+      'I reviewed the publisher, lifecycle status, and cache target before submitting this remote skill install.',
+    approval_help:
+      'Remote execution downloads artifacts over the network before the normal local installer runs, so approval stays explicit even when the backend is available.',
+  };
+}
+
+export async function getBundleRemoteTrustSummary(
+  detail: BundleDetailPayload
+): Promise<RemoteExecutionTrustSummary> {
+  const manifests = (
+    await Promise.all(detail.skills.map((skill) => getSkillManifest(skill.name)))
+  ).filter((manifest): manifest is SkillManifest => Boolean(manifest));
+  const publisherIds = Array.from(new Set(manifests.map((manifest) => manifest.publisher).filter(Boolean)));
+  const publisherProfiles = await Promise.all(publisherIds.map((publisherId) => getPublisherProfile(publisherId)));
+  const publisherLabels = publisherIds.map((publisherId, index) =>
+    formatPublisherLabel(publisherProfiles[index] ?? null, publisherId)
+  );
+  const reviewedCount = manifests.filter(
+    (manifest) => (manifest.quality?.review_status || manifest.review_status) === 'reviewed'
+  ).length;
+  const lifecycleCounts = manifests.reduce<Record<string, number>>((counts, manifest) => {
+    const status = manifest.lifecycle?.status || 'unknown';
+    counts[status] = (counts[status] || 0) + 1;
+    return counts;
+  }, {});
+  const humanReviewCount = manifests.filter((manifest) => manifest.permissions?.human_review_required).length;
+  const provenanceCount = (
+    await Promise.all(manifests.map((manifest) => hasPackagedProvenance(manifest.name, manifest.version)))
+  ).filter(Boolean).length;
+  const warnings: string[] = [];
+
+  if (publisherProfiles.some((profile) => !profile?.verified)) {
+    warnings.push('At least one bundle member comes from a publisher that is not marked as verified.');
+  }
+  if (reviewedCount !== manifests.length) {
+    warnings.push(
+      `${reviewedCount} of ${manifests.length} bundle members are currently marked as reviewed.`
+    );
+  }
+  if ((lifecycleCounts.deprecated || 0) > 0 || (lifecycleCounts.blocked || 0) > 0 || (lifecycleCounts.archived || 0) > 0) {
+    warnings.push(
+      `Lifecycle mix includes ${lifecycleCounts.deprecated || 0} deprecated, ${lifecycleCounts.blocked || 0} blocked, and ${lifecycleCounts.archived || 0} archived members.`
+    );
+  }
+  if (humanReviewCount > 0) {
+    warnings.push(`${humanReviewCount} bundle member(s) request human review before use.`);
+  }
+
+  return {
+    title: 'Remote trust summary',
+    entries: [
+      {
+        label: 'Publishers',
+        value: publisherLabels.join(', '),
+        tone: publisherProfiles.every((profile) => profile?.verified) ? 'positive' : 'warning',
+      },
+      {
+        label: 'Review coverage',
+        value: `${reviewedCount} of ${manifests.length} skills reviewed`,
+        tone: reviewedCount === manifests.length ? 'positive' : 'warning',
+      },
+      {
+        label: 'Lifecycle mix',
+        value: `${lifecycleCounts.active || 0} active / ${lifecycleCounts.deprecated || 0} deprecated / ${lifecycleCounts.blocked || 0} blocked / ${lifecycleCounts.archived || 0} archived`,
+        tone:
+          (lifecycleCounts.deprecated || 0) === 0 &&
+          (lifecycleCounts.blocked || 0) === 0 &&
+          (lifecycleCounts.archived || 0) === 0
+            ? 'positive'
+            : 'warning',
+      },
+      {
+        label: 'Human review',
+        value:
+          humanReviewCount > 0
+            ? `${humanReviewCount} member(s) request human review`
+            : 'No bundle member currently requests human review',
+        tone: humanReviewCount > 0 ? 'warning' : 'default',
+      },
+      {
+        label: 'Provenance hint',
+        value: `${provenanceCount} of ${manifests.length} bundle members already have packaged provenance files ready for staging.`,
+        tone: provenanceCount === manifests.length ? 'positive' : 'default',
+      },
+    ],
+    warnings,
+    approval_required: true,
+    approval_label:
+      'I reviewed the bundle publishers, lifecycle warnings, and cache target before submitting this remote bundle install.',
+    approval_help:
+      'Remote bundle execution stages every referenced skill artifact before applying the normal local bundle installer, so approval stays explicit even for dry runs.',
+  };
 }
 
 async function fetchJson<T>(pathname: string): Promise<T> {

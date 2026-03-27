@@ -1,4 +1,15 @@
 # Skills Market Docs
+## Frontend Execution Status
+
+The current frontend surface now supports:
+
+- local skill install, update, and remove through the backend
+- local bundle install, update, and remove through the backend
+- remote registry install for skills and bundles
+- explicit trust summaries plus approval before remote execution starts
+
+The next gap is recovery UX for remote installs. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
+
 
 `docs/` 面向人类读者，负责解释这个项目怎么学、怎么扩、怎么维护。
 

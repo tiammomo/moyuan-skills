@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getBundleDetail, getBundles } from '@/lib/data';
+import { getBundleDetail, getBundleRemoteTrustSummary, getBundles } from '@/lib/data';
 import { InstallButton } from '@/components/market/InstallButton';
 import { InstalledStatePanel } from '@/components/market/InstalledStatePanel';
 import { LocalExecutionCard } from '@/components/market/LocalExecutionCard';
@@ -46,6 +46,7 @@ export default async function BundleDetailPage({ params }: Props) {
   const { bundle, skills, install_specs: installSpecs } = detail;
   const installedTargetRoot = 'dist/installed-market';
   const localTargetRoot = `dist/frontend-local-execution/bundles/${bundle.id}`;
+  const remoteTrust = await getBundleRemoteTrustSummary(detail);
   const bundleActions = [
     {
       label: 'Install bundle locally',
@@ -158,6 +159,7 @@ export default async function BundleDetailPage({ params }: Props) {
               }}
               modeLabel="Registry-backed execution"
               badges={['Remote download via backend', 'Copy-first bundle commands still stay visible']}
+              remoteTrust={remoteTrust}
               fields={[
                 {
                   name: 'registry_url',
@@ -168,7 +170,7 @@ export default async function BundleDetailPage({ params }: Props) {
                   required: true,
                 },
               ]}
-              fallbackNote="This first frontend remote pass only covers bundle install. Update, remove, trust approval, and deeper recovery UI still live in later roadmap phases."
+              fallbackNote="This frontend pass now exposes trust and approval for remote bundle install. Update, remove, and deeper recovery UI still live in later roadmap phases."
             />
           </section>
 

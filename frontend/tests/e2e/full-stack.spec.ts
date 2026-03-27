@@ -35,7 +35,18 @@ test('frontend works against the Python backend across core market flows', async
     timeout: 20000,
   });
   await expect(page.getByTestId('skill-registry-execution')).toBeVisible();
+  await expect(page.getByTestId('skill-registry-execution-trust')).toContainText(
+    'Moyuan Skills Team (official verified)'
+  );
+  await expect(page.getByTestId('skill-registry-execution-approval-state')).toContainText(
+    'Waiting for explicit approval'
+  );
+  await expect(page.getByTestId('skill-registry-execution-run')).toBeDisabled();
   await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('skill-registry-execution-approval-checkbox').check();
+  await expect(page.getByTestId('skill-registry-execution-approval-state')).toContainText(
+    'Approval captured for remote execution'
+  );
   await page.getByTestId('skill-registry-execution-run').click();
   await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('moyuan.release-note-writer');
@@ -74,7 +85,18 @@ test('frontend works against the Python backend across core market flows', async
     timeout: 20000,
   });
   await expect(page.getByTestId('bundle-registry-execution')).toBeVisible();
+  await expect(page.getByTestId('bundle-registry-execution-trust')).toContainText(
+    '3 of 3 skills reviewed'
+  );
+  await expect(page.getByTestId('bundle-registry-execution-approval-state')).toContainText(
+    'Waiting for explicit approval'
+  );
+  await expect(page.getByTestId('bundle-registry-execution-run')).toBeDisabled();
   await page.getByTestId('bundle-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('bundle-registry-execution-approval-checkbox').check();
+  await expect(page.getByTestId('bundle-registry-execution-approval-state')).toContainText(
+    'Approval captured for remote execution'
+  );
   await page.getByTestId('bundle-registry-execution-run').click();
   await expect(page.getByTestId('bundle-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('bundle-registry-execution-summary')).toContainText('release-engineering-starter');

@@ -1,4 +1,15 @@
 # Moyuan Skills Market
+## Remote Install Trust Status
+
+The current frontend product surface now supports:
+
+- local skill install, update, and remove through the backend
+- local bundle install, update, and remove through the backend
+- remote registry install for skills and bundles
+- explicit trust summaries plus approval before remote execution starts
+
+The next gap is recovery UX for remote installs. Track that work in [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md).
+
 
 `moyuan-skills` 现在不只是一个 skills 示例仓库，而是一套面向 `skills market` 的教学型参考实现。
 
