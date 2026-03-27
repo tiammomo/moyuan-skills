@@ -698,6 +698,10 @@ export function getSkillDocActionPanel(
         command: `python scripts/skills_market.py install ${installSpecPath} --target-root dist/installed-skills`,
         prerequisites: 'Generate the install spec first and run the command from the repo root.',
         expectedOutcome: 'The skill installs into dist/installed-skills and the local lockfile records the new entry.',
+        artifacts: [
+          'Updated dist/installed-skills/skills.lock.json entry for the installed skill',
+          `Installed skill files under dist/installed-skills/${skillName}/`,
+        ],
         testId: 'doc-action-skill-install',
       },
       {
@@ -705,6 +709,7 @@ export function getSkillDocActionPanel(
         command: detail?.manifest.quality.checker ?? `python skills/${skillName}/scripts/check_${skillName.replace(/-/g, '_')}.py`,
         prerequisites: 'Keep the repo checkout intact so the skill assets and sample inputs are available.',
         expectedOutcome: `${detail?.manifest.title ?? skillName} checker finishes with a passed status and no structural errors.`,
+        artifacts: ['Checker pass/fail summary printed in the terminal output'],
         testId: 'doc-action-skill-checker',
       },
       {
@@ -712,6 +717,7 @@ export function getSkillDocActionPanel(
         command: detail?.manifest.quality.eval ?? `python scripts/run_eval_harness.py --skills ${skillName}`,
         prerequisites: 'Make sure the eval fixtures and baseline files are present in examples/eval-harness.',
         expectedOutcome: 'The eval harness reports the targeted cases as passed without a regression warning.',
+        artifacts: ['Eval pass/fail summary and grader results printed in the terminal output'],
         testId: 'doc-action-skill-eval',
       },
     ]),
@@ -739,6 +745,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_progressive_skills.py',
         prerequisites: 'Run from the repo root so the checker can scan docs, templates, and skill bundles together.',
         expectedOutcome: 'Progressive skill validation passes, confirming the teaching flow still matches repo conventions.',
+        artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
       },
       {
@@ -746,6 +753,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python skills/build-skills/scripts/check_build_skills.py',
         prerequisites: 'Keep the teaching bundle assets in place under skills/build-skills/.',
         expectedOutcome: 'The build-skills teaching bundle check passes for the current lesson assets.',
+        artifacts: ['build-skills checker summary in terminal output'],
         testId: 'doc-action-teaching-secondary',
       }
     );
@@ -756,6 +764,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_progressive_skills.py',
         prerequisites: 'Run from the repo root so the checker can compare the disclosure assets against repo conventions.',
         expectedOutcome: 'Progressive skill validation passes before you verify the disclosure-specific example.',
+        artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
       },
       {
@@ -763,6 +772,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python skills/progressive-disclosure/scripts/check_progressive_disclosure.py',
         prerequisites: 'Keep the progressive-disclosure teaching files and reference splits available in the repo.',
         expectedOutcome: 'The progressive-disclosure teaching bundle check passes for the current split-context assets.',
+        artifacts: ['progressive-disclosure checker summary in terminal output'],
         testId: 'doc-action-teaching-secondary',
       }
     );
@@ -773,6 +783,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_harness_prototypes.py',
         prerequisites: 'Leave the prototype schemas, examples, and templates in their default repo locations.',
         expectedOutcome: 'Harness prototype validation passes, confirming schemas and runtime blueprints still line up.',
+        artifacts: ['Prototype validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
       },
       {
@@ -781,6 +792,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
           'python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml',
         prerequisites: 'Start from the repo root so the runtime can resolve the referenced blueprint and sample assets.',
         expectedOutcome: 'The runtime demo completes with PASS for the release-note-publication blueprint.',
+        artifacts: ['Runtime execution report emitted under the command-selected dist output directory'],
         testId: 'doc-action-teaching-secondary',
       }
     );
@@ -791,6 +803,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_market_pipeline.py',
         prerequisites: 'Keep dist/, governance/, and market packaging scripts available in the current repo checkout.',
         expectedOutcome: 'The market pipeline smoke test passes, including packaging, indexing, install, and governance checks.',
+        artifacts: ['Smoke output directory under dist/market-smoke-* plus terminal summary'],
         testId: 'doc-action-teaching-primary',
       },
       {
@@ -798,6 +811,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_python_market_backend.py',
         prerequisites: 'Install backend dependencies and keep the generated market assets available under dist/market.',
         expectedOutcome: 'The Python market backend check passes for the repo-backed API payloads.',
+        artifacts: ['Backend payload-count summary printed in terminal output'],
         testId: 'doc-action-teaching-secondary',
       }
     );
@@ -808,6 +822,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_progressive_skills.py',
         prerequisites: 'Run from the repo root so docs, templates, and skills are checked together.',
         expectedOutcome: 'Progressive skill validation passes so the lesson can build on a clean repo state.',
+        artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
       },
       {
@@ -815,6 +830,7 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         command: 'python scripts/check_docs_links.py',
         prerequisites: 'Keep the docs tree and relative markdown links in their repo locations.',
         expectedOutcome: 'Documentation link checking passes with no broken relative links.',
+        artifacts: ['Docs link validation summary in terminal output'],
         testId: 'doc-action-teaching-secondary',
       }
     );
@@ -843,6 +859,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_python_market_backend.py',
         prerequisites: 'Install backend dependencies and keep the repo-backed market assets available under dist/market.',
         expectedOutcome: 'The Python market backend check passes and confirms the API payloads still match repo assets.',
+        artifacts: ['Backend payload-count summary printed in terminal output'],
         testId: 'doc-action-project-primary',
       },
       {
@@ -850,6 +867,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'npm run e2e --prefix frontend',
         prerequisites: 'Install frontend dependencies and build the Next.js app before starting the Playwright run.',
         expectedOutcome: 'Playwright reports the full-stack market flow as passed against the live frontend and backend.',
+        artifacts: ['Playwright pass/fail report printed in terminal output'],
         testId: 'doc-action-project-secondary',
       }
     );
@@ -860,6 +878,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python -m compileall backend',
         prerequisites: 'Have a working Python interpreter available from the repo root.',
         expectedOutcome: 'Python compiles the backend package tree without syntax errors.',
+        artifacts: ['Compiled bytecode under backend/__pycache__/ and nested package cache directories'],
         testId: 'doc-action-project-primary',
       },
       {
@@ -867,6 +886,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'npm run build --prefix frontend',
         prerequisites: 'Install the frontend npm dependencies before running the build.',
         expectedOutcome: 'Next.js finishes a production build without type or route-generation failures.',
+        artifacts: ['Production build artifacts under frontend/.next/'],
         testId: 'doc-action-project-secondary',
       }
     );
@@ -877,6 +897,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_progressive_skills.py',
         prerequisites: 'Run from the repo root so the checker can inspect every skill and doc family together.',
         expectedOutcome: 'Progressive skill validation passes before you verify the rest of the repository references.',
+        artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-project-primary',
       },
       {
@@ -884,6 +905,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_docs_links.py',
         prerequisites: 'Keep the markdown docs and templates in place so relative links resolve correctly.',
         expectedOutcome: 'Documentation link checking passes with no broken repo references.',
+        artifacts: ['Docs link validation summary in terminal output'],
         testId: 'doc-action-project-secondary',
       }
     );
@@ -898,6 +920,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/validate_market_manifest.py',
         prerequisites: 'Keep the skill market manifests and schema files present in their default repo locations.',
         expectedOutcome: 'Market manifest validation passes for all packaged skills in the repo.',
+        artifacts: ['Manifest validation summary in terminal output'],
         testId: 'doc-action-project-primary',
       },
       {
@@ -905,6 +928,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_market_pipeline.py',
         prerequisites: 'Leave the dist/, governance/, bundle, and market script directories available to the smoke run.',
         expectedOutcome: 'The market smoke run completes successfully across packaging, install, and governance checkpoints.',
+        artifacts: ['Smoke output directory under dist/market-smoke-* plus terminal summary'],
         testId: 'doc-action-project-secondary',
       }
     );
@@ -915,6 +939,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_harness_prototypes.py',
         prerequisites: 'Keep the prototype examples, schemas, and templates available from the repo root.',
         expectedOutcome: 'Harness prototype validation passes for schemas, examples, and runtime assets.',
+        artifacts: ['Prototype validation summary in terminal output'],
         testId: 'doc-action-project-primary',
       },
       {
@@ -923,6 +948,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
           'python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml',
         prerequisites: 'Run from the repo root so the runtime can resolve the blueprint and sample artifacts.',
         expectedOutcome: 'The harness runtime demo ends in PASS and writes the expected runtime report artifacts.',
+        artifacts: ['Runtime execution report emitted under the command-selected dist output directory'],
         testId: 'doc-action-project-secondary',
       }
     );
@@ -933,6 +959,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_docs_links.py',
         prerequisites: 'Keep the docs tree in place so the relative markdown links can be resolved.',
         expectedOutcome: 'Documentation link checking passes, confirming the reference is still safe to share.',
+        artifacts: ['Docs link validation summary in terminal output'],
         testId: 'doc-action-project-primary',
       },
       {
@@ -940,6 +967,7 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         command: 'python scripts/check_progressive_skills.py',
         prerequisites: 'Run from the repo root so the structural checks can inspect the full teaching and skill set.',
         expectedOutcome: 'Progressive skill validation passes so the wider repo remains structurally consistent.',
+        artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-project-secondary',
       }
     );

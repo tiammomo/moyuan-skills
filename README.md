@@ -80,6 +80,7 @@
 - Python backend 见 [backend/README.md](./backend/README.md)
 - 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - Playwright 已覆盖首页、skills、bundles、docs 与详情页联调
+- docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
 
 ## 核心文档入口
 

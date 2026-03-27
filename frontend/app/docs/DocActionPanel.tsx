@@ -49,6 +49,16 @@ function getPrerequisitesTestId(testId?: string): string | undefined {
   return `${testId}-prerequisites`;
 }
 
+function getArtifactsTestId(testId?: string): string | undefined {
+  if (!testId) {
+    return undefined;
+  }
+  if (testId.startsWith('doc-action-')) {
+    return testId.replace('doc-action-', 'doc-action-artifacts-');
+  }
+  return `${testId}-artifacts`;
+}
+
 async function copyCommandText(value: string): Promise<void> {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
@@ -208,6 +218,21 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                 >
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Expected outcome</p>
                   <p className="mt-1 text-xs leading-6 text-ink">{command.expectedOutcome}</p>
+                </div>
+              )}
+              {command.artifacts && command.artifacts.length > 0 && (
+                <div
+                  className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3"
+                  data-testid={getArtifactsTestId(command.testId)}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Artifacts and outputs
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                    {command.artifacts.map((artifact) => (
+                      <li key={artifact}>- {artifact}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

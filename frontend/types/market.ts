@@ -155,6 +155,7 @@ export interface DocActionCommand {
   command: string;
   prerequisites?: string;
   expectedOutcome?: string;
+  artifacts?: string[];
   testId?: string;
 }
 

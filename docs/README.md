@@ -48,7 +48,7 @@
 - [consumer-guide.md](./consumer-guide.md)
   consumer 如何搜索、安装、更新、排障和治理本地状态。
 - [frontend-backend-integration.md](./frontend-backend-integration.md)
-  现有前端如何对接 Python backend 与 repo-backed docs。
+  现有前端如何对接 Python backend 与 repo-backed docs，并把命令、产物和联调路径一起展示到详情页。
 
 ## 业务案例文档
 
