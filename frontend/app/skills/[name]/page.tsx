@@ -135,7 +135,7 @@ export default async function SkillDetailPage({ params }: Props) {
           {installSpec && (
             <section className="animate-fade-in-delay-3">
               <Card className="p-6 sm:p-8">
-                <h2 className="text-lg font-semibold text-ink mb-4">Install this skill</h2>
+                <h2 className="text-lg font-semibold text-ink mb-4">Local install command</h2>
                 <InstallButton installSpec={installSpec} />
               </Card>
             </section>

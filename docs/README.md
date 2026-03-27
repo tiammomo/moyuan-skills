@@ -48,7 +48,9 @@
 - [consumer-guide.md](./consumer-guide.md)
   consumer 如何搜索、安装、更新、排障和治理本地状态。
 - [frontend-backend-integration.md](./frontend-backend-integration.md)
-  现有前端如何对接 Python backend 与 repo-backed docs，并把命令、产物和联调路径一起展示到详情页。
+  现有前端如何对接 Python backend 与 repo-backed docs，并把命令、产物、honest local install 提示和联调路径一起展示到详情页。
+- [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md)
+  盘点当前前后端交互闭环、未补完的按钮能力，以及“是否能直接从远端拉取 skill 到本地”的后续路线；当前已完成 honest local command UI 和 bundle-level local actions。
 
 ## 业务案例文档
 

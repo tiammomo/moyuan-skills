@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getBundleDetail, getBundles } from '@/lib/data';
 import { InstallButton } from '@/components/market/InstallButton';
+import { LocalCommandPanel } from '@/components/market/LocalCommandPanel';
 import { SkillCard } from '@/components/market/SkillCard';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
@@ -41,6 +42,33 @@ export default async function BundleDetailPage({ params }: Props) {
   }
 
   const { bundle, skills, install_specs: installSpecs } = detail;
+  const installedTargetRoot = 'dist/installed-market';
+  const bundleActions = [
+    {
+      label: 'Install bundle locally',
+      command: `python scripts/skills_market.py install-bundle ${bundle.id} --market-dir dist/market --target-root ${installedTargetRoot}`,
+      description: 'Install the current bundle into a local target root from the built market directory.',
+      expectedOutcome: 'The bundle installs under the chosen target root and updates the local lock state.',
+      artifacts: [`${installedTargetRoot}/skills.lock.json`, `${installedTargetRoot}/bundles/`],
+      testId: 'bundle-action-install',
+    },
+    {
+      label: 'Update bundle locally',
+      command: `python scripts/skills_market.py update-bundle ${bundle.id} --market-dir dist/market --target-root ${installedTargetRoot}`,
+      description: 'Refresh the installed bundle membership from the local market artifacts.',
+      expectedOutcome: 'Changed bundle members are reconciled without retyping per-skill commands.',
+      artifacts: [`${installedTargetRoot}/skills.lock.json`, `${installedTargetRoot}/bundles/`],
+      testId: 'bundle-action-update',
+    },
+    {
+      label: 'Remove bundle locally',
+      command: `python scripts/skills_market.py remove-bundle ${bundle.id} --target-root ${installedTargetRoot}`,
+      description: 'Remove bundle-owned skills while keeping direct installs untouched.',
+      expectedOutcome: 'Bundle-only ownership is removed and the local bundle report is updated.',
+      artifacts: [`${installedTargetRoot}/skills.lock.json`, `${installedTargetRoot}/bundles/`],
+      testId: 'bundle-action-remove',
+    },
+  ];
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -91,12 +119,21 @@ export default async function BundleDetailPage({ params }: Props) {
 
         <div className="space-y-6">
           <section className="animate-fade-in">
+            <LocalCommandPanel
+              panelTestId="bundle-local-command-panel"
+              title="Bundle local commands"
+              description="These actions still run through the local CLI. Use them when you want a single bundle-level workflow before backend execution APIs exist."
+              actions={bundleActions}
+            />
+          </section>
+
+          <section className="animate-fade-in-delay-1">
             <Card className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">
-                Install all skills
+                Per-skill local install commands
               </h3>
               <p className="text-sm text-muted mb-4">
-                Each install command comes from the generated market install specs for this bundle.
+                Each command below comes from the generated market install specs for this bundle.
               </p>
               <div className="space-y-3">
                 {installSpecs.map((spec) => (
@@ -109,7 +146,7 @@ export default async function BundleDetailPage({ params }: Props) {
             </Card>
           </section>
 
-          <section className="animate-fade-in-delay-1">
+          <section className="animate-fade-in-delay-2">
             <Card className="p-5">
               <h3 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">
                 Bundle info
@@ -131,7 +168,7 @@ export default async function BundleDetailPage({ params }: Props) {
             </Card>
           </section>
 
-          <section className="animate-fade-in-delay-2">
+          <section className="animate-fade-in-delay-3">
             <Link href="/bundles" className="flex items-center gap-2 text-sm text-accent hover:underline">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

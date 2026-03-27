@@ -34,6 +34,7 @@ Core endpoints:
 
 The docs catalog now carries both grouped arrays and a flattened `all_docs` list so the frontend can filter across all doc families without reassembling the payload client-side.
 That same shared payload now also supports detail-page related navigation, context panels, and copy-friendly ordered action panels with prerequisite, expected-outcome, and artifact/output cues without requiring separate recommendations or metadata endpoints.
+Skill detail and bundle detail pages now also distinguish local CLI copy flows from future backend execution flows, so the current UI does not over-promise one-click installation.
 
 The repository layer reads these real assets directly:
 
@@ -118,7 +119,7 @@ Artifacts:
 The test starts:
 
 - FastAPI on a dedicated backend port
-- Next.js on a dedicated frontend port
+- Next.js on a dedicated frontend port through `npm run dev:local`
 
 Then it validates:
 
@@ -133,6 +134,8 @@ Then it validates:
 - doc detail pages can continue into related docs from the same front/back data flow
 - doc detail pages expose context panels such as install entrypoints, learning-path position, and source metadata
 - doc detail pages expose action panels with concrete repo commands, ordered runbook cues, prerequisite hints, expected-outcome hints, artifact/output hints, copy buttons, and next-step links
+- skill detail pages show honest `Local CLI only` install messaging
+- bundle detail pages expose bundle-level local `install-bundle`, `update-bundle`, and `remove-bundle` commands
 
 Run:
 
@@ -142,6 +145,8 @@ npm run build --prefix frontend
 npm run e2e --prefix frontend
 npm run capture:readme-screenshots --prefix frontend
 ```
+
+`npm run build` remains the production build check, while Playwright itself now starts the API-backed frontend in local dev mode so the suite is not blocked by environment-specific production server startup differences.
 
 The screenshot capture flow writes repo-committable images to `docs/assets/readme/`, so the root README can show the current live market flow instead of hand-made mockups.
 
@@ -170,4 +175,28 @@ It is now implemented as:
 - shared related-doc navigation on detail pages
 - shared context panels on detail pages
 - shared action panels with ordered runbook cues, prerequisite hints, expected-outcome hints, artifact/output hints, and command-copy affordances on detail pages
+- honest local install messaging on skill detail pages
+- bundle-level local command panels on bundle detail pages
 - Playwright end-to-end coverage for the core market path
+
+## Current gaps
+
+The current front/back path is already good enough for repo-backed browsing and teaching, but it is not yet a full execution product.
+
+What is already complete:
+
+- browse/search/filter across skills, bundles, teaching docs, and project docs
+- repo-backed detail pages
+- command-copy, runbook, prerequisite, expected-outcome, and artifact hints
+- honest local-command wording for skill install and bundle-level local actions
+- end-to-end verification with Playwright
+
+What is still partial:
+
+- install buttons still copy local CLI commands instead of calling a backend mutation API
+- bundle detail still copies local CLI commands rather than calling a backend mutation API
+- docs action panels are guidance-oriented and do not execute commands
+- backend is still read-only and does not expose install/update/remove job endpoints
+- the current installer still expects a local install spec JSON file and does not fetch remote market artifacts over HTTP
+
+The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
