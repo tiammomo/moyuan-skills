@@ -107,4 +107,5 @@ The repo now includes a Playwright flow that starts this FastAPI backend and the
 npx playwright install chromium --prefix frontend
 npm run build --prefix frontend
 npm run e2e --prefix frontend
+npm run capture:readme-screenshots --prefix frontend
 ```

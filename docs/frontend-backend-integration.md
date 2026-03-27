@@ -113,6 +113,7 @@ Artifacts:
 
 - config: `frontend/playwright.config.ts`
 - spec: `frontend/tests/e2e/full-stack.spec.ts`
+- screenshot capture: `frontend/tests/e2e/readme-screenshots.spec.ts`
 
 The test starts:
 
@@ -139,7 +140,10 @@ Run:
 npx playwright install chromium --prefix frontend
 npm run build --prefix frontend
 npm run e2e --prefix frontend
+npm run capture:readme-screenshots --prefix frontend
 ```
+
+The screenshot capture flow writes repo-committable images to `docs/assets/readme/`, so the root README can show the current live market flow instead of hand-made mockups.
 
 ## Validation commands
 

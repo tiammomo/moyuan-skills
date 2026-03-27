@@ -9,7 +9,8 @@
     "start": "next start",
     "start:local": "next start --hostname 127.0.0.1 --port 33003",
     "lint": "next lint",
-    "e2e": "playwright test"
+    "e2e": "playwright test --grep-invert @readme-screenshots",
+    "capture:readme-screenshots": "playwright test --grep @readme-screenshots"
   },
   "dependencies": {
     "clsx": "^2.1.0",

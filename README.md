@@ -27,6 +27,31 @@
 - `python scripts/check_python_market_backend.py`
 - `npm run e2e --prefix frontend`
 
+## Playwright 实际使用截图
+
+下面这组图片不是静态示意图，而是用 Playwright 对当前前后端联调链路实际运行后生成的截图。
+
+截图生成命令：
+
+- `npm run build --prefix frontend`
+- `npm run capture:readme-screenshots --prefix frontend`
+
+### 1. 首页看到当前 skills market 总览
+
+![Skills market home overview](./docs/assets/readme/playwright-home-overview.png)
+
+### 2. 在 skills 页搜索真实 skill
+
+![Skills market search for release-note-writer](./docs/assets/readme/playwright-skill-search.png)
+
+### 3. 进入 skill 详情查看安装入口
+
+![Release note writer skill detail](./docs/assets/readme/playwright-skill-detail.png)
+
+### 4. 进入 skill 文档页查看实际运行命令
+
+![Release note writer doc action panel](./docs/assets/readme/playwright-skill-runbook.png)
+
 ## `docs/teaching/` 现在承担什么角色
 
 `docs/teaching/` 已经被明确收口成“整个 skills market 的教学目录”。

@@ -101,9 +101,11 @@ python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-bluepr
 python scripts/check_python_market_backend.py
 npm run build --prefix frontend
 npm run e2e --prefix frontend
+npm run capture:readme-screenshots --prefix frontend
 ```
 
 其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend 和 Next.js frontend，验证首页、skills、bundle、docs 搜索/筛选、teaching、project docs，以及详情页 related navigation、context panel、ordered action panel、prerequisites、expected outcome 提示和命令复制交互这几条核心前后端链路。
+`npm run capture:readme-screenshots --prefix frontend` 会额外生成一组 README 用的真实流程截图，输出到 `docs/assets/readme/`。
 
 标准本地端口约定：
 
