@@ -105,9 +105,10 @@
 - Python backend 见 [backend/README.md](./backend/README.md)
 - 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - Playwright 已覆盖首页、skills、bundles、docs 与详情页联调
+- backend 现在已经补了第一批本地执行接口：`POST /api/v1/local/skills/install`、`POST /api/v1/local/bundles/install` 和 `GET /api/v1/local/jobs/{job_id}`
 - skill 详情页和 bundle 详情页已经明确标注 `Local CLI only`，bundle 级本地 `install-bundle / update-bundle / remove-bundle` 命令也已接入页面
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前后端仍然以“浏览、检索、复制本地命令”为主，还没有补到真正的后端执行安装和远端拉取下载；后续完善路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端仍然以“浏览、检索、复制本地命令”为主，尚未把这些按钮接到新的 backend mutation API；远端拉取下载也还没补完。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 

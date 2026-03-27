@@ -58,14 +58,22 @@ What is still incomplete:
 
 ### 3. Backend interaction layer
 
-Status: `not yet implemented`
+Status: `first pass implemented`
 
 Current reality:
 
-- backend only exposes `GET` routes
-- there are no `POST` endpoints for install, update, remove, or bundle actions
-- there is no job model for long-running local operations
-- there is no API for installed-state inspection from the UI
+- backend now exposes:
+  - `POST /api/v1/local/skills/install`
+  - `POST /api/v1/local/bundles/install`
+  - `GET /api/v1/local/jobs/{job_id}`
+- the mutation layer reuses the existing local installer scripts
+- long-running local operations now have a lightweight job model
+
+What is still incomplete:
+
+- there are no backend update/remove endpoints yet
+- there is no installed-state read API for the UI
+- the current frontend does not call the new mutation APIs yet
 
 ### 4. Remote skill pull / download
 
@@ -145,6 +153,15 @@ Goal:
 
 - let frontend trigger local market actions through FastAPI
 
+Status:
+
+- `in progress`
+- completed in this iteration:
+  - `POST /api/v1/local/skills/install`
+  - `POST /api/v1/local/bundles/install`
+  - `GET /api/v1/local/jobs/{job_id}`
+  - backend smoke coverage for local install jobs
+
 Suggested endpoints:
 
 - `POST /api/v1/local/skills/install`
@@ -167,6 +184,11 @@ Acceptance criteria:
 
 - frontend can install, update, and remove a local skill through backend APIs
 - job progress and final summary are visible in the UI
+
+Remaining work before Phase 2 can be called complete:
+
+- add local update/remove/state endpoints
+- wire the existing frontend install surfaces to the new mutation APIs
 
 ### Phase 3: Add remote registry fetch and remote install
 
@@ -258,4 +280,4 @@ If you need a simple conclusion:
 - `frontend execution` is not yet complete
 - `remote skill download and install` is not yet supported
 
-The next implementation target is now `Phase 2`: backend mutation APIs for local skill and bundle actions.
+The next implementation target is now the frontend side of `Phase 2`: execution buttons that can call the new local mutation APIs.
