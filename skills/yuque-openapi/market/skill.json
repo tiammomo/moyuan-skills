@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.yuque-openapi",
+  "publisher": "moyuan",
+  "name": "yuque-openapi",
+  "title": "Yuque OpenAPI",
+  "version": "0.1.0",
+  "channel": "stable",
+  "summary": "Sync local Markdown files, directory trees, and manifests with Yuque knowledge bases through a cross-platform Python CLI.",
+  "description": "A document automation skill that packages Yuque OpenAPI workflows into reusable commands for repo discovery, markdown push or pull, directory planning, TOC sync, batch manifests, and snapshot based recovery.",
+  "categories": ["docs", "sync"],
+  "tags": ["yuque", "markdown", "knowledge-base", "sync"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "write",
+    "network": "full",
+    "shell": "limited",
+    "secrets": "read",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": "python skills/yuque-openapi/scripts/check_yuque_skill.py",
+    "eval": "python skills/yuque-openapi/scripts/check_yuque_skill.py",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Primary cross-platform knowledge-base sync case study for the Chinese skill teaching track."
+  },
+  "artifacts": {
+    "source_dir": "skills/yuque-openapi",
+    "entrypoint": "skills/yuque-openapi/SKILL.md",
+    "docs": "docs/yuque-openapi.md"
+  },
+  "search": {
+    "keywords": ["yuque api", "markdown sync", "toc sync", "knowledge base export"],
+    "related_skills": ["moyuan.feishu-doc-sync", "moyuan.build-skills"]
+  },
+  "distribution": {
+    "capabilities": ["yuque-sync", "toc-rebuild", "batch-doc-automation"],
+    "starter_bundle_ids": []
+  }
+}

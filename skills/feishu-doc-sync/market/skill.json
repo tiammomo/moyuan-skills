@@ -1,0 +1,48 @@
+{
+  "id": "moyuan.feishu-doc-sync",
+  "publisher": "moyuan",
+  "name": "feishu-doc-sync",
+  "title": "Feishu Doc Sync",
+  "version": "0.1.0",
+  "channel": "beta",
+  "summary": "Sync local Markdown files and directory trees with Feishu docx documents through tenant or user scoped workflows.",
+  "description": "A document sync skill that turns Feishu Markdown collaboration into a reusable capability with auth validation, protected write flows, directory planning, media handling, and bidirectional sync scaffolding.",
+  "categories": ["docs", "sync"],
+  "tags": ["feishu", "markdown", "docx", "sync"],
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "write",
+    "network": "full",
+    "shell": "limited",
+    "secrets": "read",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": "python skills/feishu-doc-sync/scripts/check_feishu_skill.py",
+    "eval": "python skills/feishu-doc-sync/scripts/check_feishu_skill.py",
+    "review_status": "reviewed"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": "Cross-platform Feishu document sync case study used for both practical doc automation and skill teaching."
+  },
+  "artifacts": {
+    "source_dir": "skills/feishu-doc-sync",
+    "entrypoint": "skills/feishu-doc-sync/SKILL.md",
+    "docs": "docs/feishu-doc-sync.md"
+  },
+  "search": {
+    "keywords": ["feishu sync", "markdown doc sync", "docx collaboration", "tenant user auth"],
+    "related_skills": ["moyuan.yuque-openapi", "moyuan.build-skills"]
+  },
+  "distribution": {
+    "capabilities": ["feishu-sync", "markdown-push-pull", "doc-collaboration"],
+    "starter_bundle_ids": []
+  }
+}

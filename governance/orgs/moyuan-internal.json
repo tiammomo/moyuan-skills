@@ -14,7 +14,9 @@
   "blocked_skills": [
     "moyuan.build-skills",
     "moyuan.harness-engineering",
-    "moyuan.progressive-disclosure"
+    "moyuan.progressive-disclosure",
+    "moyuan.feishu-doc-sync",
+    "moyuan.yuque-openapi"
   ],
   "preferred_skills": [
     "moyuan.release-note-writer",

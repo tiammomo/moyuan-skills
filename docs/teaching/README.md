@@ -1,15 +1,23 @@
-# Skills Market Teaching
+# Skills Market 教学总览
 
-`docs/teaching/` 现在被明确定位为“整个 skills market 的教学目录”。
+`docs/teaching/` 是本仓库面向中文读者的教学入口。这里不是零散教程的堆叠，而是一条从 skill 结构、渐进式拆分、harness、market packaging，一直走到 client lifecycle、governance 与前后端交付的学习路径。
 
-这里不只是若干篇零散教程，而是一套从 skill 设计逻辑出发，逐步走到 market 分发、client lifecycle、governance 和前后端交付的课程化路径。
+## 这一套教学解决什么问题
 
-## 这套教学内容解决什么问题
+- 帮新同学分清楚应该先学 skill，还是先学 skills market
+- 帮作者理解 skill 为什么不能只停留在一份越来越长的说明文档
+- 帮维护者把仓库里的脚本、规范、治理与产品交付看成一条完整链路
+- 帮团队把 onboarding 资料沉淀成可复用的中文课程目录
 
-- 新人不知道应该先学 skill、还是先学 market。
-- 读者能看懂单个 skill，但看不清整个 skills market 是怎么连起来的。
-- 维护者知道脚本很多，却不知道哪些脚本属于 packaging、client、governance 或 delivery。
-- 项目 owner 需要一套可以持续 onboarding 和教学复用的目录。
+## 新增案例入口
+
+这一轮新增了两个中文文档协同 skill 案例：
+
+- [../yuque-openapi.md](../yuque-openapi.md)
+- [../feishu-doc-sync.md](../feishu-doc-sync.md)
+- [22-doc-sync-skill-case-studies.md](./22-doc-sync-skill-case-studies.md)
+
+如果你已经学过基础的 skill 结构，但还想看“真实复杂 skill 到底怎么长成现在这样”，优先读上面这组三连。
 
 ## 推荐进入方式
 
@@ -19,7 +27,7 @@
 2. [15-newcomer-faq.md](./15-newcomer-faq.md)
 3. [18-skills-market-learning-map.md](./18-skills-market-learning-map.md)
 
-### 如果你想完整学一遍整个 skills market
+### 如果你想完整学一遍 skills market
 
 1. [01-learning-map.md](./01-learning-map.md)
 2. [03-build-your-first-skill.md](./03-build-your-first-skill.md)
@@ -75,10 +83,14 @@
 - [20-market-client-operations.md](./20-market-client-operations.md)
 - [21-market-governance-and-delivery.md](./21-market-governance-and-delivery.md)
 
-## 学完之后应该具备什么能力
+### 模块 5：中文文档协同技能案例
+
+- [22-doc-sync-skill-case-studies.md](./22-doc-sync-skill-case-studies.md)
+
+## 学完之后你应该具备什么能力
 
 - 能解释一个 skill 为什么要拆成 frontmatter、`SKILL.md`、`references/`、`scripts/` 和 `assets/`
-- 能解释 skill 为什么会继续走向 harness
-- 能说明 market manifest、install spec、provenance、bundle、registry 各自解决什么问题
-- 能跑通 package、install、bundle、doctor、baseline、governance、frontend/backend 联调
-- 能把这个仓库当成 onboarding 教材，而不是只把它当成一组脚本集合
+- 能理解 skill 为什么会继续走向 harness 和更强的运行时支撑
+- 能说清 market manifest、install spec、provenance、bundle、registry 分别解决什么问题
+- 能跑通 package、install、bundle、doctor、baseline、governance 与前后端联调
+- 能把这个仓库当成中文 onboarding 教材，而不是只把它当成一组脚本集合

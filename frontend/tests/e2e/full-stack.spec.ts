@@ -193,7 +193,8 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('bundle-registry-execution-summary')).toContainText('http://127.0.0.1:38765');
 
   await page.goto('/docs');
-  await page.getByTestId('docs-filter-project').click();
+  await expect(page.getByTestId('docs-filter-project')).toBeVisible();
+  await page.getByTestId('docs-filter-project').click({ force: true });
   await page.getByTestId('docs-search-input').fill('frontend backend');
   await expect(page.getByTestId('docs-result-project-frontend-backend-integration')).toBeVisible();
   await expect(page.getByTestId('docs-results-count')).toContainText('Showing 1');

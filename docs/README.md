@@ -14,6 +14,19 @@ The current frontend surface now supports:
 
 The next gap is deeper installed-state waiver/apply surfaces plus stronger remote policy gating and rollback. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
 
+## 新增中文 Skills 教学案例
+
+本仓库现在已经接入两个面向中文文档协同场景的 skill 案例：
+
+- [yuque-openapi.md](./yuque-openapi.md)
+- [feishu-doc-sync.md](./feishu-doc-sync.md)
+
+如果你想从真实案例学习“如何把 skill 做成可维护、可扩展、可验证的能力包”，建议把下面几篇连着读：
+
+1. [skill-learning-guide.md](./skill-learning-guide.md)
+2. [skill-quickstart.md](./skill-quickstart.md)
+3. [teaching/22-doc-sync-skill-case-studies.md](./teaching/22-doc-sync-skill-case-studies.md)
+
 
 `docs/` 面向人类读者，负责解释这个项目怎么学、怎么扩、怎么维护。
 

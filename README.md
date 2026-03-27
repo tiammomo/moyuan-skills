@@ -17,6 +17,19 @@ The next gap is deeper installed-state waiver/apply surfaces plus stronger remot
 Python-only developer helper dependencies now live in `backend/requirements-dev.txt` so the repo root stays focused on primary project entry files.
 Tracked PowerShell helper scripts are intentionally ignored so repository tooling stays cross-platform instead of drifting toward Windows-only entrypoints.
 
+## 新增中文 Skills 案例
+
+仓库现在新增了两个可直接学习和复用的中文文档协同技能案例：
+
+- [docs/yuque-openapi.md](./docs/yuque-openapi.md)
+- [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md)
+
+如果你想从真实案例理解“一个复杂 skill 应该怎么拆成 `SKILL.md`、`references/`、`scripts/` 和文档索引”，建议连着读这三篇：
+
+1. [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
+2. [docs/teaching/22-doc-sync-skill-case-studies.md](./docs/teaching/22-doc-sync-skill-case-studies.md)
+3. [docs/skill-quickstart.md](./docs/skill-quickstart.md)
+
 
 `moyuan-skills` 现在不只是一个 skills 示例仓库，而是一套面向 `skills market` 的教学型参考实现。
 
