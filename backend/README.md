@@ -83,7 +83,7 @@ Local lifecycle notes:
 - the backend reuses the existing lifecycle scripts under `scripts/`
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
 - the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
-- update/remove/state APIs are now available for future frontend lifecycle surfaces
+- update/remove/state APIs are now consumed by the first frontend installed-state lifecycle surfaces on skill and bundle detail pages
 
 Remote registry notes:
 
@@ -143,9 +143,10 @@ What is now available:
 - local lifecycle APIs for skill and bundle install, update, remove, state, and job polling
 - remote registry install APIs for skill and bundle downloads over HTTP
 - frontend-consumable remote install flows for skill and bundle detail pages
+- frontend-consumable installed-state read, update, and remove flows on skill and bundle detail pages
 - backend smoke coverage for repository reads plus local and remote lifecycle jobs
 
 What is still next:
 
-- frontend lifecycle surfaces for update/remove/state
+- deeper installed-state product surfaces such as doctor/repair/baseline views
 - trust, approval, and recovery surfaces for remote installs

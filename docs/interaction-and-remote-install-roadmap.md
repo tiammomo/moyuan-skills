@@ -9,7 +9,7 @@ Current status:
 - frontend and backend browsing are already usable
 - Playwright-covered detail flows already work
 - command guidance in docs is already strong
-- skill and bundle install entry points now clearly distinguish copy-first local commands, local backend execution, and registry-backed execution
+- skill and bundle detail pages now distinguish copy-first local commands, local backend execution, installed-state lifecycle execution, and registry-backed execution
 
 The two biggest gaps are now:
 
@@ -56,13 +56,13 @@ What is already good:
 
 What is still incomplete:
 
-- bundle update and remove actions are still local copy flows rather than backend-triggered execution
+- doctor / repair / baseline / governance actions are still not exposed as frontend-installed-state surfaces
 - docs action panels are still guidance widgets, not executable actions
-- there is no frontend state for installed-state lifecycle, approval prompts, or failure recovery
+- there is no frontend state yet for approval prompts or failure recovery
 
 ### 3. Backend interaction layer
 
-Status: `complete for local lifecycle APIs`
+Status: `complete for the current local lifecycle API pass`
 
 Current reality:
 
@@ -80,7 +80,7 @@ Current reality:
 
 What is still incomplete:
 
-- the current frontend only uses the install mutations, not the fuller lifecycle set
+- the current frontend only uses the first install/update/remove/state surfaces, not the deeper doctor/repair/baseline flows
 
 ### 4. Remote skill pull / download
 
@@ -106,8 +106,7 @@ The project can now fetch and install remote market artifacts directly from CLI,
 
 ### Needs real backend execution
 
-- bundle detail update and remove actions
-- future installed-state actions such as update, remove, doctor, and repair
+- future installed-state actions such as doctor, repair, baseline, and governance review
 
 ### Already acceptable as non-execution UI
 
@@ -270,6 +269,16 @@ Acceptance criteria:
 
 - the frontend becomes a real local client surface, not only a browse-and-docs surface
 
+Status:
+
+- `started`
+- completed in this iteration:
+  - skill detail now reads installed-state from the backend
+  - bundle detail now reads installed-state from the backend
+  - skill detail can now launch backend update/remove jobs
+  - bundle detail can now launch backend update/remove jobs
+  - Playwright now verifies installed-state lifecycle transitions in-page
+
 ## Priority recommendation
 
 Recommended execution order:
@@ -279,7 +288,7 @@ Recommended execution order:
 
 Why:
 
-- first expose the deeper installed-state surfaces that the frontend still does not consume
+- first continue from detail-page lifecycle cards into deeper installed-state product surfaces
 - then harden remote install further with trust, approval, and recovery
 
 ## Short answer for project status
@@ -287,9 +296,9 @@ Why:
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle installs plus the first remote-registry install flows, but not yet for update/remove/state
+- `frontend execution` is now working for local skill and bundle install/update/remove plus the first remote-registry install flows
 - `remote skill download and install` is now supported from CLI, backend APIs, and frontend install surfaces
 
-The next implementation target is now the frontend pass that exposes installed-state lifecycle surfaces, while a later product pass can harden trust, approval, and recovery.
+The next implementation target is now the remote-install trust and approval pass, while a later product pass can keep deepening installed-state product surfaces beyond the detail pages.
 
-The current next implementation note is [frontend-installed-state-ui-iteration.md](./frontend-installed-state-ui-iteration.md).
+The current next implementation note is [remote-install-trust-approval-iteration.md](./remote-install-trust-approval-iteration.md).

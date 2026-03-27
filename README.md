@@ -109,7 +109,7 @@
 - backend 现在也已经补了第一版远端 registry install 接口：`POST /api/v1/registry/skills/install` 和 `POST /api/v1/registry/bundles/install`
 - skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端已经能对 skill install 和 bundle install 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API 和 remote registry install API。还没补完的是前端对 update/remove/state 的消费，以及 trust / approval / recovery 这类更深的安装治理 UI。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端已经能对 skill / bundle 的 install、update、remove 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API 和 remote registry install API。还没补完的是更深层的 installed-state 产品面，例如 doctor / repair / baseline / gate，以及 trust / approval / recovery 这类更深的远端安装治理 UI。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 

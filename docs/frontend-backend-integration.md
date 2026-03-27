@@ -151,10 +151,12 @@ Then it validates:
 - bundle detail pages expose bundle-level local `install-bundle`, `update-bundle`, and `remove-bundle` commands
 - skill detail pages can now run local install jobs through the backend and poll job progress in-page
 - bundle detail pages can now run local bundle install jobs through the backend and poll job progress in-page
-- backend now also exposes local update/remove/state APIs for future installed-state product surfaces
+- backend now also exposes local update/remove/state APIs that the first installed-state lifecycle surfaces now consume
 - backend now also exposes remote registry install APIs that the skill and bundle detail pages can execute through today
 - skill detail pages can now launch registry-backed remote install jobs through the backend
 - bundle detail pages can now launch registry-backed remote bundle install jobs through the backend
+- skill detail pages can now read installed-state and launch update/remove jobs through the backend
+- bundle detail pages can now read installed-state and launch update/remove jobs through the backend
 
 Run:
 
@@ -198,6 +200,7 @@ It is now implemented as:
 - bundle-level local command panels on bundle detail pages
 - backend local install job APIs for skill and bundle execution
 - registry-backed remote install execution cards on skill and bundle detail pages
+- installed-state lifecycle cards on skill and bundle detail pages
 - Playwright end-to-end coverage for the core market path
 
 ## Current gaps
@@ -217,9 +220,9 @@ What is already complete:
 
 What is still partial:
 
-- frontend now supports backend execution for local skill install and local bundle install, but update/remove/state actions still remain copy-first
+- frontend now supports backend execution for local skill and bundle install/update/remove plus installed-state reads on detail pages
 - docs action panels are guidance-oriented and do not execute commands
-- backend lifecycle APIs are ahead of the current frontend, so installed-state UI still needs another iteration
+- deeper installed-state UI such as doctor/repair/baseline still needs another iteration
 - trust, approval, and recovery UX for remote installs still needs another iteration
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
