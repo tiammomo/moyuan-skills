@@ -171,6 +171,18 @@ class LocalStateBaselinePromoteRequest(BaseModel):
     scope: str = Field(default="installed-state-baseline", description="UI scope label for the baseline action.")
 
 
+class LocalStateGovernanceRefreshRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory whose retained baseline history should be summarized for governance review.",
+    )
+    policy: str = Field(
+        default="source-reconcile-review-handoff",
+        description="Reusable governance policy id used to build the first review-oriented summary.",
+    )
+    scope: str = Field(default="installed-state-governance", description="UI scope label for the governance action.")
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -625,6 +637,12 @@ def local_state_baseline(target_root: str = "dist/backend-installed-market") -> 
     return repository.get_installed_baseline_state(resolved_root)
 
 
+@app.get("/api/v1/local/state/governance")
+def local_state_governance(target_root: str = "dist/backend-installed-market") -> dict:
+    resolved_root = resolve_local_target_path(settings.repo_root, target_root, "dist/backend-installed-market")
+    return repository.get_installed_governance_state(resolved_root)
+
+
 @app.post("/api/v1/local/state/doctor", status_code=202)
 def local_state_doctor(request: LocalStateDoctorRequest) -> dict:
     target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
@@ -683,6 +701,53 @@ def local_state_baseline_promote(request: LocalStateBaselinePromoteRequest) -> d
             "baseline_path": str(baseline_path),
             "history_path": str(history_path),
             "archive_dir": str(archive_dir),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/state/governance/refresh", status_code=202)
+def local_state_governance_refresh(request: LocalStateGovernanceRefreshRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    history_path = target_root / "snapshots" / "baseline-history.json"
+    output_dir = target_root / "snapshots" / "governance"
+    summary_path = output_dir / "governance-summary.json"
+    summary_markdown_path = output_dir / "governance-summary.md"
+
+    if not history_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Installed governance review needs a retained baseline history first. Capture a baseline before refreshing governance.",
+        )
+
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "refresh_installed_governance_summary.py"),
+        str(history_path),
+        "--target-root",
+        str(target_root),
+        "--output-dir",
+        str(output_dir),
+        "--policy",
+        request.policy,
+        "--json",
+    ]
+
+    job = _create_local_job(
+        kind="state-governance-refresh",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "governance-refresh",
+            "policy": request.policy,
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "history_path": str(history_path),
+            "output_dir": str(output_dir),
+            "summary_path": str(summary_path),
+            "summary_markdown_path": str(summary_markdown_path),
         },
         request_payload=request.model_dump(),
     )

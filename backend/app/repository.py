@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -47,6 +48,16 @@ def _is_internal_iteration_doc(path: Path) -> bool:
     return path.stem.endswith("-iteration")
 
 
+def _is_active_waiver(payload: dict[str, Any]) -> bool:
+    expires_on = str(payload.get("expires_on", "")).strip()
+    if not expires_on:
+        return True
+    try:
+        return date.today() <= date.fromisoformat(expires_on)
+    except ValueError:
+        return False
+
+
 class MarketRepository:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -57,6 +68,21 @@ class MarketRepository:
 
     def _dist_path(self, *parts: str) -> Path:
         return self.settings.dist_market_root.joinpath(*parts)
+
+    def _count_json_profiles(self, *parts: str) -> int:
+        directory = self.repo_root.joinpath(*parts)
+        return len(list(directory.glob("*.json"))) if directory.is_dir() else 0
+
+    def _count_active_waivers(self, *parts: str) -> int:
+        directory = self.repo_root.joinpath(*parts)
+        if not directory.is_dir():
+            return 0
+        active_count = 0
+        for path in directory.glob("*.json"):
+            payload = _read_json(path)
+            if isinstance(payload, dict) and _is_active_waiver(payload):
+                active_count += 1
+        return active_count
 
     def get_market_index(self) -> dict[str, Any]:
         return _read_json(self._dist_path("index.json"))
@@ -437,4 +463,50 @@ class MarketRepository:
             ),
             "latest_entry": latest_entry,
             "entries": normalized_entries[-5:],
+        }
+
+    def get_installed_governance_state(self, target_root: Path) -> dict[str, Any]:
+        resolved_root = target_root.resolve()
+        snapshots_dir = resolved_root / "snapshots"
+        history_path = snapshots_dir / "baseline-history.json"
+        governance_dir = snapshots_dir / "governance"
+        summary_path = governance_dir / "governance-summary.json"
+        summary_markdown_path = governance_dir / "governance-summary.md"
+
+        summary_payload = _read_json(summary_path) if summary_path.is_file() else None
+
+        return {
+            "target_root": str(resolved_root),
+            "snapshots_dir": str(snapshots_dir),
+            "history_path": str(history_path),
+            "governance_dir": str(governance_dir),
+            "summary_path": str(summary_path),
+            "summary_markdown_path": str(summary_markdown_path),
+            "history_exists": history_path.is_file(),
+            "summary_exists": summary_path.is_file(),
+            "can_refresh": history_path.is_file(),
+            "profile_counts": {
+                "history_alert_policies": {
+                    "count": self._count_json_profiles("governance", "history-alert-policies"),
+                },
+                "history_alert_waivers": {
+                    "count": self._count_json_profiles("governance", "history-alert-waivers"),
+                    "active_count": self._count_active_waivers("governance", "history-alert-waivers"),
+                },
+                "source_reconcile_policies": {
+                    "count": self._count_json_profiles("governance", "source-reconcile-gate-policies"),
+                },
+                "source_reconcile_gate_waivers": {
+                    "count": self._count_json_profiles("governance", "source-reconcile-gate-waivers"),
+                    "active_count": self._count_active_waivers("governance", "source-reconcile-gate-waivers"),
+                },
+                "source_reconcile_apply_policies": {
+                    "count": self._count_json_profiles("governance", "source-reconcile-gate-waiver-apply-policies"),
+                },
+                "source_reconcile_apply_gate_waivers": {
+                    "count": self._count_json_profiles("governance", "source-reconcile-gate-waiver-apply-waivers"),
+                    "active_count": self._count_active_waivers("governance", "source-reconcile-gate-waiver-apply-waivers"),
+                },
+            },
+            "latest_summary": summary_payload if isinstance(summary_payload, dict) else None,
         }

@@ -252,6 +252,67 @@ def main() -> int:
         print("ERROR: backend baseline state should surface the captured installed-skill count")
         return 1
 
+    governance_state_response = client.get(
+        "/api/v1/local/state/governance",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if governance_state_response.status_code != 200:
+        print(
+            "ERROR: backend local governance state should return 200, "
+            f"got {governance_state_response.status_code}"
+        )
+        return 1
+    governance_state = governance_state_response.json()
+    if not governance_state.get("history_exists") or governance_state.get("summary_exists"):
+        print("ERROR: backend governance state should detect retained history before the first refresh summary exists")
+        return 1
+    if governance_state.get("profile_counts", {}).get("source_reconcile_policies", {}).get("count", 0) < 1:
+        print("ERROR: backend governance state should surface reusable source-reconcile policy counts")
+        return 1
+
+    governance_refresh_response = client.post(
+        "/api/v1/local/state/governance/refresh",
+        json={
+            "target_root": str(local_target_root / "skills"),
+            "policy": "source-reconcile-review-handoff",
+            "scope": "backend-smoke",
+        },
+    )
+    if governance_refresh_response.status_code != 202:
+        print(
+            "ERROR: backend governance refresh should return 202, "
+            f"got {governance_refresh_response.status_code}"
+        )
+        return 1
+    governance_refresh_job = wait_for_job(client, governance_refresh_response.json()["job_id"])
+    if governance_refresh_job.get("status") != "succeeded":
+        print("ERROR: backend governance refresh job should succeed")
+        print(governance_refresh_job.get("stdout", ""))
+        print(governance_refresh_job.get("stderr", ""))
+        return 1
+    governance_refresh_payload = json.loads(governance_refresh_job.get("stdout", "{}"))
+    if governance_refresh_payload.get("gate", {}).get("policy_id") != "source-reconcile-review-handoff":
+        print("ERROR: backend governance refresh should use the requested review-handoff policy")
+        return 1
+
+    governance_state_after_response = client.get(
+        "/api/v1/local/state/governance",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if governance_state_after_response.status_code != 200:
+        print(
+            "ERROR: backend governance state after refresh should return 200, "
+            f"got {governance_state_after_response.status_code}"
+        )
+        return 1
+    governance_state_after = governance_state_after_response.json()
+    if not governance_state_after.get("summary_exists"):
+        print("ERROR: backend governance state should expose the refreshed governance summary")
+        return 1
+    if governance_state_after.get("latest_summary", {}).get("gate", {}).get("policy_id") != "source-reconcile-review-handoff":
+        print("ERROR: backend governance state should surface the latest refreshed governance policy")
+        return 1
+
     bundle_state_response = client.get(
         "/api/v1/local/state",
         params={"target_root": str(local_target_root / "bundles")},
@@ -553,7 +614,7 @@ def main() -> int:
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local, remote, doctor, repair, baseline, and cleanup lifecycle jobs."
+        "plus local, remote, doctor, repair, baseline, governance, and cleanup lifecycle jobs."
     )
     return 0
 

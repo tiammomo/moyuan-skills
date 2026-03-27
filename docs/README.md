@@ -7,11 +7,12 @@ The current frontend surface now supports:
 - local bundle install, update, and remove through the backend
 - installed-state doctor plus low-risk repair on skill and bundle detail pages
 - installed-state baseline capture plus retained baseline history on skill and bundle detail pages
+- installed-state governance summary refresh on skill and bundle detail pages
 - remote registry install for skills and bundles
 - explicit trust summaries plus approval before remote execution starts
 - retry plus staged-file cleanup after the first failed remote registry runs
 
-The next gap is deeper installed-state governance surfaces plus stronger remote policy gating and rollback. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
+The next gap is deeper installed-state waiver/apply surfaces plus stronger remote policy gating and rollback. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
 
 
 `docs/` 面向人类读者，负责解释这个项目怎么学、怎么扩、怎么维护。

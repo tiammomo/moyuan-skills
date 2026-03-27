@@ -7,6 +7,7 @@ import type {
   LocalInstalledState,
 } from '@/types/market';
 import { InstalledBaselinePanel } from '@/components/market/InstalledBaselinePanel';
+import { InstalledGovernancePanel } from '@/components/market/InstalledGovernancePanel';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
@@ -245,6 +246,13 @@ export function InstalledStatePanel({
         panelTestId={`${panelTestId}-baseline`}
         targetRoot={targetRoot}
         doctorSnapshot={doctorSnapshot}
+        onBaselineSettled={refreshState}
+      />
+
+      <InstalledGovernancePanel
+        panelTestId={`${panelTestId}-governance`}
+        targetRoot={targetRoot}
+        refreshToken={refreshCounter}
       />
 
       {actions.map((action) => (

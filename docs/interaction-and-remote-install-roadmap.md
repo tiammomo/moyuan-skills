@@ -56,7 +56,7 @@ What is already good:
 
 What is still incomplete:
 
-- governance / waiver / gate actions are still not exposed as frontend-installed-state surfaces
+- waiver / apply / deeper gate actions are still not exposed as frontend-installed-state surfaces
 - docs action panels are still guidance widgets, not executable actions
 - rollback and deeper policy gating still are not exposed for remote execution failures
 
@@ -82,7 +82,7 @@ Current reality:
 
 What is still incomplete:
 
-- the current frontend now uses install/update/remove/state/doctor/repair/baseline surfaces, but not yet the deeper governance flows
+- the current frontend now uses install/update/remove/state/doctor/repair/baseline/governance surfaces, but not yet the deeper waiver/apply flows
 
 ### 4. Remote skill pull / download
 
@@ -108,7 +108,7 @@ The project can now fetch and install remote market artifacts directly from CLI,
 
 ### Needs real backend execution
 
-- future installed-state actions such as governance review, waiver, and gate
+- future installed-state actions such as waiver review, gate apply, and governance execution handoff
 
 ### Already acceptable as non-execution UI
 
@@ -299,6 +299,9 @@ Status:
   - backend now exposes installed-state baseline read and promotion endpoints
   - skill and bundle detail pages now expose baseline capture plus retained baseline history in-page
   - Playwright now verifies one healthy target root can capture its first retained baseline in-page
+  - backend now exposes installed-state governance read and refresh endpoints
+  - skill and bundle detail pages now expose a first review-oriented governance summary refresh in-page
+  - Playwright now verifies one retained baseline can refresh governance summary context in-page
 
 ## Priority recommendation
 
@@ -317,9 +320,9 @@ Why:
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle install/update/remove, installed-state doctor/repair/baseline, plus remote-registry install flows with trust summaries, explicit approval, retry, and cleanup
+- `frontend execution` is now working for local skill and bundle install/update/remove, installed-state doctor/repair/baseline/governance, plus remote-registry install flows with trust summaries, explicit approval, retry, and cleanup
 - `remote skill download and install` is now supported from CLI, backend APIs, and frontend install surfaces
 
-The next implementation target is now the first installed-state governance summary pass, while a later product pass can keep strengthening remote policy gating and rollback beyond the detail pages.
+The next implementation target is now the first installed-state waiver/apply pass, while a later product pass can keep strengthening remote policy gating and rollback beyond the detail pages.
 
-The current next implementation note is [frontend-installed-governance-iteration.md](./frontend-installed-governance-iteration.md).
+The current next implementation note is [frontend-installed-waiver-apply-iteration.md](./frontend-installed-waiver-apply-iteration.md).

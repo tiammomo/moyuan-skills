@@ -194,7 +194,7 @@ export default async function SkillDetailPage({ params }: Props) {
             <InstalledStatePanel
               panelTestId="skill-installed-state"
               title="Local lifecycle state"
-              description="This panel reads the backend installed-state snapshot for the local frontend target root, lets you run doctor, low-risk repair, and baseline capture, and still keeps update/remove on the same detail page."
+              description="This panel reads the backend installed-state snapshot for the local frontend target root, lets you run doctor, low-risk repair, baseline capture, and the first governance refresh, and still keeps update/remove on the same detail page."
               targetRoot={localTargetRoot}
               skillId={manifest.id}
               skillName={manifest.name}
@@ -211,7 +211,7 @@ export default async function SkillDetailPage({ params }: Props) {
                     index: `dist/market/channels/${manifest.channel}.json`,
                   },
                   fallbackNote:
-                    'Doctor, low-risk repair, and baseline capture now live in this installed-state panel. Deeper governance still stays in later frontend iterations.',
+                    'Doctor, low-risk repair, baseline capture, and the first governance refresh now live in this installed-state panel. Deeper waiver and apply flows still stay in later frontend iterations.',
                   modeLabel: 'Installed-state execution',
                   badges: ['Updates the current local target root', 'Copy-first commands stay available above'],
                   runButtonLabel: 'Update via backend',

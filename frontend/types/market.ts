@@ -283,6 +283,121 @@ export interface LocalInstalledBaselinePromotePayload {
   archive_dir: string;
 }
 
+export interface LocalInstalledGovernanceProfileCount {
+  count: number;
+  active_count?: number;
+}
+
+export interface LocalInstalledGovernanceAction {
+  waiver_id: string;
+  action_code: string;
+  source_path: string;
+  source_audit_state: string;
+  source_audit_message: string;
+  source_reconcile_mode: string;
+  verification_state: string;
+}
+
+export interface LocalInstalledGovernanceSummary {
+  generated_at: string;
+  history_path: string;
+  target_root: string;
+  output_dir: string;
+  policy_profiles: {
+    history_alert_policies: LocalInstalledGovernanceProfileCount;
+    history_alert_waivers: LocalInstalledGovernanceProfileCount;
+    source_reconcile_policies: LocalInstalledGovernanceProfileCount;
+    source_reconcile_gate_waivers: LocalInstalledGovernanceProfileCount;
+    source_reconcile_apply_policies: LocalInstalledGovernanceProfileCount;
+    source_reconcile_apply_gate_waivers: LocalInstalledGovernanceProfileCount;
+  };
+  audit: {
+    summary_path: string;
+    markdown_path: string;
+    waiver_count: number;
+    finding_count: number;
+    expired_count: number;
+    unmatched_count: number;
+    stale_count: number;
+    passes: boolean;
+  };
+  gate: {
+    policy_id: string;
+    policy_title: string;
+    policy_path: string;
+    summary_path: string;
+    markdown_path: string;
+    report_summary_path: string;
+    report_state: string;
+    report_complete: boolean;
+    finding_count: number;
+    active_finding_count: number;
+    waived_finding_count: number;
+    requested_gate_waiver_count: number;
+    matched_gate_waiver_count: number;
+    passes: boolean;
+  };
+  report: {
+    report_state: string;
+    report_complete: boolean;
+    action_count: number;
+    source_audit: {
+      action_count: number;
+      pending_count: number;
+      applied_count: number;
+      drift_count: number;
+      passes: boolean;
+    };
+    source_reconcile: {
+      action_count: number;
+      drift_count: number;
+      review_action_count: number;
+      passes: boolean;
+    };
+    source_reconcile_execution: {
+      available: boolean;
+      action_count: number;
+      blocked_action_count: number;
+      passes: boolean;
+    };
+    source_reconcile_verification: {
+      action_count: number;
+      verified_count: number;
+      pending_count: number;
+      blocked_count: number;
+      drift_count: number;
+      passes: boolean;
+    };
+    recent_actions: LocalInstalledGovernanceAction[];
+  };
+  recommended_follow_ups: Array<{
+    label: string;
+    command: string;
+    description: string;
+  }>;
+}
+
+export interface LocalInstalledGovernanceState {
+  target_root: string;
+  snapshots_dir: string;
+  history_path: string;
+  governance_dir: string;
+  summary_path: string;
+  summary_markdown_path: string;
+  history_exists: boolean;
+  summary_exists: boolean;
+  can_refresh: boolean;
+  profile_counts: {
+    history_alert_policies: LocalInstalledGovernanceProfileCount;
+    history_alert_waivers: LocalInstalledGovernanceProfileCount;
+    source_reconcile_policies: LocalInstalledGovernanceProfileCount;
+    source_reconcile_gate_waivers: LocalInstalledGovernanceProfileCount;
+    source_reconcile_apply_policies: LocalInstalledGovernanceProfileCount;
+    source_reconcile_apply_gate_waivers: LocalInstalledGovernanceProfileCount;
+  };
+  latest_summary: LocalInstalledGovernanceSummary | null;
+}
+
 export interface MarketCommandAction {
   label: string;
   command: string;

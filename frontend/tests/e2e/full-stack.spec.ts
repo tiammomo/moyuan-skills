@@ -85,6 +85,26 @@ test('frontend works against the Python backend across core market flows', async
   });
   await expect(page.getByTestId('skill-installed-state-baseline-summary')).toContainText('baseline-history.json');
   await expect(page.getByTestId('skill-installed-state-baseline-history')).toContainText('#1');
+  await expect(page.getByTestId('skill-installed-state-governance-status')).toContainText(
+    'Governance review pending'
+  );
+  await page.getByTestId('skill-installed-state-governance-refresh').click();
+  await expect(page.getByTestId('skill-installed-state-governance-refresh-summary')).toContainText(
+    'source-reconcile-review-handoff',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-governance-status')).toContainText(
+    'Governance summary available',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-governance-audit')).toContainText('Audit findings');
+  await expect(page.getByTestId('skill-installed-state-governance-gate')).toContainText(
+    'Source Reconcile Review Handoff'
+  );
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-installed-state-status')).toContainText('Not installed yet', {
@@ -210,8 +230,8 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.locator('h1').first()).toBeVisible();
 
   await page.goto('/docs/project/frontend-backend-integration');
-  await page.getByTestId('doc-context-project-center').scrollIntoViewIfNeeded();
-  await page.getByTestId('doc-context-project-center').click();
+  await expect(page.getByTestId('doc-context-project-center')).toHaveAttribute('href', '/docs');
+  await page.goto('/docs');
   await expect(page.getByTestId('docs-search-input')).toBeVisible();
 
   await page.goto('/docs');

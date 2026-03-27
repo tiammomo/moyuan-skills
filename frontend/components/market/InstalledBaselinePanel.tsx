@@ -15,6 +15,7 @@ interface InstalledBaselinePanelProps {
   panelTestId: string;
   targetRoot: string;
   doctorSnapshot: LocalInstalledDoctorSnapshot | null;
+  onBaselineSettled?: () => void;
 }
 
 function parseJobPayload<T>(job: LocalJobRecord): T {
@@ -87,6 +88,7 @@ export function InstalledBaselinePanel({
   panelTestId,
   targetRoot,
   doctorSnapshot,
+  onBaselineSettled,
 }: InstalledBaselinePanelProps) {
   const [baselineState, setBaselineState] = useState<LocalInstalledBaselineState | null>(null);
   const [baselineJob, setBaselineJob] = useState<LocalJobRecord | null>(null);
@@ -169,13 +171,14 @@ export function InstalledBaselinePanel({
 
     try {
       setPromotionPayload(parseJobPayload<LocalInstalledBaselinePromotePayload>(baselineJob));
+      onBaselineSettled?.();
       void loadBaselineState();
     } catch (error) {
       setErrorMessage(
         `Unable to parse baseline promotion output: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }, [baselineJob, loadBaselineState]);
+  }, [baselineJob, loadBaselineState, onBaselineSettled]);
 
   async function runBaselinePromotion() {
     setErrorMessage(null);
