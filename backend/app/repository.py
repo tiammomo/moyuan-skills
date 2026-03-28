@@ -51,6 +51,249 @@ def _first_paragraph(markdown: str) -> str:
     return " ".join(buffer).strip()
 
 
+def _dedupe_strings(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        normalized = str(value).strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        result.append(normalized)
+    return result
+
+
+def _collect_waiver_apply_paths(report_payload: dict[str, Any] | None) -> dict[str, list[str]]:
+    if not isinstance(report_payload, dict):
+        return {
+            "source_paths": [],
+            "artifact_paths": [],
+        }
+
+    source_paths: list[str] = []
+    artifact_paths: list[str] = []
+    for action in report_payload.get("actions", []):
+        if not isinstance(action, dict):
+            continue
+        source_paths.extend(
+            [
+                str(action.get("apply_source_path", "")),
+                str(action.get("apply_execute_write_path", "")),
+            ]
+        )
+        artifact_paths.extend(
+            [
+                str(action.get("apply_target_path", "")),
+                str(action.get("apply_patch_path", "")),
+                str(action.get("apply_review_artifact_path", "")),
+                str(action.get("apply_execute_stage_path", "")),
+                str(action.get("verification_path", "")),
+            ]
+        )
+
+    return {
+        "source_paths": _dedupe_strings(source_paths),
+        "artifact_paths": _dedupe_strings(artifact_paths),
+    }
+
+
+def _build_waiver_apply_write_handoff(
+    *,
+    history_exists: bool,
+    governance_summary_exists: bool,
+    report_payload: dict[str, Any] | None,
+    display_stage_dir: str,
+    display_apply_summary_path: str,
+    display_apply_execute_summary_path: str,
+    display_verify_summary_path: str,
+    display_report_summary_path: str,
+    write_command: str,
+    verify_command: str,
+) -> dict[str, Any]:
+    report_state = str(report_payload.get("report_state", "")).strip() if isinstance(report_payload, dict) else ""
+    action_count = int(report_payload.get("action_count", 0)) if isinstance(report_payload, dict) else 0
+    apply_summary = report_payload.get("apply", {}) if isinstance(report_payload, dict) else {}
+    apply_execution = report_payload.get("apply_execution", {}) if isinstance(report_payload, dict) else {}
+    apply_verification = report_payload.get("apply_verification", {}) if isinstance(report_payload, dict) else {}
+
+    blocked_action_count = int(apply_execution.get("blocked_action_count", 0))
+    blocked_manual_review_count = int(apply_execution.get("blocked_manual_review_count", 0))
+    source_mismatch_count = int(apply_execution.get("source_mismatch_count", 0))
+    pending_count = int(apply_verification.get("pending_count", 0))
+    blocked_count = int(apply_verification.get("blocked_count", 0))
+    drift_count = int(apply_verification.get("drift_count", 0))
+    verified_count = int(apply_verification.get("verified_count", 0))
+    written_count = int(apply_execution.get("written_update_count", 0)) + int(
+        apply_execution.get("written_delete_count", 0)
+    )
+    write_mode = bool(apply_execution.get("write_mode", False))
+    manual_review_count = int(apply_summary.get("manual_review_count", 0))
+
+    path_summary = _collect_waiver_apply_paths(report_payload if isinstance(report_payload, dict) else None)
+    source_paths = path_summary["source_paths"]
+    report_apply_summary_path = str(report_payload.get("apply_summary_path", "")).strip() if isinstance(report_payload, dict) else ""
+    report_apply_execute_summary_path = (
+        str(report_payload.get("apply_execute_summary_path", "")).strip() if isinstance(report_payload, dict) else ""
+    )
+    report_verify_summary_path = str(report_payload.get("apply_verify_summary_path", "")).strip() if isinstance(report_payload, dict) else ""
+    artifact_paths = _dedupe_strings(
+        [
+            display_report_summary_path if report_payload else "",
+            report_apply_summary_path or display_apply_summary_path,
+            report_apply_execute_summary_path or display_apply_execute_summary_path if apply_execution.get("available", False) else "",
+            report_verify_summary_path or display_verify_summary_path if report_payload else "",
+            display_stage_dir if apply_execution.get("available", False) else "",
+            *path_summary["artifact_paths"],
+        ]
+    )
+
+    blocked_reasons: list[str] = []
+    checklist: list[str] = []
+    commands_available = bool(report_payload) and action_count > 0
+
+    if not history_exists:
+        blocked_reasons.append("Capture a retained baseline history before approving any governance write handoff.")
+    if history_exists and not governance_summary_exists:
+        blocked_reasons.append("Refresh governance summary before approving any governance write handoff.")
+    if history_exists and governance_summary_exists and not report_payload:
+        blocked_reasons.append("Prepare the waiver/apply handoff pack first so the write handoff can reference real review artifacts.")
+    if report_payload and action_count == 0:
+        blocked_reasons.append("The current apply handoff report does not contain any repo-governance changes to write.")
+    if report_state == "needs_execution":
+        blocked_reasons.append("Stage the reviewed apply changes first so the write handoff references verified staging artifacts.")
+    if blocked_action_count > 0:
+        blocked_reasons.append(f"{blocked_action_count} apply action(s) are still blocked during execution.")
+    if blocked_manual_review_count > 0:
+        blocked_reasons.append(
+            f"{blocked_manual_review_count} blocked action(s) remain manual-review only and cannot move into automatic write mode."
+        )
+    if source_mismatch_count > 0:
+        blocked_reasons.append(f"{source_mismatch_count} governance source file(s) no longer match the reviewed apply pack.")
+    if pending_count > 0:
+        blocked_reasons.append(f"{pending_count} verification result(s) are still pending.")
+    if blocked_count > 0:
+        blocked_reasons.append(f"{blocked_count} verification result(s) still require follow-up.")
+    if drift_count > 0 or report_state == "drifted":
+        blocked_reasons.append(f"{max(drift_count, 1)} verification drift finding(s) must be cleared before write approval.")
+    if write_mode and report_state == "verified":
+        blocked_reasons.append("The latest verified report already reflects a CLI write run.")
+
+    state = "pending"
+    title = "Write handoff pending"
+    summary = "Prepare and review the waiver/apply pack before handing off a repo-governance write command."
+
+    if write_mode and report_state == "verified":
+        state = "completed"
+        title = "CLI write already verified"
+        summary = (
+            f"The latest CLI write run already wrote {written_count} governance source change(s), "
+            "and verification still matches the reviewed artifacts."
+        )
+    elif drift_count > 0 or report_state == "drifted":
+        state = "drifted"
+        title = "Write handoff paused for drift"
+        summary = (
+            f"Verification currently reports {max(drift_count, 1)} drift finding(s). "
+            "Restage or rebuild the reviewed pack before any CLI write."
+        )
+    elif blocked_action_count > 0 or blocked_count > 0 or source_mismatch_count > 0:
+        state = "blocked"
+        title = "Write handoff blocked"
+        summary = (
+            "The current apply report still contains blocked execution or verification findings, "
+            "so the repo-governance write handoff must stay disabled."
+        )
+    elif report_state == "verified":
+        state = "ready"
+        title = "Ready for CLI write"
+        summary = (
+            f"{verified_count} verified action(s) currently match the staged governance targets. "
+            "You can now hand off the explicit CLI write and verify commands for operator approval."
+        )
+    elif report_payload and action_count == 0:
+        state = "pending"
+        title = "No write actions available"
+        summary = "The latest handoff refresh did not produce any repo-governance changes that should be written."
+    elif report_state == "needs_verification_followup":
+        state = "pending"
+        title = "Write handoff pending"
+        summary = "Execution records exist, but verification still needs follow-up before write approval can be handed off."
+    elif report_state == "needs_execution":
+        state = "pending"
+        title = "Write handoff pending"
+        summary = "Stage the reviewed apply changes first so the handoff references verified staging artifacts instead of patches alone."
+    elif not history_exists:
+        summary = "Capture a retained baseline history first so the write handoff can stay anchored to a reviewable baseline."
+    elif not governance_summary_exists:
+        summary = "Refresh governance summary first so the write handoff can stay anchored to the latest review state."
+    elif not report_payload:
+        summary = "Prepare the waiver/apply handoff first so the UI can package a concrete CLI write handoff."
+    elif report_state:
+        summary = f'The current waiver/apply report is "{report_state}" and is not yet ready for a CLI write handoff.'
+
+    if state == "ready":
+        checklist = [
+            "Review the planned governance source files, patch artifacts, and staged outputs together before approval.",
+            "Capture explicit operator approval outside the page before running the CLI write command.",
+            "Run the CLI write command from the repo root and keep the refreshed execute summary for the change record.",
+            "Immediately rerun the verify command and confirm the written targets still match the reviewed artifacts.",
+        ]
+    elif state == "completed":
+        checklist = [
+            "Keep the verified execute and verify summaries with the review record for this governance write.",
+            "Rerun the verify command after any manual edit to the same governance source files.",
+            "Use normal Git review before merging or releasing the written governance changes.",
+        ]
+    elif state == "drifted":
+        checklist = [
+            "Inspect the drift findings and compare them with the staged outputs before attempting another write.",
+            "Restage or rebuild the apply pack so verification returns to a clean verified state.",
+            "Only hand off the CLI write command again after drift is cleared.",
+        ]
+    elif state == "blocked":
+        checklist = [
+            "Resolve the blocked execution or verification findings before handing off any write command.",
+            "Review source mismatch and manual-review actions in the prepared artifacts instead of forcing write mode.",
+            "Re-run stage or verify once the blockers are cleared.",
+        ]
+    else:
+        checklist = [
+            "Prepare the waiver/apply handoff so the page has concrete review artifacts to reference.",
+            "Stage the reviewed governance changes and wait for a clean verification pass.",
+            "Only after that should the CLI write command be handed off for explicit approval.",
+        ]
+        if manual_review_count > 0:
+            checklist.append(
+                f"Keep {manual_review_count} manual-review artifact(s) outside the automatic write path until they are explicitly resolved."
+            )
+
+    rollback_hint = (
+        "If approval changes after write, inspect `git diff -- governance` and revert through your normal Git review workflow; "
+        "the UI still does not perform repo-source rollback for you."
+        if state in {"ready", "completed"}
+        else (
+            f"No repo-source write has been triggered from this page yet. If you only need to discard staged artifacts, clear `{display_stage_dir}` and rerun stage."
+            if display_stage_dir
+            else "No repo-source write has been triggered from this page yet."
+        )
+    )
+
+    return {
+        "state": state,
+        "ready": state == "ready",
+        "requires_explicit_approval": True,
+        "title": title,
+        "summary": summary,
+        "write_command": write_command if commands_available else "",
+        "verify_command": verify_command if commands_available else "",
+        "rollback_hint": rollback_hint,
+        "blocked_reasons": blocked_reasons,
+        "checklist": checklist,
+        "governance_source_paths": source_paths,
+        "artifact_paths": artifact_paths,
+    }
+
+
 def _is_internal_iteration_doc(path: Path) -> bool:
     return path.stem.endswith("-iteration")
 
@@ -537,6 +780,13 @@ class MarketRepository:
         display_target_root = _display_repo_path(resolved_root, self.repo_root)
         display_output_dir = _display_repo_path(waiver_apply_dir, self.repo_root)
         display_stage_dir = _display_repo_path(stage_dir, self.repo_root)
+        display_apply_summary_path = _display_repo_path(apply_summary_path, self.repo_root)
+        display_verify_summary_path = _display_repo_path(verify_summary_path, self.repo_root)
+        display_report_summary_path = _display_repo_path(report_summary_path, self.repo_root)
+        display_apply_execute_summary_path = _display_repo_path(
+            waiver_apply_dir / "source-reconcile-gate-waiver-apply-execute-summary.json",
+            self.repo_root,
+        )
         governance_action_count = (
             int(governance_summary_payload.get("report", {}).get("action_count", 0))
             if isinstance(governance_summary_payload, dict)
@@ -546,6 +796,14 @@ class MarketRepository:
             str(governance_summary_payload.get("report", {}).get("report_state", ""))
             if isinstance(governance_summary_payload, dict)
             else ""
+        )
+        write_command = (
+            "python scripts/execute_source_reconcile_gate_waiver_apply.py "
+            f"{display_history_path} --output-dir {display_output_dir} --write --json"
+        )
+        verify_command = (
+            "python scripts/verify_source_reconcile_gate_waiver_apply.py "
+            f"{display_history_path} --output-dir {display_output_dir} --json"
         )
 
         return {
@@ -568,6 +826,18 @@ class MarketRepository:
             "governance_report_state": governance_report_state,
             "governance_action_count": governance_action_count,
             "latest_report": report_payload if isinstance(report_payload, dict) else None,
+            "write_handoff": _build_waiver_apply_write_handoff(
+                history_exists=history_path.is_file(),
+                governance_summary_exists=governance_summary_path.is_file(),
+                report_payload=report_payload if isinstance(report_payload, dict) else None,
+                display_stage_dir=display_stage_dir,
+                display_apply_summary_path=display_apply_summary_path,
+                display_apply_execute_summary_path=display_apply_execute_summary_path,
+                display_verify_summary_path=display_verify_summary_path,
+                display_report_summary_path=display_report_summary_path,
+                write_command=write_command,
+                verify_command=verify_command,
+            ),
             "recommended_follow_ups": (
                 [
                     {
@@ -590,18 +860,12 @@ class MarketRepository:
                     },
                     {
                         "label": "Write approved governance changes",
-                        "command": (
-                            "python scripts/execute_source_reconcile_gate_waiver_apply.py "
-                            f"{display_history_path} --output-dir {display_output_dir} --write --json"
-                        ),
+                        "command": write_command,
                         "description": "Apply approved waiver updates into repo governance files after manual review. This remains CLI-only because it is write mode.",
                     },
                     {
                         "label": "Verify staged or written results",
-                        "command": (
-                            "python scripts/verify_source_reconcile_gate_waiver_apply.py "
-                            f"{display_history_path} --output-dir {display_output_dir} --json"
-                        ),
+                        "command": verify_command,
                         "description": "Re-verify staged or written governance changes against the prepared apply artifacts.",
                     },
                 ]

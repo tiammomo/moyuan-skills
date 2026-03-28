@@ -1,187 +1,122 @@
 # Moyuan Skills Market
 
+这是一个面向 `skills market` 的教学型参考仓库。
+
+仓库同时覆盖 6 层能力：
+
+1. skill 设计、渐进式披露与 harness/eval
+2. market manifest、package、provenance 与发布分发
+3. client install / update / remove / bundle lifecycle
+4. installed-state doctor / repair / baseline / governance
+5. waiver / policy / gate / source reconcile 治理链路
+6. frontend / backend / HTML 交付与前后端联调
+
 ## 最新进展
 
-这轮把 installed-state governance 继续往前推了一步：
+这轮把 installed-state governance 的 write-approval 再往前推进了一步：
 
-- skill / bundle 详情页里的 waiver / apply 面板现在支持 `prepare / stage / verify`
-- `stage` 会把治理源文件变更安全写入专用 staging root，并回填最新 aggregate report
-- `verify` 会重新校验 staged 结果，并把 blocked / drift / verified 状态同步回页面
-- `write` 仍然保持 CLI-only，不会直接从页面写 repo governance source
-- Windows 下的 staged artifact 文件名已经改成短名 + hash，避免超长路径导致 stage 失败
+- skill / bundle 详情页里的 waiver / apply 面板现在支持 `prepare / stage / verify + write handoff`
+- 页面会区分 `pending / ready / blocked / drifted / completed` 五种 write 资格，并解释为什么当前还不能进入 CLI write
+- handoff 区块会直接展示 CLI `write` / `verify` 命令、planned governance source、review artifacts、approval checklist 和 rollback hint
+- repo governance source 的真实 `write` 仍然保持 CLI-only；页面负责把高风险动作解释清楚并交接出去
+- Playwright 已覆盖 `stage verified -> write handoff ready` 以及 `tamper staged artifact -> drifted / handoff disabled` 两条真实路径
+- Windows 下 staged artifact 继续使用短名 + hash，避免超长路径导致 stage 失败
 
-另外，前端构建除了继续固定 `next build --webpack` 之外，还在 [frontend/next.config.js](./frontend/next.config.js) 里把 `experimental.cpus` 收敛到了更保守的值，用来降低 Windows 上 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
-## 前端执行状态
+另外，前端构建当前默认仍走 `next build --webpack`，并在 [frontend/next.config.js](./frontend/next.config.js) 中把 `experimental.cpus` 收敛到更保守的值，用来降低 Windows 下 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
 
-当前前端产品面已经支持：
+## 当前能力
 
-- skill 详情页和 bundle 详情页通过 backend 执行本地 install、update、remove
-- skill 详情页和 bundle 详情页执行 installed-state doctor 与低风险 repair
-- skill 详情页和 bundle 详情页执行 baseline capture 与 retained baseline history
-- skill 详情页和 bundle 详情页执行 governance summary refresh
-- skill 详情页和 bundle 详情页生成第一版 waiver / apply handoff prepare，并展示 patch pack 与 CLI follow-up
-- installed-state 面板在 backend job 完成后按 target root 刷新，同时保留显式 `Refresh state`
-- skill 与 bundle 的 remote registry install
-- remote execution 前的显式 trust summary、policy gate 与 approval
-- 第一次 remote registry 失败后的 retry、staged-file cleanup 与 remote target rollback
+### 1. Skills 教学与案例
 
-当前下一块缺口主要是更深一层的 waiver write-mode execution。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)。
+- skill 设计与教学见 [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
+- 快速上手见 [docs/skill-quickstart.md](./docs/skill-quickstart.md)
+- 渐进式披露与 harness 参考见 [docs/progressive-disclosure.md](./docs/progressive-disclosure.md) 与 [docs/harness-engineering.md](./docs/harness-engineering.md)
+- 新增的中文业务案例见 [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md) 与 [docs/yuque-openapi.md](./docs/yuque-openapi.md)
 
-Python-only 的开发辅助依赖已经迁到 `backend/requirements-dev.txt`，这样仓库根目录只保留主入口文件。
-仓库也会继续忽略被跟踪的 PowerShell 辅助脚本，避免工具链逐渐漂移成 Windows-only 入口。
+### 2. Skills Market 与分发
 
-## 新增中文 Skills 案例
+- package / index / catalog / recommendations / federation / registry 都已经具备本地脚本入口
+- 统一 CLI 入口见 [scripts/skills_market.py](./scripts/skills_market.py)
+- 规范与发布说明见 [docs/market-spec.md](./docs/market-spec.md)、[docs/publisher-guide.md](./docs/publisher-guide.md)、[docs/consumer-guide.md](./docs/consumer-guide.md)
+- registry / federation 说明见 [docs/market-registry.md](./docs/market-registry.md)
 
-仓库现在新增了两个可直接学习和复用的中文文档协同技能案例：
+### 3. Client Lifecycle 与治理
 
-- [docs/yuque-openapi.md](./docs/yuque-openapi.md)
-- [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md)
+- install / update / remove / bundle / doctor / repair / baseline / governance / waiver / apply handoff / gate 已全部落地
+- installed-state 现在已经能从页面跑通 doctor、低风险 repair、baseline capture、governance refresh
+- waiver / apply 现在已经能从页面跑通 `prepare / stage / verify`，并页面化展示 write handoff
+- 治理说明见 [docs/market-governance.md](./docs/market-governance.md)
 
-如果你想从真实案例理解“一个复杂 skill 应该怎么拆成 `SKILL.md`、`references/`、`scripts/` 和文档索引”，建议连着读这三篇：
+### 4. 前后端联调
 
-1. [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
-2. [docs/teaching/22-doc-sync-skill-case-studies.md](./docs/teaching/22-doc-sync-skill-case-studies.md)
-3. [docs/skill-quickstart.md](./docs/skill-quickstart.md)
+- Python backend 见 [backend/README.md](./backend/README.md)
+- 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
+- skill / bundle 详情页已经支持真实 backend 本地执行与远端 registry install
+- docs 详情页会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
+- Playwright 已覆盖首页、skills、bundles、docs 与详情页的端到端联调
 
+## 中文 Skills 教学入口
 
-`moyuan-skills` 现在不只是一个 skills 示例仓库，而是一套面向 `skills market` 的教学型参考实现。
-
-它把整个链路拆成了可以学习、可以验证、也可以继续扩展的六层：
-
-1. skill 设计与渐进式披露
-2. harness engineering 与 eval
-3. market manifest / package / provenance
-4. client install / bundle / baseline lifecycle
-5. governance / policy / waiver / gate
-6. frontend / backend / HTML 交付与联调
-
-## 如果你第一次来到这个项目
-
-推荐直接从教学入口开始，而不是先硬读完整个仓库：
+推荐按下面的顺序学习：
 
 1. [docs/teaching/README.md](./docs/teaching/README.md)
 2. [docs/teaching/14-first-hour-onboarding.md](./docs/teaching/14-first-hour-onboarding.md)
 3. [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
 4. [docs/teaching/18-skills-market-learning-map.md](./docs/teaching/18-skills-market-learning-map.md)
+5. [docs/teaching/22-doc-sync-skill-case-studies.md](./docs/teaching/22-doc-sync-skill-case-studies.md)
 
-第一次建议先跑这几条最小校验命令：
+如果你更关心真实案例，可以直接看：
 
-- `python scripts/check_progressive_skills.py`
-- `python scripts/skills_market.py smoke`
-- `python scripts/check_python_market_backend.py`
-- `npm run e2e --prefix frontend`
+- [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md)
+- [docs/yuque-openapi.md](./docs/yuque-openapi.md)
 
-## Playwright 实际使用截图
+## 快速开始
 
-下面这组图片不是静态示意图，而是用 Playwright 对当前前后端联调链路实际运行后生成的截图。
+### 1. 先跑基础校验
 
-截图生成命令：
+```text
+python scripts/check_progressive_skills.py
+python scripts/skills_market.py smoke
+python scripts/check_python_market_backend.py
+```
 
-- `npm run build --prefix frontend`
-- `npm run capture:readme-screenshots --prefix frontend`
+### 2. 启动后端
 
-### 1. 首页看到当前 skills market 总览
+```text
+pip install -r backend/requirements.txt
+set MOYUAN_SKILLS_REPO_ROOT=D:\moyuan\moyuan-skills
+set MOYUAN_SKILLS_API_CORS=http://127.0.0.1:33003,http://localhost:33003
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
+```
 
-![Skills market home overview](./docs/assets/readme/playwright-home-overview.png)
+开发辅助依赖单独放在：
 
-### 2. 在 skills 页搜索真实 skill
+```text
+pip install -r backend/requirements-dev.txt
+```
 
-![Skills market search for release-note-writer](./docs/assets/readme/playwright-skill-search.png)
+### 3. 启动前端
 
-### 3. 进入 skill 详情查看安装入口
+```text
+set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
+npm run dev:local --prefix frontend
+```
 
-![Release note writer skill detail](./docs/assets/readme/playwright-skill-detail.png)
+默认联调端口：
 
-### 4. 进入 skill 文档页查看实际运行命令
+- frontend: `33003`
+- backend: `38083`
 
-![Release note writer doc action panel](./docs/assets/readme/playwright-skill-runbook.png)
-
-## `docs/teaching/` 现在承担什么角色
-
-`docs/teaching/` 已经被明确收口成“整个 skills market 的教学目录”。
-
-这里不只讲怎么写一个 skill，还会系统讲清楚：
-
-- skill 设计逻辑为什么要先收口 trigger、router 和 progressive loading
-- skill 为什么会继续演进到 harness
-- 一个 skill 怎样被打包成 market-ready capability
-- client 为什么需要 install、bundle、doctor、snapshot、baseline history
-- governance、waiver、source reconcile、gate 怎样进入真实运维链路
-- 前端怎样消费 repo-backed docs、skills、bundles 和 registry 数据
-
-最推荐的 skills market 教学路径是：
-
-1. [docs/teaching/01-learning-map.md](./docs/teaching/01-learning-map.md)
-2. [docs/teaching/03-build-your-first-skill.md](./docs/teaching/03-build-your-first-skill.md)
-3. [docs/teaching/05-harness-roadmap.md](./docs/teaching/05-harness-roadmap.md)
-4. [docs/teaching/16-skills-market-evolution.md](./docs/teaching/16-skills-market-evolution.md)
-5. [docs/teaching/17-market-registry-and-federation.md](./docs/teaching/17-market-registry-and-federation.md)
-6. [docs/teaching/18-skills-market-learning-map.md](./docs/teaching/18-skills-market-learning-map.md)
-7. [docs/teaching/19-market-packaging-and-publishing.md](./docs/teaching/19-market-packaging-and-publishing.md)
-8. [docs/teaching/20-market-client-operations.md](./docs/teaching/20-market-client-operations.md)
-9. [docs/teaching/21-market-governance-and-delivery.md](./docs/teaching/21-market-governance-and-delivery.md)
-
-## 仓库当前能做什么
-
-### 1. 教你设计和维护 skill
-
-- 参考文档见 [docs/skill-authoring.md](./docs/skill-authoring.md)、[docs/progressive-disclosure.md](./docs/progressive-disclosure.md)、[docs/harness-engineering.md](./docs/harness-engineering.md)
-- 教学 skill 见 [skills/build-skills/SKILL.md](./skills/build-skills/SKILL.md)、[skills/progressive-disclosure/SKILL.md](./skills/progressive-disclosure/SKILL.md)、[skills/harness-engineering/SKILL.md](./skills/harness-engineering/SKILL.md)
-
-### 2. 展示真实业务 skill 如何进入 market
-
-- 业务案例见 [docs/release-note-writer.md](./docs/release-note-writer.md)、[docs/issue-triage-report.md](./docs/issue-triage-report.md)、[docs/api-change-risk-review.md](./docs/api-change-risk-review.md)、[docs/incident-postmortem-writer.md](./docs/incident-postmortem-writer.md)
-- market 规范见 [docs/market-spec.md](./docs/market-spec.md)、[docs/publisher-guide.md](./docs/publisher-guide.md)、[docs/consumer-guide.md](./docs/consumer-guide.md)
-
-### 3. 运行本地 skills market
-
-- package / index / catalog / recommendations / federation / registry 都已经具备本地脚本入口
-- 统一入口见 [scripts/skills_market.py](./scripts/skills_market.py)
-- registry 与分发层说明见 [docs/market-registry.md](./docs/market-registry.md)
-
-### 4. 跑通 client lifecycle 与治理链路
-
-- install / update / remove / bundle / doctor / repair / baseline / waiver / apply handoff / gate 都已落地
-- 治理说明见 [docs/market-governance.md](./docs/market-governance.md)
-
-### 5. 跑通前后端联调
-
-- Python backend 见 [backend/README.md](./backend/README.md)
-- 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
-- Playwright 已覆盖首页、skills、bundles、docs 与详情页联调
-- backend 现在已经补了本地 lifecycle 接口：`POST /api/v1/local/skills/install`、`POST /api/v1/local/skills/update`、`POST /api/v1/local/skills/remove`、`POST /api/v1/local/bundles/install`、`POST /api/v1/local/bundles/update`、`POST /api/v1/local/bundles/remove`、`GET /api/v1/local/jobs/{job_id}` 和 `GET /api/v1/local/state`
-- backend 现在也已经补了第一版远端 registry install 接口：`POST /api/v1/registry/skills/install` 和 `POST /api/v1/registry/bundles/install`
-- skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
-- docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端已经能对 skill / bundle 的 install、update、remove 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API、installed-state doctor / repair / baseline / governance / waiver-apply handoff API。当前前端对 waiver/apply 的支持仍然停留在安全的 patch pack prepare 与 CLI follow-up，write-mode execution 和更强的远端 policy gating / rollback 还会在后续迭代继续补完。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
-
-## 核心文档入口
+## 核心文档
 
 - 文档总索引：[docs/README.md](./docs/README.md)
 - 教学总入口：[docs/teaching/README.md](./docs/teaching/README.md)
-- skills market 学习指南：[docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
+- skills 学习指南：[docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
 - market 规范：[docs/market-spec.md](./docs/market-spec.md)
 - market 治理：[docs/market-governance.md](./docs/market-governance.md)
 - registry / federation：[docs/market-registry.md](./docs/market-registry.md)
 - 前后端集成：[docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
-- 交互与远端安装规划：[docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
-
-## 远端安装示例
-
-第一版远端 registry install 现在已经可以直接用 `skill id + registry URL` 或 `bundle id + registry URL` 运行：
-
-```text
-python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
-python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
-```
-
-这条链路会先把 install spec、package、provenance 下载到 `dist/remote-registry-cache/` 再落地安装，本地 install spec 模式仍然保持不变。
-
-前端现在也已经补上了第一版远端入口：
-
-- skill 详情页可以填写 registry URL 后直接触发远端 skill install job
-- bundle 详情页可以填写 registry URL 后直接触发远端 bundle install job
-- Playwright 会在 E2E 里临时拉起一个 hosted registry fixture，验证这两条 UI 链路
+- 交互与远端安装路线图：[docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 仓库结构
 
@@ -203,25 +138,6 @@ python scripts/skills_market.py install-bundle release-engineering-starter --reg
 `- templates/
 ```
 
-## 前后端本地端口
-
-- frontend: `33003`
-- backend: `38083`
-
-本地联调用法：
-
-```text
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
-set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
-npm run dev:local --prefix frontend
-```
-
-如果你要手动验证前端里的远端 registry install UI，可以再开一个终端启动临时 hosted registry fixture：
-
-```text
-python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean
-```
-
 ## 常用校验命令
 
 - `python scripts/check_progressive_skills.py`
@@ -230,16 +146,14 @@ python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --
 - `python scripts/check_market_governance.py`
 - `python scripts/validate_market_manifest.py`
 - `python scripts/check_python_market_backend.py`
-- `python scripts/run_eval_harness.py --baseline examples/eval-harness/baseline.json`
-- `python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml`
 - `python scripts/check_market_pipeline.py --output-root dist/market-smoke-readme`
 - `npm run build --prefix frontend`
 - `npm run e2e --prefix frontend`
 
-其中 `npm run build --prefix frontend` 当前默认走 `next build --webpack`，用于规避当前 Windows 环境下默认 Turbopack worker 的间歇性崩溃。
+其中 `npm run build --prefix frontend` 当前默认走 `next build --webpack`，用来规避这台 Windows 环境下默认 Turbopack worker 的间歇性崩溃。
 
 ## 一句话定位
 
-如果把这个项目看成一句话，它现在更接近：
+如果把这个项目压成一句话，它更接近：
 
-“一套从 skill 设计逻辑出发，最终落到 skills market、client lifecycle、governance 和前后端交付的教学型参考实现。”
+“一套从 skill 设计逻辑出发，最终落到 skills market、client lifecycle、governance 和前后端交付的中文教学型参考实现。”

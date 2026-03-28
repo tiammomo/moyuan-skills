@@ -2,7 +2,7 @@
 
 这个后端把当前仓库里的真实 `market / docs / bundles / installed-state` 产物暴露成前端可直接消费的 API。
 
-它服务于 `frontend/` 下的 Next.js 页面，也复用仓库现有的脚本和产物目录：
+它服务于 `frontend/` 下的 Next.js 页面，也复用仓库现有的脚本和产物目录，例如：
 
 - `dist/market/index.json`
 - `dist/market/channels/*.json`
@@ -14,15 +14,16 @@
 
 ## 为什么需要这个后端
 
-前端现在已经不是单纯的静态浏览页，而是要同时承担这些真实动作：
+前端现在已经不只是静态浏览页，而是要承接这些真实动作：
 
 - skills / bundles / docs 的 repo-backed 浏览
-- skill / bundle 的本地 install / update / remove
-- installed-state 的 doctor / repair / baseline / governance
-- waiver / apply handoff 的 prepare / stage / verify
+- skill / bundle 的本地 `install / update / remove`
+- installed-state 的 `doctor / repair / baseline / governance`
+- waiver / apply handoff 的 `prepare / stage / verify`
+- governance write handoff 的 eligibility、命令包与工件交接
 - remote registry install 的 trust / approval / retry / cleanup / rollback
 
-这些能力都应该直接复用 `scripts/` 里的真实逻辑，而不是在前端里重复实现一套。
+这些能力都应该直接复用 `scripts/` 里的真实逻辑，而不是在前端再重写一套。
 
 ## 启动
 
@@ -97,15 +98,17 @@ GET /api/v1/docs/project/{doc_id}
 
 - 本地 skill / bundle lifecycle
 - installed-state doctor、低风险 repair、baseline history、governance summary
-- waiver / apply handoff 的 prepare、safe stage、refresh verify
+- waiver / apply handoff 的 `prepare / safe stage / refresh verify`
+- governance write handoff 的状态说明、阻断原因、命令包、工件列表与 checklist
 - remote registry install 的审批、失败恢复、staged cache cleanup、限定目录 rollback
 
-其中 waiver / apply 的语义是：
+其中 waiver / apply 当前语义是：
 
 - `prepare` 只生成 review pack
-- `stage` 把治理源文件的变更安全地写入专用 staging root，并刷新 aggregate report
-- `verify` 重新校验 staged 结果并刷新 aggregate report
+- `stage` 把治理源文件变更安全写入专用 staging root，并刷新 aggregate report
+- `verify` 重新校验 staged 或 written 结果，并刷新 aggregate report
 - `write` 仍然保持 CLI-only，不从页面直接写 repo governance source
+- `GET /api/v1/local/state/governance/waiver-apply` 现在会额外返回 `write_handoff`，供前端解释 `pending / ready / blocked / drifted / completed` 五种 write 状态
 
 另外，Windows 下的 staging 文件名已经做了短名 + hash 处理，避免超长路径导致 stage 失败。
 

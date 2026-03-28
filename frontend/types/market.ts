@@ -480,6 +480,21 @@ export interface LocalInstalledWaiverApplyReportSummary {
   actions: LocalInstalledWaiverApplyReportAction[];
 }
 
+export interface LocalInstalledWaiverApplyWriteHandoff {
+  state: 'pending' | 'ready' | 'blocked' | 'drifted' | 'completed';
+  ready: boolean;
+  requires_explicit_approval: boolean;
+  title: string;
+  summary: string;
+  write_command: string;
+  verify_command: string;
+  rollback_hint: string;
+  blocked_reasons: string[];
+  checklist: string[];
+  governance_source_paths: string[];
+  artifact_paths: string[];
+}
+
 export interface LocalInstalledWaiverApplyState {
   target_root: string;
   snapshots_dir: string;
@@ -500,6 +515,7 @@ export interface LocalInstalledWaiverApplyState {
   governance_report_state: string;
   governance_action_count: number;
   latest_report: LocalInstalledWaiverApplyReportSummary | null;
+  write_handoff: LocalInstalledWaiverApplyWriteHandoff;
   recommended_follow_ups: Array<{
     label: string;
     command: string;

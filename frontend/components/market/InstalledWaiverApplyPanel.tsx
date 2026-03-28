@@ -6,6 +6,7 @@ import type {
   LocalInstalledWaiverApplyReportAction,
   LocalInstalledWaiverApplyReportSummary,
   LocalInstalledWaiverApplyState,
+  LocalInstalledWaiverApplyWriteHandoff,
   LocalJobRecord,
 } from '@/types/market';
 import { Button } from '@/components/ui/Button';
@@ -111,16 +112,16 @@ function describeWaiverApplyState(
   }
 
   if (waiverApplyState.latest_report.report_state === 'verified') {
-      return {
-        label: waiverApplyState.latest_report.apply_execution.write_mode
-          ? 'Written apply verified'
-          : 'Staged apply verified',
-        variant: 'stable',
-        note: waiverApplyState.latest_report.apply_execution.write_mode
-          ? 'The latest waiver/apply run wrote approved changes and verification still matches the reviewed target artifacts.'
+    return {
+      label: waiverApplyState.latest_report.apply_execution.write_mode
+        ? 'Written apply verified'
+        : 'Staged apply verified',
+      variant: 'stable',
+      note: waiverApplyState.latest_report.apply_execution.write_mode
+        ? 'The latest waiver/apply run wrote approved changes and verification still matches the reviewed target artifacts.'
         : 'The latest waiver/apply run staged governance-source changes inside the safe staging root and verification still matches the reviewed target artifacts.',
-        canPrepare,
-      };
+      canPrepare,
+    };
   }
 
   if (waiverApplyState.latest_report.report_state === 'drifted') {
@@ -224,6 +225,28 @@ function failureFallbackFor(mode: WaiverApplyActionMode): string {
     return 'Waiver/apply stage refresh failed.';
   }
   return 'Waiver/apply verification refresh failed.';
+}
+
+function describeWriteHandoffVariant(
+  writeHandoff: LocalInstalledWaiverApplyWriteHandoff | null
+): 'keyword' | 'stable' | 'beta' | 'internal' | 'tag' {
+  if (!writeHandoff) {
+    return 'tag';
+  }
+
+  if (writeHandoff.state === 'ready' || writeHandoff.state === 'completed') {
+    return 'stable';
+  }
+
+  if (writeHandoff.state === 'blocked') {
+    return 'internal';
+  }
+
+  if (writeHandoff.state === 'drifted') {
+    return 'beta';
+  }
+
+  return 'tag';
 }
 
 export function InstalledWaiverApplyPanel({
@@ -394,7 +417,12 @@ export function InstalledWaiverApplyPanel({
     [governanceState, waiverApplyState]
   );
   const latestReport = waiverApplyState?.latest_report;
+  const writeHandoff = waiverApplyState?.write_handoff ?? null;
   const recentActions = useMemo(() => latestReport?.actions ?? [], [latestReport?.actions]);
+  const writeHandoffVariant = useMemo(
+    () => describeWriteHandoffVariant(writeHandoff),
+    [writeHandoff]
+  );
   const actionPending = Boolean(
     jobMode && waiverApplyJob && (waiverApplyJob.status === 'queued' || waiverApplyJob.status === 'running')
   );
@@ -420,7 +448,7 @@ export function InstalledWaiverApplyPanel({
             </p>
           </div>
           <p className="text-xs text-muted" data-testid={`${panelTestId}-fallback-note`}>
-            This frontend pass can prepare, safely stage, and re-verify waiver/apply artifacts inside the governance staging flow. Write mode still stays review-first outside this page because it updates repo governance sources after explicit approval.
+            This frontend pass can prepare, safely stage, re-verify, and hand off waiver/apply write guidance inside the governance staging flow. Repo-source write mode still stays review-first outside this page because it updates governance sources only after explicit approval.
           </p>
         </div>
 
@@ -585,6 +613,139 @@ export function InstalledWaiverApplyPanel({
                 </>
               )}
             </dl>
+          </div>
+        )}
+
+        {writeHandoff && (
+          <div
+            className="rounded-card border border-line bg-paper/70 px-4 py-4"
+            data-testid={`${panelTestId}-write-handoff`}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip
+                    variant={writeHandoffVariant}
+                    data-testid={`${panelTestId}-write-handoff-status`}
+                  >
+                    {writeHandoff.title}
+                  </Chip>
+                  <Chip variant="internal">CLI write only</Chip>
+                  {writeHandoff.requires_explicit_approval && <Chip variant="tag">Explicit approval required</Chip>}
+                </div>
+                <p className="text-sm text-ink" data-testid={`${panelTestId}-write-handoff-summary`}>
+                  {writeHandoff.summary}
+                </p>
+              </div>
+              <div className="rounded-card border border-dashed border-line bg-bg/70 px-3 py-3 text-xs text-ink">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Eligibility</p>
+                <p className="mt-1">
+                  {writeHandoff.ready
+                    ? 'Staged verification is clean, so the page can hand off the final CLI write pack.'
+                    : 'The page keeps write mode read-only until the remaining review, verification, or drift work is cleared.'}
+                </p>
+              </div>
+            </div>
+
+            {writeHandoff.blocked_reasons.length > 0 && (
+              <div
+                className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+                data-testid={`${panelTestId}-write-handoff-blockers`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Why write stays gated</p>
+                <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                  {writeHandoff.blocked_reasons.map((reason) => (
+                    <li key={reason}>- {reason}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="mt-3 grid gap-3 lg:grid-cols-2">
+              {writeHandoff.write_command && (
+                <div className="rounded-card border border-line bg-bg/70 px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Approved write command
+                  </p>
+                  <pre
+                    className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs leading-6 text-ink"
+                    data-testid={`${panelTestId}-write-command`}
+                  >
+                    <code>{writeHandoff.write_command}</code>
+                  </pre>
+                </div>
+              )}
+
+              {writeHandoff.verify_command && (
+                <div className="rounded-card border border-line bg-bg/70 px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Post-write verify command
+                  </p>
+                  <pre
+                    className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs leading-6 text-ink"
+                    data-testid={`${panelTestId}-verify-command`}
+                  >
+                    <code>{writeHandoff.verify_command}</code>
+                  </pre>
+                </div>
+              )}
+            </div>
+
+            {writeHandoff.governance_source_paths.length > 0 && (
+              <div
+                className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+                data-testid={`${panelTestId}-write-handoff-sources`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  Planned governance sources
+                </p>
+                <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                  {writeHandoff.governance_source_paths.map((sourcePath) => (
+                    <li key={sourcePath}>- {sourcePath}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {writeHandoff.artifact_paths.length > 0 && (
+              <div
+                className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+                data-testid={`${panelTestId}-write-handoff-artifacts`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  Review artifacts
+                </p>
+                <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                  {writeHandoff.artifact_paths.map((artifactPath) => (
+                    <li key={artifactPath}>- {artifactPath}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {writeHandoff.checklist.length > 0 && (
+              <div
+                className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+                data-testid={`${panelTestId}-write-handoff-checklist`}
+              >
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  Approval checklist
+                </p>
+                <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                  {writeHandoff.checklist.map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div
+              className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3 text-xs leading-6 text-ink"
+              data-testid={`${panelTestId}-rollback-hint`}
+            >
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Rollback hint</p>
+              <p className="mt-1">{writeHandoff.rollback_hint}</p>
+            </div>
           </div>
         )}
 

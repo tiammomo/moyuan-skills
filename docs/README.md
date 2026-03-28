@@ -6,10 +6,11 @@
 
 - 本地 skill / bundle lifecycle
 - installed-state doctor / repair / baseline / governance
-- waiver / apply handoff 的 prepare / stage / verify
+- waiver / apply handoff 的 `prepare / stage / verify`
+- governance write handoff 的资格说明、命令包、工件列表与 checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
 
-其中 write mode 仍然保持 CLI-only，下一轮会继续补这部分。
+其中 repo governance source 的真实 `write` 仍然保持 CLI-only；页面负责把 write eligibility 和 handoff 解释清楚。
 
 ## 新人先看
 
@@ -36,13 +37,3 @@
 - [feishu-doc-sync.md](./feishu-doc-sync.md)
 - [yuque-openapi.md](./yuque-openapi.md)
 - [teaching/22-doc-sync-skill-case-studies.md](./teaching/22-doc-sync-skill-case-studies.md)
-
-## 教学目录
-
-- [teaching/01-learning-map.md](./teaching/01-learning-map.md)
-- [teaching/03-build-your-first-skill.md](./teaching/03-build-your-first-skill.md)
-- [teaching/05-harness-roadmap.md](./teaching/05-harness-roadmap.md)
-- [teaching/18-skills-market-learning-map.md](./teaching/18-skills-market-learning-map.md)
-- [teaching/19-market-packaging-and-publishing.md](./teaching/19-market-packaging-and-publishing.md)
-- [teaching/20-market-client-operations.md](./teaching/20-market-client-operations.md)
-- [teaching/21-market-governance-and-delivery.md](./teaching/21-market-governance-and-delivery.md)

@@ -6,6 +6,29 @@ const repoRoot = path.resolve(process.cwd(), '..');
 
 test.setTimeout(120_000);
 
+async function findFirstMatchingFile(
+  root: string,
+  matcher: (candidatePath: string) => boolean
+): Promise<string | null> {
+  const entries = await fs.readdir(root, { withFileTypes: true });
+  for (const entry of entries) {
+    const candidatePath = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      const nestedMatch = await findFirstMatchingFile(candidatePath, matcher);
+      if (nestedMatch) {
+        return nestedMatch;
+      }
+      continue;
+    }
+
+    if (entry.isFile() && matcher(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  return null;
+}
+
 test('frontend works against the Python backend across core market flows', async ({ page }) => {
   const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
   const bundleTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'bundles', 'release-engineering-starter');
@@ -141,6 +164,12 @@ test('frontend works against the Python backend across core market flows', async
       timeout: 20000,
     }
   );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-status')).toContainText(
+    'Write handoff pending',
+    {
+      timeout: 20000,
+    }
+  );
   await expect(page.getByTestId('skill-installed-state-waiver-apply-actions')).toContainText('retarget_or_remove');
   await expect(page.getByTestId('skill-installed-state-waiver-apply-follow-ups')).toContainText(
     'Write approved governance changes'
@@ -158,18 +187,76 @@ test('frontend works against the Python backend across core market flows', async
       timeout: 20000,
     }
   );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-status')).toContainText(
+    'Ready for CLI write',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-command')).toContainText(
+    'execute_source_reconcile_gate_waiver_apply.py'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-command')).toContainText('--write');
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-verify-command')).toContainText(
+    'verify_source_reconcile_gate_waiver_apply.py'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-sources')).toContainText(
+    'governance'
+  );
   await expect(page.getByTestId('skill-installed-state-waiver-apply-actions')).toContainText(
     'matches_staged_target'
+  );
+  const waiverApplyStageDir = path.join(
+    skillTargetRoot,
+    'snapshots',
+    'governance',
+    'waiver-apply',
+    'source-reconcile-gate-waiver-apply-staged-root'
+  );
+  const stagedApplyArtifact = await findFirstMatchingFile(
+    waiverApplyStageDir,
+    (candidatePath) => candidatePath.endsWith('.json') && path.basename(candidatePath) !== 'deletions.json'
+  );
+  expect(stagedApplyArtifact).toBeTruthy();
+  if (!stagedApplyArtifact) {
+    throw new Error('Expected a staged waiver/apply artifact to exist after stage.');
+  }
+  await fs.writeFile(
+    stagedApplyArtifact,
+    JSON.stringify(
+      {
+        tampered: true,
+        source: 'playwright-drift-check',
+      },
+      null,
+      2
+    ) + '\n',
+    'utf-8'
   );
   await expect(page.getByTestId('skill-installed-state-waiver-apply-verify')).toBeEnabled({
     timeout: 20000,
   });
   await page.getByTestId('skill-installed-state-waiver-apply-verify').click();
   await expect(page.getByTestId('skill-installed-state-waiver-apply-verify-summary')).toContainText(
-    'Verification refreshed',
+    'drifted',
     {
       timeout: 20000,
     }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-status')).toContainText(
+    'Apply handoff drift detected',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-status')).toContainText(
+    'Write handoff paused for drift',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-blockers')).toContainText(
+    'drift finding'
   );
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
