@@ -7,7 +7,7 @@
 - 本地 skill / bundle lifecycle
 - installed-state doctor / repair / baseline / governance
 - waiver / apply handoff 的 `prepare / stage / verify`
-- governance write handoff 的资格说明、approval capture、evidence pack、命令包与 checklist
+- governance write handoff 的资格说明、approval record、audit timeline、evidence pack、命令包与 checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
 
 其中 repo governance source 的真正 `write` 仍然保持 CLI-only；页面负责把 write eligibility、审批责任边界和交接证据解释清楚。

@@ -10,7 +10,7 @@
 - 本地 install / update / remove
 - installed-state doctor / repair / baseline / governance
 - waiver / apply handoff 的 `prepare / stage / verify`
-- governance write handoff 的 eligibility、approval capture、evidence pack 与 review checklist
+- governance write handoff 的 eligibility、approval record、audit timeline、evidence pack 与 review checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
 
 ## 当前分层
@@ -42,6 +42,7 @@
 waiver / apply 相关代理包括：
 
 - `/api/local/state/governance/waiver-apply`
+- `/api/local/state/governance/waiver-apply/approval`
 - `/api/local/state/governance/waiver-apply/prepare`
 - `/api/local/state/governance/waiver-apply/stage`
 - `/api/local/state/governance/waiver-apply/verify`
@@ -56,6 +57,7 @@ waiver / apply 相关代理包括：
 GET /api/v1/local/state/governance
 POST /api/v1/local/state/governance/refresh
 GET /api/v1/local/state/governance/waiver-apply
+POST /api/v1/local/state/governance/waiver-apply/approval
 POST /api/v1/local/state/governance/waiver-apply/prepare
 POST /api/v1/local/state/governance/waiver-apply/stage
 POST /api/v1/local/state/governance/waiver-apply/verify
@@ -72,14 +74,17 @@ GET /api/v1/local/jobs/{job_id}
    把治理源文件的变更安全写入专用 staging root，并刷新 aggregate report。
 3. `verify`
    重新校验 staged 或 written 结果，并刷新 aggregate report。
-4. `write handoff`
-   页面根据最新 report 汇总 `pending / ready / blocked / drifted / completed` 五种 write 状态，并给出 CLI write/verify 命令、planned governance source、review artifacts、approval checklist、approval capture 和 evidence pack。
+4. `approval`
+   页面把 operator note、当前 handoff 指纹和 evidence snapshot 持久化到治理快照目录，形成可追溯审批记录。
+5. `write handoff`
+   页面根据最新 report 汇总 `pending / ready / blocked / drifted / completed` 五种 write 状态，并给出 CLI write/verify 命令、planned governance source、review artifacts、approval checklist、approval audit 和 evidence pack。
 
 需要特别说明：
 
 - `stage` 和 `verify` 面向的是 governance staging flow，而不是 installed target root 本身
 - `write` 仍然保持 CLI-only
-- 页面里的 approval capture 只是浏览器内的交接确认，不会绕过 CLI write 边界
+- approval record 通过 backend 持久化，但仍然不会绕过 CLI write 边界
+- audit timeline 会把当前 approval record 与旧记录分开显示；当 handoff 再次 stage / verify / write 后，旧记录会自动转入历史
 - evidence pack 会把 apply / execute / verify / target root 等关键证据聚合展示，方便人工审批和事后复核
 - handoff 的目标是把高风险动作解释清楚，而不是把 repo-source write 偷偷藏进 UI
 
@@ -91,7 +96,7 @@ GET /api/v1/local/jobs/{job_id}
 
 - skill detail 本地 install -> doctor -> repair -> baseline -> governance refresh
 - waiver / apply `prepare -> stage -> verify`
-- `stage verified -> approval captured -> post-write evidence refreshed`
+- `approval persisted -> audit trail visible -> restage invalidates old approval -> post-write evidence refreshed`
 - remote registry install 的 approval / retry / cleanup / rollback
 - docs 页面搜索、详情页 action panel、context panel 与相关文档跳转
 
@@ -132,7 +137,7 @@ next build --webpack
 
 ```text
 python scripts/check_python_market_backend.py
-python scripts/check_market_pipeline.py --output-root dist/market-smoke-frontend-governance-write-execution
+python scripts/check_market_pipeline.py --output-root dist/market-smoke-frontend-governance-write-audit
 python scripts/check_docs_links.py
 npm run build --prefix frontend
 npm run e2e --prefix frontend

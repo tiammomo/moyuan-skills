@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,67 @@ def _read_json(path: Path) -> Any:
 
 def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _write_json(path: Path, payload: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def _write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def _timestamp_sort_key(value: str) -> str:
+    normalized = str(value).strip()
+    if not normalized:
+        return ""
+    candidate = normalized[:-1] + "+00:00" if normalized.endswith("Z") else normalized
+    try:
+        return datetime.fromisoformat(candidate).astimezone(timezone.utc).isoformat()
+    except ValueError:
+        return normalized
+
+
+def _file_token(path: Path) -> str:
+    if not path.is_file():
+        return ""
+    stat = path.stat()
+    return f"{stat.st_mtime_ns}:{stat.st_size}"
+
+
+def _build_waiver_apply_approval_fingerprint(
+    *,
+    report_summary_path: Path,
+    apply_execute_summary_path: Path,
+    verify_summary_path: Path,
+    report_payload: dict[str, Any] | None,
+) -> str:
+    fingerprint_payload = {
+        "report_summary_path": str(report_summary_path),
+        "report_summary_token": _file_token(report_summary_path),
+        "apply_execute_summary_path": str(apply_execute_summary_path),
+        "apply_execute_summary_token": _file_token(apply_execute_summary_path),
+        "verify_summary_path": str(verify_summary_path),
+        "verify_summary_token": _file_token(verify_summary_path),
+        "report_state": str(report_payload.get("report_state", "")).strip() if isinstance(report_payload, dict) else "",
+        "action_count": int(report_payload.get("action_count", 0)) if isinstance(report_payload, dict) else 0,
+        "written_change_count": (
+            int(report_payload.get("apply_execution", {}).get("written_update_count", 0))
+            + int(report_payload.get("apply_execution", {}).get("written_delete_count", 0))
+        )
+        if isinstance(report_payload, dict)
+        else 0,
+        "verified_count": int(report_payload.get("apply_verification", {}).get("verified_count", 0))
+        if isinstance(report_payload, dict)
+        else 0,
+    }
+    return hashlib.sha256(json.dumps(fingerprint_payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:16]
 
 
 def _display_repo_path(path: Path, repo_root: Path) -> str:
@@ -426,6 +488,75 @@ def _build_waiver_apply_write_handoff(
     }
 
 
+def _render_waiver_apply_approval_audit_markdown(
+    *,
+    target_root: str,
+    audit_payload: dict[str, Any],
+) -> str:
+    lines = [
+        "# Governance Write Approval Audit",
+        "",
+        f"- Target root: `{target_root}`",
+        f"- Audit state: `{audit_payload.get('state', '')}`",
+        f"- History count: `{audit_payload.get('history_count', 0)}`",
+        f"- Records path: `{audit_payload.get('records_path', '')}`",
+        f"- Markdown path: `{audit_payload.get('markdown_path', '')}`",
+        "",
+        "## Summary",
+        "",
+        audit_payload.get("summary", ""),
+        "",
+    ]
+
+    current_record = audit_payload.get("current_record")
+    if isinstance(current_record, dict):
+        lines.extend(
+            [
+                "## Current Record",
+                "",
+                f"- Captured at: `{current_record.get('captured_at', '')}`",
+                f"- Timeline state: `{current_record.get('timeline_state', '')}`",
+                f"- Report state: `{current_record.get('report_state', '')}`",
+                f"- Handoff state: `{current_record.get('write_handoff_state', '')}`",
+                f"- Evidence: `{current_record.get('evidence_title', '')}`",
+            ]
+        )
+        note = str(current_record.get("note", "")).strip()
+        if note:
+            lines.append(f"- Note: {note}")
+        lines.append("")
+
+    lines.extend(
+        [
+            "## Timeline",
+            "",
+        ]
+    )
+    timeline = audit_payload.get("timeline", [])
+    if not isinstance(timeline, list) or not timeline:
+        lines.append("- No persisted approval records yet.")
+    else:
+        for item in timeline:
+            if not isinstance(item, dict):
+                continue
+            lines.append(
+                f"- `{item.get('captured_at', '')}` `{item.get('timeline_state', '')}` "
+                f"`{item.get('write_handoff_state', '')}` `{item.get('evidence_title', '')}`"
+            )
+            note = str(item.get("note", "")).strip()
+            if note:
+                lines.append(f"  note: {note}")
+            lines.append(f"  report_state: `{item.get('report_state', '')}`")
+
+    follow_ups = audit_payload.get("follow_ups", [])
+    if isinstance(follow_ups, list) and follow_ups:
+        lines.extend(["", "## Follow-ups", ""])
+        for item in follow_ups:
+            lines.append(f"- {item}")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def _is_internal_iteration_doc(path: Path) -> bool:
     return path.stem.endswith("-iteration")
 
@@ -447,6 +578,227 @@ class MarketRepository:
     @property
     def repo_root(self) -> Path:
         return self.settings.repo_root
+
+    def _waiver_apply_approval_artifact_paths(self, waiver_apply_dir: Path) -> tuple[Path, Path]:
+        return (
+            waiver_apply_dir / "write-approval-records.json",
+            waiver_apply_dir / "write-approval-records.md",
+        )
+
+    def _build_waiver_apply_approval_audit(
+        self,
+        *,
+        target_root: Path,
+        waiver_apply_dir: Path,
+        report_summary_path: Path,
+        apply_execute_summary_path: Path,
+        verify_summary_path: Path,
+        report_payload: dict[str, Any] | None,
+        write_handoff: dict[str, Any],
+    ) -> dict[str, Any]:
+        records_path, markdown_path = self._waiver_apply_approval_artifact_paths(waiver_apply_dir)
+        raw_records_payload = _read_json(records_path) if records_path.is_file() else {}
+        raw_records = raw_records_payload if isinstance(raw_records_payload, list) else raw_records_payload.get("records", [])
+        current_fingerprint = _build_waiver_apply_approval_fingerprint(
+            report_summary_path=report_summary_path,
+            apply_execute_summary_path=apply_execute_summary_path,
+            verify_summary_path=verify_summary_path,
+            report_payload=report_payload,
+        )
+
+        normalized_records: list[dict[str, Any]] = []
+        if isinstance(raw_records, list):
+            for index, record in enumerate(raw_records, start=1):
+                if not isinstance(record, dict):
+                    continue
+                evidence_snapshot = record.get("evidence_snapshot", {})
+                evidence_entries = evidence_snapshot.get("entries", []) if isinstance(evidence_snapshot, dict) else []
+                normalized_records.append(
+                    {
+                        "record_id": str(record.get("record_id", "")).strip() or f"approval-{index:03d}",
+                        "captured_at": str(record.get("captured_at", "")).strip(),
+                        "scope": str(record.get("scope", "")).strip(),
+                        "note": str(record.get("note", "")).strip(),
+                        "report_state": str(record.get("report_state", "")).strip(),
+                        "write_handoff_state": str(record.get("write_handoff_state", "")).strip(),
+                        "write_handoff_title": str(record.get("write_handoff_title", "")).strip(),
+                        "evidence_state": str(evidence_snapshot.get("state", "")).strip()
+                        if isinstance(evidence_snapshot, dict)
+                        else "",
+                        "evidence_title": str(evidence_snapshot.get("title", "")).strip()
+                        if isinstance(evidence_snapshot, dict)
+                        else "",
+                        "evidence_summary": str(evidence_snapshot.get("summary", "")).strip()
+                        if isinstance(evidence_snapshot, dict)
+                        else "",
+                        "evidence_entries": evidence_entries if isinstance(evidence_entries, list) else [],
+                        "fingerprint": str(record.get("fingerprint", "")).strip(),
+                        "artifact_paths": record.get("artifact_paths", []) if isinstance(record.get("artifact_paths", []), list) else [],
+                        "governance_source_paths": record.get("governance_source_paths", [])
+                        if isinstance(record.get("governance_source_paths", []), list)
+                        else [],
+                    }
+                )
+
+        normalized_records.sort(key=lambda item: _timestamp_sort_key(item.get("captured_at", "")), reverse=True)
+
+        active_record: dict[str, Any] | None = None
+        timeline: list[dict[str, Any]] = []
+        matched_current = False
+        for record in normalized_records:
+            matches_current = bool(current_fingerprint and record.get("fingerprint") == current_fingerprint)
+            timeline_state = "history"
+            if matches_current and not matched_current:
+                timeline_state = "active"
+                matched_current = True
+            elif matches_current:
+                timeline_state = "superseded"
+            normalized_record = {
+                **record,
+                "matches_current": matches_current,
+                "timeline_state": timeline_state,
+            }
+            if timeline_state == "active" and active_record is None:
+                active_record = normalized_record
+            timeline.append(normalized_record)
+
+        latest_record = timeline[0] if timeline else None
+        approval_enabled = bool(write_handoff.get("approval_enabled"))
+
+        if active_record:
+            state = "active"
+            title = "Approval record current"
+            summary = (
+                f"The current CLI write handoff is covered by a persisted approval record captured at "
+                f"{active_record.get('captured_at', '')}."
+            )
+            follow_ups = [
+                "Keep this approval record with the associated execute, verify, and report artifacts.",
+                "Capture a fresh approval record after any new stage, verify, or write refresh changes the handoff artifacts.",
+            ]
+        elif latest_record:
+            state = "history_only"
+            title = "Approval history available"
+            summary = (
+                "Saved approval history exists, but the current handoff no longer matches the latest persisted approval record."
+            )
+            follow_ups = [
+                "Review the latest timeline entry and keep it in the historical audit trail.",
+                "Capture a fresh approval record only after the current handoff artifacts are the ones you want to approve.",
+            ]
+        elif approval_enabled:
+            state = "empty"
+            title = "Approval record not captured"
+            summary = "The current handoff is ready, but no persisted approval record exists yet."
+            follow_ups = [
+                "Capture an approval record before treating the current handoff as operator-approved.",
+                "Include an optional note if you want the audit trail to explain why this handoff was approved.",
+            ]
+        else:
+            state = "empty"
+            title = "Approval audit waiting"
+            summary = "The current handoff is not ready for a persisted approval record yet."
+            follow_ups = [
+                "Finish stage and verify first so the approval audit trail attaches to a clean handoff state.",
+            ]
+
+        return {
+            "state": state,
+            "title": title,
+            "summary": summary,
+            "records_path": _display_repo_path(records_path, self.repo_root),
+            "markdown_path": _display_repo_path(markdown_path, self.repo_root),
+            "history_count": len(timeline),
+            "current_record": active_record,
+            "latest_record": latest_record,
+            "timeline": timeline[:6],
+            "follow_ups": follow_ups,
+        }
+
+    def capture_installed_governance_waiver_apply_approval(
+        self,
+        target_root: Path,
+        *,
+        note: str = "",
+        scope: str = "installed-state-governance-waiver-apply",
+    ) -> dict[str, Any]:
+        resolved_root = target_root.resolve()
+        state = self.get_installed_governance_waiver_apply_state(resolved_root)
+        write_handoff = state.get("write_handoff", {})
+        latest_report = state.get("latest_report")
+        if not isinstance(write_handoff, dict) or not write_handoff.get("approval_enabled"):
+            raise ValueError("The current waiver/apply handoff is not ready for persisted approval capture yet.")
+        if not isinstance(latest_report, dict):
+            raise ValueError("A prepared waiver/apply report is required before capturing approval.")
+
+        waiver_apply_dir = Path(str(state.get("waiver_apply_dir", ""))).resolve()
+        report_summary_path = Path(str(state.get("report_summary_path", ""))).resolve()
+        verify_summary_path = Path(str(state.get("verify_summary_path", ""))).resolve()
+        apply_execute_summary_path = (waiver_apply_dir / "source-reconcile-gate-waiver-apply-execute-summary.json").resolve()
+        records_path, markdown_path = self._waiver_apply_approval_artifact_paths(waiver_apply_dir)
+        current_fingerprint = _build_waiver_apply_approval_fingerprint(
+            report_summary_path=report_summary_path,
+            apply_execute_summary_path=apply_execute_summary_path,
+            verify_summary_path=verify_summary_path,
+            report_payload=latest_report,
+        )
+
+        existing_payload = _read_json(records_path) if records_path.is_file() else {}
+        existing_records = existing_payload.get("records", []) if isinstance(existing_payload, dict) else []
+        if not isinstance(existing_records, list):
+            existing_records = []
+
+        captured_at = _utc_now_iso()
+        record = {
+            "record_id": f"approval-{len(existing_records) + 1:03d}-{captured_at.replace(':', '').replace('-', '')}-{current_fingerprint[:8]}",
+            "captured_at": captured_at,
+            "scope": scope,
+            "note": str(note).strip(),
+            "target_root": _display_repo_path(resolved_root, self.repo_root),
+            "report_summary_path": _display_repo_path(report_summary_path, self.repo_root),
+            "report_state": str(latest_report.get("report_state", "")).strip(),
+            "write_handoff_state": str(write_handoff.get("state", "")).strip(),
+            "write_handoff_title": str(write_handoff.get("title", "")).strip(),
+            "fingerprint": current_fingerprint,
+            "evidence_snapshot": {
+                "state": str(write_handoff.get("evidence", {}).get("state", "")).strip(),
+                "title": str(write_handoff.get("evidence", {}).get("title", "")).strip(),
+                "summary": str(write_handoff.get("evidence", {}).get("summary", "")).strip(),
+                "entries": write_handoff.get("evidence", {}).get("entries", []),
+            },
+            "artifact_paths": write_handoff.get("artifact_paths", []),
+            "governance_source_paths": write_handoff.get("governance_source_paths", []),
+        }
+
+        stored_payload = {
+            "target_root": _display_repo_path(resolved_root, self.repo_root),
+            "waiver_apply_dir": _display_repo_path(waiver_apply_dir, self.repo_root),
+            "updated_at": captured_at,
+            "records": [*existing_records, record],
+        }
+        _write_json(records_path, stored_payload)
+
+        audit_payload = self._build_waiver_apply_approval_audit(
+            target_root=resolved_root,
+            waiver_apply_dir=waiver_apply_dir,
+            report_summary_path=report_summary_path,
+            apply_execute_summary_path=apply_execute_summary_path,
+            verify_summary_path=verify_summary_path,
+            report_payload=latest_report,
+            write_handoff=write_handoff,
+        )
+        _write_text(
+            markdown_path,
+            _render_waiver_apply_approval_audit_markdown(
+                target_root=_display_repo_path(resolved_root, self.repo_root),
+                audit_payload=audit_payload,
+            ),
+        )
+        return {
+            "captured": True,
+            "record": audit_payload.get("current_record"),
+            "audit": audit_payload,
+        }
 
     def _dist_path(self, *parts: str) -> Path:
         return self.settings.dist_market_root.joinpath(*parts)
@@ -937,6 +1289,27 @@ class MarketRepository:
             "python scripts/verify_source_reconcile_gate_waiver_apply.py "
             f"{display_history_path} --output-dir {display_output_dir} --json"
         )
+        write_handoff = _build_waiver_apply_write_handoff(
+            history_exists=history_path.is_file(),
+            governance_summary_exists=governance_summary_path.is_file(),
+            report_payload=report_payload if isinstance(report_payload, dict) else None,
+            display_stage_dir=display_stage_dir,
+            display_apply_summary_path=display_apply_summary_path,
+            display_apply_execute_summary_path=display_apply_execute_summary_path,
+            display_verify_summary_path=display_verify_summary_path,
+            display_report_summary_path=display_report_summary_path,
+            write_command=write_command,
+            verify_command=verify_command,
+        )
+        approval_audit = self._build_waiver_apply_approval_audit(
+            target_root=resolved_root,
+            waiver_apply_dir=waiver_apply_dir,
+            report_summary_path=report_summary_path,
+            apply_execute_summary_path=(waiver_apply_dir / "source-reconcile-gate-waiver-apply-execute-summary.json"),
+            verify_summary_path=verify_summary_path,
+            report_payload=report_payload if isinstance(report_payload, dict) else None,
+            write_handoff=write_handoff,
+        )
 
         return {
             "target_root": str(resolved_root),
@@ -958,18 +1331,8 @@ class MarketRepository:
             "governance_report_state": governance_report_state,
             "governance_action_count": governance_action_count,
             "latest_report": report_payload if isinstance(report_payload, dict) else None,
-            "write_handoff": _build_waiver_apply_write_handoff(
-                history_exists=history_path.is_file(),
-                governance_summary_exists=governance_summary_path.is_file(),
-                report_payload=report_payload if isinstance(report_payload, dict) else None,
-                display_stage_dir=display_stage_dir,
-                display_apply_summary_path=display_apply_summary_path,
-                display_apply_execute_summary_path=display_apply_execute_summary_path,
-                display_verify_summary_path=display_verify_summary_path,
-                display_report_summary_path=display_report_summary_path,
-                write_command=write_command,
-                verify_command=verify_command,
-            ),
+            "write_handoff": write_handoff,
+            "approval_audit": approval_audit,
             "recommended_follow_ups": (
                 [
                     {

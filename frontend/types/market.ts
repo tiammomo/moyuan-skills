@@ -516,6 +516,41 @@ export interface LocalInstalledWaiverApplyWriteHandoff {
   };
 }
 
+export interface LocalInstalledWaiverApplyApprovalRecord {
+  record_id: string;
+  captured_at: string;
+  scope: string;
+  note: string;
+  report_state: string;
+  write_handoff_state: string;
+  write_handoff_title: string;
+  evidence_state: string;
+  evidence_title: string;
+  evidence_summary: string;
+  evidence_entries: Array<{
+    label: string;
+    value: string;
+  }>;
+  fingerprint: string;
+  artifact_paths: string[];
+  governance_source_paths: string[];
+  matches_current: boolean;
+  timeline_state: 'active' | 'superseded' | 'history';
+}
+
+export interface LocalInstalledWaiverApplyApprovalAudit {
+  state: 'empty' | 'active' | 'history_only';
+  title: string;
+  summary: string;
+  records_path: string;
+  markdown_path: string;
+  history_count: number;
+  current_record: LocalInstalledWaiverApplyApprovalRecord | null;
+  latest_record: LocalInstalledWaiverApplyApprovalRecord | null;
+  timeline: LocalInstalledWaiverApplyApprovalRecord[];
+  follow_ups: string[];
+}
+
 export interface LocalInstalledWaiverApplyState {
   target_root: string;
   snapshots_dir: string;
@@ -537,6 +572,7 @@ export interface LocalInstalledWaiverApplyState {
   governance_action_count: number;
   latest_report: LocalInstalledWaiverApplyReportSummary | null;
   write_handoff: LocalInstalledWaiverApplyWriteHandoff;
+  approval_audit: LocalInstalledWaiverApplyApprovalAudit;
   recommended_follow_ups: Array<{
     label: string;
     command: string;

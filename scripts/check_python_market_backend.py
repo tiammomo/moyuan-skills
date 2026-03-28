@@ -329,11 +329,15 @@ def main() -> int:
         return 1
     waiver_apply_write_handoff = waiver_apply_state.get("write_handoff", {})
     waiver_apply_evidence = waiver_apply_write_handoff.get("evidence", {})
+    waiver_apply_audit = waiver_apply_state.get("approval_audit", {})
     if not waiver_apply_write_handoff.get("approval_label") or not waiver_apply_write_handoff.get("approval_help"):
         print("ERROR: backend waiver/apply handoff state should expose approval capture guidance before prepare")
         return 1
     if not waiver_apply_evidence.get("title") or not isinstance(waiver_apply_evidence.get("entries"), list):
         print("ERROR: backend waiver/apply handoff state should expose an evidence pack before prepare")
+        return 1
+    if waiver_apply_audit.get("history_count") != 0:
+        print("ERROR: backend waiver/apply approval audit should start empty before any approval record is captured")
         return 1
 
     waiver_apply_prepare_response = client.post(
@@ -386,6 +390,89 @@ def main() -> int:
         return 1
     if not waiver_apply_evidence_after.get("summary") or not waiver_apply_evidence_after.get("follow_ups"):
         print("ERROR: backend waiver/apply handoff state should expose evidence guidance after prepare")
+        return 1
+
+    waiver_apply_stage_response = client.post(
+        "/api/v1/local/state/governance/waiver-apply/stage",
+        json={
+            "target_root": str(local_target_root / "skills"),
+            "scope": "backend-smoke",
+        },
+    )
+    if waiver_apply_stage_response.status_code != 202:
+        print(
+            "ERROR: backend waiver/apply handoff stage should return 202, "
+            f"got {waiver_apply_stage_response.status_code}"
+        )
+        return 1
+    waiver_apply_stage_job = wait_for_job(client, waiver_apply_stage_response.json()["job_id"])
+    if waiver_apply_stage_job.get("status") != "succeeded":
+        print("ERROR: backend waiver/apply handoff stage job should succeed")
+        print(waiver_apply_stage_job.get("stdout", ""))
+        print(waiver_apply_stage_job.get("stderr", ""))
+        return 1
+    waiver_apply_stage_payload = json.loads(waiver_apply_stage_job.get("stdout", "{}"))
+    if not waiver_apply_stage_payload.get("apply_execution", {}).get("available"):
+        print("ERROR: backend waiver/apply handoff stage should emit execution metadata")
+        return 1
+
+    waiver_apply_state_ready_response = client.get(
+        "/api/v1/local/state/governance/waiver-apply",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if waiver_apply_state_ready_response.status_code != 200:
+        print(
+            "ERROR: backend waiver/apply handoff state after stage should return 200, "
+            f"got {waiver_apply_state_ready_response.status_code}"
+        )
+        return 1
+    waiver_apply_state_ready = waiver_apply_state_ready_response.json()
+    if not waiver_apply_state_ready.get("write_handoff", {}).get("approval_enabled"):
+        print("ERROR: backend waiver/apply handoff state after stage should enable persisted approval capture")
+        return 1
+
+    approval_note = "backend smoke approval record"
+    waiver_apply_approval_response = client.post(
+        "/api/v1/local/state/governance/waiver-apply/approval",
+        json={
+            "target_root": str(local_target_root / "skills"),
+            "scope": "backend-smoke",
+            "note": approval_note,
+        },
+    )
+    if waiver_apply_approval_response.status_code != 200:
+        print(
+            "ERROR: backend waiver/apply approval capture should return 200, "
+            f"got {waiver_apply_approval_response.status_code}"
+        )
+        return 1
+    waiver_apply_approval_payload = waiver_apply_approval_response.json()
+    if not waiver_apply_approval_payload.get("captured") or not waiver_apply_approval_payload.get("audit", {}).get(
+        "current_record"
+    ):
+        print("ERROR: backend waiver/apply approval capture should persist a current audit record")
+        return 1
+    if waiver_apply_approval_payload.get("audit", {}).get("current_record", {}).get("note") != approval_note:
+        print("ERROR: backend waiver/apply approval capture should keep the operator note in the audit record")
+        return 1
+
+    waiver_apply_state_approved_response = client.get(
+        "/api/v1/local/state/governance/waiver-apply",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if waiver_apply_state_approved_response.status_code != 200:
+        print(
+            "ERROR: backend waiver/apply handoff state after approval capture should return 200, "
+            f"got {waiver_apply_state_approved_response.status_code}"
+        )
+        return 1
+    waiver_apply_state_approved = waiver_apply_state_approved_response.json()
+    approval_audit_after = waiver_apply_state_approved.get("approval_audit", {})
+    if approval_audit_after.get("history_count", 0) < 1:
+        print("ERROR: backend waiver/apply approval audit should expose persisted history after approval capture")
+        return 1
+    if approval_audit_after.get("state") != "active":
+        print("ERROR: backend waiver/apply approval audit should mark the latest approval as current")
         return 1
 
     bundle_state_response = client.get(

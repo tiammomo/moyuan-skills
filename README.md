@@ -8,9 +8,9 @@
 
 - skill / bundle 详情页里的 waiver / apply 面板已经支持 `prepare / stage / verify + write handoff`
 - write handoff 现在会展示 `pending / ready / blocked / drifted / completed` 五种状态，并解释为什么当前还不能进入最终 CLI write
-- 页面新增显式 approval capture，明确说明“页面只记录交接确认，真正的 repo governance source write 仍然是 CLI-only”
-- 页面新增 evidence pack，能展示 apply / execute / verify / target root 等交接证据，并区分 pre-write 与 post-write 两类状态
-- Playwright 已覆盖 `stage verified -> approval captured -> post-write evidence refreshed` 这条真实路径
+- 页面新增持久化 approval record，能把 target root、report、operator note 与 evidence snapshot 一起写入治理快照目录
+- 页面新增 audit timeline 与 evidence pack，能展示 apply / execute / verify / target root 等交接证据，并区分当前记录与历史记录
+- Playwright 已覆盖 `approval persisted -> audit trail visible -> restage invalidates old approval -> post-write evidence refreshed` 这条真实路径
 - Windows 下 staged artifact 继续使用短名 + hash，降低超长路径导致 stage 失败的风险
 
 前端构建当前默认仍使用 `next build --webpack`，并在 [frontend/next.config.js](./frontend/next.config.js) 中把 `experimental.cpus` 收敛到更保守的值，减少 Windows 环境里 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
@@ -35,7 +35,7 @@
 
 - install / update / remove / bundle / doctor / repair / baseline / governance / waiver / apply handoff / gate 已经全部落地
 - installed-state 可以从页面跑通 doctor、低风险 repair、baseline capture、governance refresh
-- waiver / apply 可以从页面跑通 `prepare / stage / verify`，并页面化展示 write handoff、approval capture 和 evidence pack
+- waiver / apply 可以从页面跑通 `prepare / stage / verify`，并页面化展示 write handoff、approval record、audit timeline 和 evidence pack
 - 治理说明见 [docs/market-governance.md](./docs/market-governance.md)
 
 ### 4. 前后端联调

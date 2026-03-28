@@ -229,6 +229,22 @@ class LocalStateGovernanceWaiverApplyVerifyRequest(BaseModel):
     )
 
 
+class LocalStateGovernanceWaiverApplyApprovalRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory whose current write handoff should receive a persisted approval record.",
+    )
+    note: str = Field(
+        default="",
+        max_length=400,
+        description="Optional operator note stored with the persisted approval record.",
+    )
+    scope: str = Field(
+        default="installed-state-governance-waiver-apply",
+        description="UI scope label for the waiver/apply approval capture action.",
+    )
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -726,6 +742,21 @@ def local_state_governance(target_root: str = "dist/backend-installed-market") -
 def local_state_governance_waiver_apply(target_root: str = "dist/backend-installed-market") -> dict:
     resolved_root = resolve_local_target_path(settings.repo_root, target_root, "dist/backend-installed-market")
     return repository.get_installed_governance_waiver_apply_state(resolved_root)
+
+
+@app.post("/api/v1/local/state/governance/waiver-apply/approval")
+def local_state_governance_waiver_apply_approval(
+    request: LocalStateGovernanceWaiverApplyApprovalRequest,
+) -> dict:
+    resolved_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    try:
+        return repository.capture_installed_governance_waiver_apply_approval(
+            resolved_root,
+            note=request.note,
+            scope=request.scope,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
 
 
 @app.post("/api/v1/local/state/doctor", status_code=202)

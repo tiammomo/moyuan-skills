@@ -193,17 +193,53 @@ test('frontend works against the Python backend across core market flows', async
     timeout: 20000,
   });
   await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
-    'Waiting for explicit approval capture',
+    'Check to persist an approval record',
     {
       timeout: 20000,
     }
   );
-  await page.getByTestId('skill-installed-state-waiver-apply-write-approval-checkbox').check();
+  await page.getByTestId('skill-installed-state-waiver-apply-write-approval-note').fill(
+    'Initial approval record from Playwright'
+  );
+  await page.getByTestId('skill-installed-state-waiver-apply-write-approval-checkbox').click();
   await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
-    'Approval captured in this browser',
+    'Approval record persisted',
     {
       timeout: 20000,
     }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-status')).toContainText(
+    'Approval record current'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-current')).toContainText(
+    'Initial approval record from Playwright'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-paths')).toContainText(
+    'write-approval-records.json'
+  );
+  await page.getByTestId('skill-installed-state-waiver-apply-stage').click();
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-stage-summary')).toContainText('Stage refreshed', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
+    'Approval history exists',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-status')).toContainText(
+    'Approval history available'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-history')).toContainText(
+    'Initial approval record from Playwright'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-checkbox')).not.toBeChecked();
+  await page.getByTestId('skill-installed-state-waiver-apply-write-approval-note').fill(
+    'Approval refreshed after restage'
+  );
+  await page.getByTestId('skill-installed-state-waiver-apply-write-approval-checkbox').click();
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-current')).toContainText(
+    'Approval refreshed after restage'
   );
 
   const baselineHistoryPath = path.join(skillTargetRoot, 'snapshots', 'baseline-history.json');
@@ -302,8 +338,17 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-installed-state-waiver-apply-write-evidence')).toContainText(
     governanceWriteMirrorRootDisplay
   );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-status')).toContainText(
+    'Approval history available',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-audit-history')).toContainText(
+    'Approval refreshed after restage'
+  );
   await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
-    'Approval captured in this browser',
+    'Approval history exists',
     {
       timeout: 20000,
     }

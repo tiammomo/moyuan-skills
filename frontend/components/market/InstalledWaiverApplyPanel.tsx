@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   LocalInstalledGovernanceState,
+  LocalInstalledWaiverApplyApprovalAudit,
   LocalInstalledWaiverApplyReportAction,
   LocalInstalledWaiverApplyReportSummary,
   LocalInstalledWaiverApplyState,
@@ -284,6 +285,24 @@ function formatApprovalCapturedAt(value: string | null): string {
   return parsed.toLocaleString();
 }
 
+function describeApprovalAuditVariant(
+  approvalAudit: LocalInstalledWaiverApplyApprovalAudit | null
+): 'keyword' | 'stable' | 'beta' | 'internal' | 'tag' {
+  if (!approvalAudit) {
+    return 'tag';
+  }
+
+  if (approvalAudit.state === 'active') {
+    return 'stable';
+  }
+
+  if (approvalAudit.state === 'history_only') {
+    return 'beta';
+  }
+
+  return 'tag';
+}
+
 export function InstalledWaiverApplyPanel({
   panelTestId,
   targetRoot,
@@ -297,7 +316,8 @@ export function InstalledWaiverApplyPanel({
   const [verifyPayload, setVerifyPayload] = useState<LocalInstalledWaiverApplyReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [approvalCapturedAt, setApprovalCapturedAt] = useState<string | null>(null);
+  const [approvalNote, setApprovalNote] = useState('');
+  const [approvalSubmitting, setApprovalSubmitting] = useState(false);
 
   const loadWaiverApplyState = useCallback(async () => {
     setErrorMessage(null);
@@ -344,6 +364,8 @@ export function InstalledWaiverApplyPanel({
     setVerifyPayload(null);
     setLoading(true);
     setErrorMessage(null);
+    setApprovalNote('');
+    setApprovalSubmitting(false);
     void loadWaiverApplyState();
   }, [loadWaiverApplyState, targetRoot]);
 
@@ -454,6 +476,7 @@ export function InstalledWaiverApplyPanel({
   );
   const latestReport = waiverApplyState?.latest_report;
   const writeHandoff = waiverApplyState?.write_handoff ?? null;
+  const approvalAudit = waiverApplyState?.approval_audit ?? null;
   const recentActions = useMemo(() => latestReport?.actions ?? [], [latestReport?.actions]);
   const writeHandoffVariant = useMemo(
     () => describeWriteHandoffVariant(writeHandoff),
@@ -463,19 +486,10 @@ export function InstalledWaiverApplyPanel({
     () => describeWriteEvidenceVariant(writeHandoff),
     [writeHandoff]
   );
-  const approvalStorageKey = useMemo(() => {
-    if (!writeHandoff || !waiverApplyState?.report_summary_path) {
-      return null;
-    }
-
-    return [
-      'moyuan-write-handoff-approval',
-      targetRoot,
-      waiverApplyState.report_summary_path,
-      latestReport?.apply_execute_summary_path ?? '',
-      latestReport?.report_state ?? '',
-    ].join(':');
-  }, [latestReport?.apply_execute_summary_path, latestReport?.report_state, targetRoot, waiverApplyState?.report_summary_path, writeHandoff]);
+  const writeAuditVariant = useMemo(
+    () => describeApprovalAuditVariant(approvalAudit),
+    [approvalAudit]
+  );
   const actionPending = Boolean(
     jobMode && waiverApplyJob && (waiverApplyJob.status === 'queued' || waiverApplyJob.status === 'running')
   );
@@ -484,33 +498,50 @@ export function InstalledWaiverApplyPanel({
     latestReport?.apply_execution.available && latestReport.apply_execution.action_count > 0
   );
   const approvalEnabled = Boolean(writeHandoff?.approval_enabled);
-  const approvalCaptured = Boolean(approvalCapturedAt);
+  const currentApprovalRecord = approvalAudit?.current_record ?? null;
+  const approvalCaptured = Boolean(currentApprovalRecord);
+  const approvalChecked = approvalCaptured || approvalSubmitting;
 
-  useEffect(() => {
-    if (!approvalStorageKey || typeof window === 'undefined') {
-      setApprovalCapturedAt(null);
+  async function captureApprovalRecord() {
+    if (!approvalEnabled || approvalCaptured) {
       return;
     }
 
-    const storedValue = window.localStorage.getItem(approvalStorageKey);
-    setApprovalCapturedAt(storedValue && storedValue.trim() ? storedValue : null);
-  }, [approvalStorageKey]);
+    setApprovalSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const response = await fetch('/api/local/state/governance/waiver-apply/approval', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          target_root: targetRoot,
+          note: approvalNote.trim(),
+          scope: panelTestId,
+        }),
+      });
+      const payload = (await response.json()) as { detail?: string };
+      if (!response.ok) {
+        setErrorMessage(payload.detail ?? 'Unable to persist waiver/apply approval record.');
+        return;
+      }
+      setApprovalNote('');
+      await loadWaiverApplyState();
+    } catch (error) {
+      setErrorMessage(
+        `Unable to persist waiver/apply approval record: ${error instanceof Error ? error.message : String(error)}`
+      );
+    } finally {
+      setApprovalSubmitting(false);
+    }
+  }
 
   function handleApprovalChange(checked: boolean) {
-    if (!approvalStorageKey || typeof window === 'undefined') {
-      setApprovalCapturedAt(null);
-      return;
-    }
-
     if (!checked) {
-      window.localStorage.removeItem(approvalStorageKey);
-      setApprovalCapturedAt(null);
       return;
     }
-
-    const capturedAt = new Date().toISOString();
-    window.localStorage.setItem(approvalStorageKey, capturedAt);
-    setApprovalCapturedAt(capturedAt);
+    void captureApprovalRecord();
   }
 
   return (
@@ -747,12 +778,24 @@ export function InstalledWaiverApplyPanel({
               className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
               data-testid={`${panelTestId}-write-approval`}
             >
+              <label className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                Approval note
+              </label>
+              <textarea
+                value={approvalNote}
+                onChange={(event) => setApprovalNote(event.target.value)}
+                disabled={!approvalEnabled || approvalCaptured || approvalSubmitting}
+                rows={3}
+                className="mt-2 w-full rounded-card border border-line bg-paper/70 px-3 py-2 text-sm text-ink placeholder:text-muted disabled:cursor-not-allowed"
+                placeholder="Optional operator note for the persisted approval record."
+                data-testid={`${panelTestId}-write-approval-note`}
+              />
               <label className="flex items-start gap-3 text-sm text-ink">
                 <input
                   type="checkbox"
-                  checked={approvalCaptured}
+                  checked={approvalChecked}
                   onChange={(event) => handleApprovalChange(event.target.checked)}
-                  disabled={!approvalEnabled}
+                  disabled={!approvalEnabled || approvalCaptured || approvalSubmitting}
                   className="mt-1 h-4 w-4 rounded border border-line disabled:cursor-not-allowed"
                   data-testid={`${panelTestId}-write-approval-checkbox`}
                 />
@@ -762,12 +805,107 @@ export function InstalledWaiverApplyPanel({
                 {writeHandoff.approval_help}
               </p>
               <p className="mt-2 text-xs text-muted" data-testid={`${panelTestId}-write-approval-state`}>
-                {approvalEnabled
-                  ? approvalCaptured
-                    ? `Approval captured in this browser at ${formatApprovalCapturedAt(approvalCapturedAt)}.`
-                    : 'Waiting for explicit approval capture before handing off the CLI write pack.'
-                  : 'Approval capture unlocks only after the latest handoff reaches a clean ready or completed state.'}
+                {approvalSubmitting
+                  ? 'Persisting approval record...'
+                  : approvalCaptured
+                    ? `Approval record persisted at ${formatApprovalCapturedAt(currentApprovalRecord?.captured_at ?? null)}.`
+                    : approvalAudit?.state === 'history_only'
+                      ? 'Approval history exists, but the current handoff changed after the latest persisted record.'
+                      : approvalEnabled
+                        ? 'Check to persist an approval record for the current CLI write handoff.'
+                        : 'Approval capture unlocks only after the latest handoff reaches a clean ready or completed state.'}
               </p>
+              {currentApprovalRecord?.note && (
+                <p className="mt-2 text-xs text-muted" data-testid={`${panelTestId}-write-approval-current-note`}>
+                  Latest approval note: {currentApprovalRecord.note}
+                </p>
+              )}
+            </div>
+
+            <div
+              className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+              data-testid={`${panelTestId}-write-audit`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip variant={writeAuditVariant} data-testid={`${panelTestId}-write-audit-status`}>
+                  {approvalAudit?.title ?? 'Approval audit waiting'}
+                </Chip>
+                <Chip variant="tag">Audit trail</Chip>
+              </div>
+              <p className="mt-2 text-sm text-ink" data-testid={`${panelTestId}-write-audit-summary`}>
+                {approvalAudit?.summary ?? 'Persisted approval records will appear here once the handoff is ready.'}
+              </p>
+              {approvalAudit && (
+                <dl className="mt-3 space-y-2 text-xs text-ink" data-testid={`${panelTestId}-write-audit-paths`}>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Records path</dt>
+                    <dd className="text-right break-all">{approvalAudit.records_path}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Markdown path</dt>
+                    <dd className="text-right break-all">{approvalAudit.markdown_path || '-'}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">History entries</dt>
+                    <dd>{approvalAudit.history_count}</dd>
+                  </div>
+                </dl>
+              )}
+              {approvalAudit?.current_record && (
+                <div
+                  className="mt-3 rounded-card border border-dashed border-line bg-paper/70 px-3 py-3"
+                  data-testid={`${panelTestId}-write-audit-current`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Current approval record
+                  </p>
+                  <p className="mt-2 text-xs text-ink">
+                    Captured at {formatApprovalCapturedAt(approvalAudit.current_record.captured_at)} for{' '}
+                    {approvalAudit.current_record.write_handoff_title}.
+                  </p>
+                  {approvalAudit.current_record.note && (
+                    <p className="mt-1 text-xs text-muted">{approvalAudit.current_record.note}</p>
+                  )}
+                </div>
+              )}
+              {approvalAudit?.timeline.length ? (
+                <div
+                  className="mt-3 rounded-card border border-line bg-paper/70 px-3 py-3"
+                  data-testid={`${panelTestId}-write-audit-history`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Audit timeline
+                  </p>
+                  <ul className="mt-2 space-y-2 text-xs leading-6 text-ink">
+                    {approvalAudit.timeline.map((record) => (
+                      <li key={record.record_id}>
+                        {formatApprovalCapturedAt(record.captured_at)} | {record.timeline_state} |{' '}
+                        {record.write_handoff_title || record.write_handoff_state || 'approval'}
+                        {record.note ? ` | ${record.note}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="mt-3 text-xs text-muted" data-testid={`${panelTestId}-write-audit-history`}>
+                  No persisted approval records yet.
+                </p>
+              )}
+              {approvalAudit?.follow_ups.length ? (
+                <div
+                  className="mt-3 rounded-card border border-dashed border-line bg-paper/70 px-3 py-3"
+                  data-testid={`${panelTestId}-write-audit-follow-ups`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Audit follow-ups
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                    {approvalAudit.follow_ups.map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
 
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
