@@ -61,3 +61,5 @@ installed-state governance 这一层现在已经完成：
 - 显式审批后的 write-mode handoff
 - write 前差异预览与风险提示
 - write 后 verify / rollback 说明
+
+下一轮规划文档见 [frontend-governance-write-approval-iteration.md](./frontend-governance-write-approval-iteration.md)。
