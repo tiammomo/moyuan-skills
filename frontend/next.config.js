@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Enable static exports if needed
-  // output: 'export',
+  experimental: {
+    // Keep Windows builds from over-spawning workers during page-data collection.
+    cpus: 4,
+  },
 };
 
 module.exports = nextConfig;

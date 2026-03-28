@@ -207,6 +207,28 @@ class LocalStateGovernanceWaiverApplyPrepareRequest(BaseModel):
     )
 
 
+class LocalStateGovernanceWaiverApplyStageRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory whose prepared waiver/apply pack should be staged into the safe mirror root.",
+    )
+    scope: str = Field(
+        default="installed-state-governance-waiver-apply",
+        description="UI scope label for the waiver/apply stage action.",
+    )
+
+
+class LocalStateGovernanceWaiverApplyVerifyRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory whose staged waiver/apply results should be re-verified.",
+    )
+    scope: str = Field(
+        default="installed-state-governance-waiver-apply",
+        description="UI scope label for the waiver/apply verify action.",
+    )
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -868,6 +890,143 @@ def local_state_governance_waiver_apply_prepare(request: LocalStateGovernanceWai
             "output_dir": str(output_dir),
             "stage_dir": str(stage_dir),
             "apply_summary_path": str(apply_summary_path),
+            "verify_summary_path": str(verify_summary_path),
+            "report_summary_path": str(report_summary_path),
+            "report_markdown_path": str(report_markdown_path),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/state/governance/waiver-apply/stage", status_code=202)
+def local_state_governance_waiver_apply_stage(request: LocalStateGovernanceWaiverApplyStageRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    history_path = target_root / "snapshots" / "baseline-history.json"
+    governance_dir = target_root / "snapshots" / "governance"
+    governance_summary_path = governance_dir / "governance-summary.json"
+    output_dir = governance_dir / "waiver-apply"
+    stage_dir = output_dir / "source-reconcile-gate-waiver-apply-staged-root"
+    apply_summary_path = output_dir / "source-reconcile-gate-waiver-apply-summary.json"
+    apply_execute_summary_path = output_dir / "source-reconcile-gate-waiver-apply-execute-summary.json"
+    verify_summary_path = output_dir / "source-reconcile-gate-waiver-apply-verify-summary.json"
+    report_summary_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.json"
+    report_markdown_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.md"
+
+    if not history_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply stage needs a retained baseline history first. Capture a baseline before staging apply changes.",
+        )
+    if not governance_summary_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply stage needs a governance summary first. Refresh governance before staging apply changes.",
+        )
+    if not apply_summary_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply stage needs a prepared apply handoff pack first. Prepare the apply pack before staging changes.",
+        )
+
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "run_source_reconcile_gate_waiver_apply_stage.py"),
+        str(history_path),
+        "--output-dir",
+        str(output_dir),
+        "--stage-dir",
+        str(stage_dir),
+        "--json",
+    ]
+
+    job = _create_local_job(
+        kind="state-governance-waiver-apply-stage",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "governance-waiver-apply-stage",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "history_path": str(history_path),
+            "governance_summary_path": str(governance_summary_path),
+            "output_dir": str(output_dir),
+            "stage_dir": str(stage_dir),
+            "apply_summary_path": str(apply_summary_path),
+            "apply_execute_summary_path": str(apply_execute_summary_path),
+            "verify_summary_path": str(verify_summary_path),
+            "report_summary_path": str(report_summary_path),
+            "report_markdown_path": str(report_markdown_path),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/state/governance/waiver-apply/verify", status_code=202)
+def local_state_governance_waiver_apply_verify(request: LocalStateGovernanceWaiverApplyVerifyRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    history_path = target_root / "snapshots" / "baseline-history.json"
+    governance_dir = target_root / "snapshots" / "governance"
+    governance_summary_path = governance_dir / "governance-summary.json"
+    output_dir = governance_dir / "waiver-apply"
+    stage_dir = output_dir / "source-reconcile-gate-waiver-apply-staged-root"
+    apply_summary_path = output_dir / "source-reconcile-gate-waiver-apply-summary.json"
+    apply_execute_summary_path = output_dir / "source-reconcile-gate-waiver-apply-execute-summary.json"
+    verify_summary_path = output_dir / "source-reconcile-gate-waiver-apply-verify-summary.json"
+    report_summary_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.json"
+    report_markdown_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.md"
+
+    if not history_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply verification needs a retained baseline history first. Capture a baseline before verifying staged changes.",
+        )
+    if not governance_summary_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply verification needs a governance summary first. Refresh governance before verifying staged changes.",
+        )
+    if not apply_summary_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply verification needs a prepared apply handoff pack first. Prepare the apply pack before verifying staged changes.",
+        )
+    if not apply_execute_summary_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply verification needs staged or written execution records first. Stage the apply changes before running verification again.",
+        )
+
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "run_source_reconcile_gate_waiver_apply_verify.py"),
+        str(history_path),
+        "--output-dir",
+        str(output_dir),
+        "--stage-dir",
+        str(stage_dir),
+        "--apply-execute-summary-path",
+        str(apply_execute_summary_path),
+        "--json",
+    ]
+
+    job = _create_local_job(
+        kind="state-governance-waiver-apply-verify",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "governance-waiver-apply-verify",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "history_path": str(history_path),
+            "governance_summary_path": str(governance_summary_path),
+            "output_dir": str(output_dir),
+            "stage_dir": str(stage_dir),
+            "apply_summary_path": str(apply_summary_path),
+            "apply_execute_summary_path": str(apply_execute_summary_path),
             "verify_summary_path": str(verify_summary_path),
             "report_summary_path": str(report_summary_path),
             "report_markdown_path": str(report_markdown_path),

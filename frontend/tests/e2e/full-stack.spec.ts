@@ -145,6 +145,32 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-installed-state-waiver-apply-follow-ups')).toContainText(
     'Write approved governance changes'
   );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-stage')).toBeEnabled({
+    timeout: 20000,
+  });
+  await page.getByTestId('skill-installed-state-waiver-apply-stage').click();
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-stage-summary')).toContainText('Stage refreshed', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-status')).toContainText(
+    'Staged apply verified',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-actions')).toContainText(
+    'matches_staged_target'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-verify')).toBeEnabled({
+    timeout: 20000,
+  });
+  await page.getByTestId('skill-installed-state-waiver-apply-verify').click();
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-verify-summary')).toContainText(
+    'Verification refreshed',
+    {
+      timeout: 20000,
+    }
+  );
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-installed-state-status')).toContainText('Not installed yet', {

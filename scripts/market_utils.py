@@ -29,6 +29,7 @@ BUNDLE_STATUSES = {"draft", "published"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+FILENAME_TOKEN_RE = re.compile(r"[^a-z0-9]+")
 
 
 def load_json(path: Path) -> dict:
@@ -57,6 +58,27 @@ def sha256_for_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(65536), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def slugify_filename_token(value: str, *, fallback: str = "item", max_length: int = 12) -> str:
+    slug = FILENAME_TOKEN_RE.sub("-", value.strip().lower()).strip("-")
+    if not slug:
+        return fallback
+    trimmed = slug[:max_length].strip("-")
+    return trimmed or fallback
+
+
+def build_hashed_artifact_name(*parts: str, suffix: str = "", fallback: str = "artifact") -> str:
+    normalized_parts = [str(part).strip() for part in parts if str(part).strip()]
+    digest_source = "::".join(normalized_parts or [fallback]).encode("utf-8")
+    digest = sha256_for_bytes(digest_source)[:10]
+    stem_parts = [
+        slugify_filename_token(part, fallback=f"{fallback}{index + 1}")
+        for index, part in enumerate(normalized_parts[:3])
+    ]
+    stem = "-".join(stem_parts) if stem_parts else fallback
+    normalized_suffix = suffix if not suffix or suffix.startswith(".") else f".{suffix}"
+    return f"{stem}-{digest}{normalized_suffix}"
 
 
 def repo_relative_path(path: Path) -> str:

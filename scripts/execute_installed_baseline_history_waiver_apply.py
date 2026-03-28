@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 
 import prepare_installed_baseline_history_waiver_apply
-from market_utils import ROOT, load_json, repo_relative_path, sha256_for_file
+from market_utils import ROOT, build_hashed_artifact_name, load_json, repo_relative_path, sha256_for_file
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -122,7 +122,14 @@ def relative_stage_path(source_path: Path, target_root: Path) -> Path:
 def staged_target_path(action: dict, source_path: Path, stage_dir: Path) -> Path:
     waiver_id = str(action.get("waiver_id", "")).strip() or "unknown-waiver"
     action_code = str(action.get("action_code", "")).strip() or "action"
-    return stage_dir / "targets" / waiver_id / f"{action_code}-{source_path.name}"
+    waiver_segment = build_hashed_artifact_name(waiver_id, fallback="waiver")
+    filename = build_hashed_artifact_name(
+        action_code,
+        source_path.stem or source_path.name,
+        suffix=source_path.suffix or ".json",
+        fallback="target",
+    )
+    return stage_dir / "targets" / waiver_segment / filename
 
 
 def execute_action(
@@ -165,9 +172,8 @@ def execute_action(
         rendered_target_path = ROOT / target_path
         target_text = rendered_target_path.read_text(encoding="utf-8")
         if stage_dir is not None:
-            staged_path = staged_target_path(action, actual_target_path, stage_dir).resolve()
-            staged_path.parent.mkdir(parents=True, exist_ok=True)
-            staged_path.write_text(target_text, encoding="utf-8")
+            staged_path = staged_target_path(action, actual_target_path, stage_dir)
+            write_text(staged_path, target_text)
             result["stage_path"] = repo_relative_path(staged_path)
         if write_mode:
             actual_target_path.parent.mkdir(parents=True, exist_ok=True)

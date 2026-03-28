@@ -1,8 +1,8 @@
 # Moyuan Skills Python Backend
 
-This backend exposes the existing `moyuan-skills` repo as a frontend-friendly API.
+这个后端把当前仓库里的真实 `market / docs / bundles / installed-state` 产物暴露成前端可直接消费的 API。
 
-It is designed for the current Next.js frontend under `frontend/`, and it reads the same real assets that the repo already generates:
+它服务于 `frontend/` 下的 Next.js 页面，也复用仓库现有的脚本和产物目录：
 
 - `dist/market/index.json`
 - `dist/market/channels/*.json`
@@ -12,47 +12,44 @@ It is designed for the current Next.js frontend under `frontend/`, and it reads 
 - `docs/teaching/*.md`
 - `bundles/*.json`
 
-## Why this backend exists
+## 为什么需要这个后端
 
-The current frontend already has a clear information architecture:
+前端现在已经不是单纯的静态浏览页，而是要同时承担这些真实动作：
 
-- homepage needs market index + featured channel data
-- skills pages need search/filterable skill summaries
-- skill detail pages need manifest + install spec + markdown docs
-- bundle pages need real bundle composition + install metadata
-- docs pages need a catalog of teaching, skill, and project docs, plus a unified searchable doc list
+- skills / bundles / docs 的 repo-backed 浏览
+- skill / bundle 的本地 install / update / remove
+- installed-state 的 doctor / repair / baseline / governance
+- waiver / apply handoff 的 prepare / stage / verify
+- remote registry install 的 trust / approval / retry / cleanup / rollback
 
-This backend keeps those shapes stable while moving file access out of the frontend.
+这些能力都应该直接复用 `scripts/` 里的真实逻辑，而不是在前端里重复实现一套。
 
-The shared frontend data layer now also derives related-doc navigation, doc-specific context panels, and copy-friendly action-oriented next-step commands from the docs catalog plus skill metadata, so detail pages can keep readers moving without introducing extra recommendation-specific APIs. The frontend now turns those commands into lightweight ordered runbooks with prerequisite, expected-outcome, and artifact/output cues directly in the doc detail UI.
-The backend now exposes a complete local lifecycle API layer plus the first remote registry install API layer for skills and bundles, so the frontend can evolve from copy-first guidance toward true execution flows without reimplementing installer or lifecycle logic. The frontend remote execution cards now add a first trust-and-approval pass on top of those APIs, so remote jobs no longer look unconditional.
-
-## Run
+## 启动
 
 ```text
 pip install -r backend/requirements.txt
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 38083
 ```
 
-Optional Python-only developer helpers are grouped under:
+开发辅助依赖单独放在：
 
 ```text
 pip install -r backend/requirements-dev.txt
 ```
 
-If the repo root is not the current working directory, set:
+如果当前工作目录不是仓库根目录，可以先设置：
 
 ```text
 set MOYUAN_SKILLS_REPO_ROOT=D:\moyuan\moyuan-skills
 ```
 
-Optional CORS override:
+可选的 CORS 覆盖：
 
 ```text
 set MOYUAN_SKILLS_API_CORS=http://127.0.0.1:33003,http://localhost:33003
 ```
 
-## Core endpoints
+## 核心接口
 
 ```text
 GET /health
@@ -73,12 +70,15 @@ POST /api/v1/local/skills/remove
 POST /api/v1/local/bundles/install
 POST /api/v1/local/bundles/update
 POST /api/v1/local/bundles/remove
+GET /api/v1/local/state
 GET /api/v1/local/state/baseline
 POST /api/v1/local/state/baseline/promote
 GET /api/v1/local/state/governance
 POST /api/v1/local/state/governance/refresh
 GET /api/v1/local/state/governance/waiver-apply
 POST /api/v1/local/state/governance/waiver-apply/prepare
+POST /api/v1/local/state/governance/waiver-apply/stage
+POST /api/v1/local/state/governance/waiver-apply/verify
 POST /api/v1/local/state/doctor
 POST /api/v1/local/state/repair
 POST /api/v1/registry/skills/install
@@ -86,89 +86,55 @@ POST /api/v1/registry/bundles/install
 POST /api/v1/registry/cleanup
 POST /api/v1/registry/rollback
 GET /api/v1/local/jobs/{job_id}
-GET /api/v1/local/state
 GET /api/v1/docs/catalog
 GET /api/v1/docs/teaching/{doc_id}
 GET /api/v1/docs/project/{doc_id}
-
-`GET /api/v1/docs/catalog` now returns per-family doc arrays plus a flattened `all_docs` list for frontend filtering.
-The registry mutation layer now also distinguishes staged-cache cleanup from dedicated frontend remote-target rollback, so the UI can offer a lower-risk recovery step after a failed remote run.
 ```
 
-Local lifecycle notes:
+## 当前闭环
 
-- the backend reuses the existing lifecycle scripts under `scripts/`
-- the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
-- the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
-- update/remove/state/doctor/repair/baseline/governance/waiver-apply APIs are now consumed by the frontend installed-state lifecycle surfaces on skill and bundle detail pages
+后端现在已经稳定支撑这些页面动作：
 
-Remote registry notes:
+- 本地 skill / bundle lifecycle
+- installed-state doctor、低风险 repair、baseline history、governance summary
+- waiver / apply handoff 的 prepare、safe stage、refresh verify
+- remote registry install 的审批、失败恢复、staged cache cleanup、限定目录 rollback
 
-- the backend can now resolve `skill id + registry URL` and `bundle id + registry URL`
-- remote artifacts are downloaded into a deterministic cache root before install
-- remote install still reuses the same local installer semantics after staging, including checksum and lifecycle checks
-- the frontend skill and bundle detail pages now proxy these remote install jobs through Next.js API routes
-- the frontend now requires explicit in-page approval before those remote jobs are submitted
-- remote execution cards now surface publisher verification, review status, lifecycle status, and provenance hints before execution starts
-- the backend now also exposes a cleanup job endpoint so the frontend can clear staged cache or failed target roots after a failed remote run
-- the waiver/apply prepare endpoint stays read-only from the frontend: it writes review packs under the target root snapshot area, while stage-mode and write-mode governance source changes still remain CLI-only
+其中 waiver / apply 的语义是：
 
-## Suggested frontend mapping
+- `prepare` 只生成 review pack
+- `stage` 把治理源文件的变更安全地写入专用 staging root，并刷新 aggregate report
+- `verify` 重新校验 staged 结果并刷新 aggregate report
+- `write` 仍然保持 CLI-only，不从页面直接写 repo governance source
 
-- `frontend/app/page.tsx` -> `/api/v1/market/index`, `/api/v1/market/channels/stable`, `/api/v1/market/channels/beta`, `/api/v1/market/categories`
-- `frontend/app/skills/page.tsx` -> `/api/v1/market/skills`, `/api/v1/market/categories`, `/api/v1/market/tags`
-- `frontend/app/skills/[name]/page.tsx` -> `/api/v1/market/skills/{name}`
-- `frontend/app/channels/[channel]/page.tsx` -> `/api/v1/market/channels/{channel}`
-- `frontend/app/bundles/page.tsx` -> `/api/v1/market/bundles`
-- `frontend/app/bundles/[id]/page.tsx` -> `/api/v1/market/bundles/{bundle_id}`
-- `frontend/app/docs/page.tsx` -> `/api/v1/docs/catalog`
-- `frontend/app/docs/teaching/page.tsx` -> `/api/v1/docs/catalog`
-- `frontend/app/docs/teaching/[slug]/page.tsx` -> `/api/v1/docs/teaching/{doc_id}`
-- `frontend/app/docs/project/[slug]/page.tsx` -> `/api/v1/docs/project/{doc_id}`
+另外，Windows 下的 staging 文件名已经做了短名 + hash 处理，避免超长路径导致 stage 失败。
 
-## Frontend API mode
+## 前端对接说明
 
-The frontend now supports both:
+- 前端所有 mutation 都通过 Next.js API route 代理到这里
+- mutation 返回 `job_id`
+- 页面通过 `GET /api/v1/local/jobs/{job_id}` 轮询 job 完成状态
+- docs catalog 同时返回按类型分组的数组和统一的 `all_docs`
 
-- local filesystem mode
-- backend API mode via `SKILLS_MARKET_API_BASE_URL`
+## 本地联调
 
-Example:
+推荐端口：
+
+- frontend: `33003`
+- backend: `38083`
+
+前端 API 模式：
 
 ```text
 set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
 npm run dev:local --prefix frontend
 ```
 
-Recommended local ports:
-
-- frontend: `33003`
-- backend: `38083`
-
-## Playwright end-to-end verification
-
-The repo now includes a Playwright flow that starts this FastAPI backend, the Next.js frontend, and a temporary hosted registry fixture together, then validates homepage, skills, bundle, docs search/filter, teaching, project-doc, ordered command-runbook, prerequisite, expected-outcome, artifact/output, command-copy, and remote registry install flows against the real API:
+## 验证
 
 ```text
-npx playwright install chromium --prefix frontend
+python scripts/check_python_market_backend.py
+python scripts/check_docs_links.py
 npm run build --prefix frontend
 npm run e2e --prefix frontend
-npm run capture:readme-screenshots --prefix frontend
 ```
-
-## Current execution status
-
-What is now available:
-
-- repo-backed read APIs for market, bundle, and docs flows
-- local lifecycle APIs for skill and bundle install, update, remove, state, doctor, repair, baseline promotion, governance refresh, and job polling
-- remote registry install APIs for skill and bundle downloads over HTTP
-- frontend-consumable remote install flows for skill and bundle detail pages
-- frontend trust, approval, retry, and cleanup affordances for the first remote install failure paths
-- frontend-consumable installed-state read, update, remove, doctor, low-risk repair, baseline-history, governance-summary, and waiver/apply handoff prepare flows on skill and bundle detail pages
-- backend smoke coverage for repository reads plus local, remote, doctor, repair, baseline, governance, waiver/apply handoff, and cleanup lifecycle jobs
-
-What is still next:
-
-- deeper installed-state write-mode waiver execution and review-stage governance workspace controls
-- deeper remote policy gating and rollback/reconciliation surfaces for remote installs

@@ -1,4 +1,16 @@
 # Moyuan Skills Market
+
+## 最新进展
+
+这轮把 installed-state governance 继续往前推了一步：
+
+- skill / bundle 详情页里的 waiver / apply 面板现在支持 `prepare / stage / verify`
+- `stage` 会把治理源文件变更安全写入专用 staging root，并回填最新 aggregate report
+- `verify` 会重新校验 staged 结果，并把 blocked / drift / verified 状态同步回页面
+- `write` 仍然保持 CLI-only，不会直接从页面写 repo governance source
+- Windows 下的 staged artifact 文件名已经改成短名 + hash，避免超长路径导致 stage 失败
+
+另外，前端构建除了继续固定 `next build --webpack` 之外，还在 [frontend/next.config.js](./frontend/next.config.js) 里把 `experimental.cpus` 收敛到了更保守的值，用来降低 Windows 上 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
 ## 前端执行状态
 
 当前前端产品面已经支持：

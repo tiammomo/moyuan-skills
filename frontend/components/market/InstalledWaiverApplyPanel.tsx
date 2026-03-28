@@ -18,6 +18,8 @@ interface InstalledWaiverApplyPanelProps {
   governanceState?: LocalInstalledGovernanceState | null;
 }
 
+type WaiverApplyActionMode = 'prepare' | 'stage' | 'verify';
+
 function parseJobPayload<T>(job: LocalJobRecord): T {
   return JSON.parse(job.stdout.trim()) as T;
 }
@@ -75,8 +77,8 @@ function describeWaiverApplyState(
       variant: 'beta',
       note:
         governanceActionCount > 0
-          ? `The latest governance review captured ${governanceActionCount} review action(s). Prepare the first apply handoff pack to inspect patch-ready follow-ups without writing repo governance files from this page.`
-          : 'Governance review is ready. Prepare the first apply handoff pack to see whether any waiver follow-up can move into CLI execution.',
+          ? `The latest governance review captured ${governanceActionCount} review action(s). Prepare the first apply handoff pack to inspect patch-ready follow-ups before any stage or write decision.`
+          : 'Governance review is ready. Prepare the first apply handoff pack to see whether any waiver follow-up can move into staged execution.',
       canPrepare,
     };
   }
@@ -94,9 +96,31 @@ function describeWaiverApplyState(
     return {
       label: 'Apply handoff prepared',
       variant: 'keyword',
-      note: 'The latest handoff refresh generated apply patches and CLI follow-ups. Review the pack here, then continue with stage or write mode from the CLI.',
+      note: 'The latest handoff refresh generated apply patches, stage-ready targets, and CLI follow-ups. You can safely stage from this page, while write mode remains review-first in the CLI.',
       canPrepare,
     };
+  }
+
+  if (waiverApplyState.latest_report.report_state === 'needs_verification_followup') {
+    return {
+      label: 'Staged apply needs follow-up',
+      variant: 'beta',
+      note: 'Execution records exist, but verification still reports pending or blocked follow-up. Re-run verification after manual adjustments, or inspect the staged outputs before any write-mode step.',
+      canPrepare,
+    };
+  }
+
+  if (waiverApplyState.latest_report.report_state === 'verified') {
+      return {
+        label: waiverApplyState.latest_report.apply_execution.write_mode
+          ? 'Written apply verified'
+          : 'Staged apply verified',
+        variant: 'stable',
+        note: waiverApplyState.latest_report.apply_execution.write_mode
+          ? 'The latest waiver/apply run wrote approved changes and verification still matches the reviewed target artifacts.'
+        : 'The latest waiver/apply run staged governance-source changes inside the safe staging root and verification still matches the reviewed target artifacts.',
+        canPrepare,
+      };
   }
 
   if (waiverApplyState.latest_report.report_state === 'drifted') {
@@ -192,16 +216,28 @@ function describeVerificationStatus(action: LocalInstalledWaiverApplyReportActio
   };
 }
 
+function failureFallbackFor(mode: WaiverApplyActionMode): string {
+  if (mode === 'prepare') {
+    return 'Waiver/apply handoff preparation failed.';
+  }
+  if (mode === 'stage') {
+    return 'Waiver/apply stage refresh failed.';
+  }
+  return 'Waiver/apply verification refresh failed.';
+}
+
 export function InstalledWaiverApplyPanel({
   panelTestId,
   targetRoot,
   governanceState,
 }: InstalledWaiverApplyPanelProps) {
   const [waiverApplyState, setWaiverApplyState] = useState<LocalInstalledWaiverApplyState | null>(null);
-  const [prepareJob, setPrepareJob] = useState<LocalJobRecord | null>(null);
+  const [waiverApplyJob, setWaiverApplyJob] = useState<LocalJobRecord | null>(null);
+  const [jobMode, setJobMode] = useState<WaiverApplyActionMode | null>(null);
   const [preparePayload, setPreparePayload] = useState<LocalInstalledWaiverApplyReportSummary | null>(null);
+  const [stagePayload, setStagePayload] = useState<LocalInstalledWaiverApplyReportSummary | null>(null);
+  const [verifyPayload, setVerifyPayload] = useState<LocalInstalledWaiverApplyReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [preparePending, setPreparePending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const loadWaiverApplyState = useCallback(async () => {
@@ -242,28 +278,30 @@ export function InstalledWaiverApplyPanel({
     if (waiverApplyState?.target_root !== targetRoot) {
       setWaiverApplyState(null);
     }
-    setPrepareJob(null);
+    setWaiverApplyJob(null);
+    setJobMode(null);
     setPreparePayload(null);
+    setStagePayload(null);
+    setVerifyPayload(null);
     setLoading(true);
-    setPreparePending(false);
     setErrorMessage(null);
     void loadWaiverApplyState();
   }, [loadWaiverApplyState, targetRoot]);
 
   useEffect(() => {
-    if (!prepareJob || (prepareJob.status !== 'queued' && prepareJob.status !== 'running')) {
+    if (!waiverApplyJob || (waiverApplyJob.status !== 'queued' && waiverApplyJob.status !== 'running')) {
       return undefined;
     }
 
     const timeoutId = window.setTimeout(async () => {
       try {
-        const response = await fetch(`/api/local/jobs/${prepareJob.job_id}`, {
+        const response = await fetch(`/api/local/jobs/${waiverApplyJob.job_id}`, {
           cache: 'no-store',
         });
         const payload = (await response.json()) as LocalJobRecord;
-        setPrepareJob(payload);
+        setWaiverApplyJob(payload);
       } catch (error) {
-        setPreparePending(false);
+        setJobMode(null);
         setErrorMessage(
           `Unable to refresh waiver/apply handoff job status: ${error instanceof Error ? error.message : String(error)}`
         );
@@ -273,35 +311,56 @@ export function InstalledWaiverApplyPanel({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [prepareJob]);
+  }, [waiverApplyJob]);
 
   useEffect(() => {
-    if (!prepareJob || (prepareJob.status !== 'succeeded' && prepareJob.status !== 'failed')) {
+    if (!waiverApplyJob || !jobMode || (waiverApplyJob.status !== 'succeeded' && waiverApplyJob.status !== 'failed')) {
       return;
     }
 
-    setPreparePending(false);
-    if (prepareJob.status === 'failed') {
-      setErrorMessage(jobFailureMessage(prepareJob, 'Waiver/apply handoff preparation failed.'));
+    const completedMode = jobMode;
+    setJobMode(null);
+
+    if (waiverApplyJob.status === 'failed') {
+      setErrorMessage(jobFailureMessage(waiverApplyJob, failureFallbackFor(completedMode)));
       return;
     }
 
     try {
-      setPreparePayload(parseJobPayload<LocalInstalledWaiverApplyReportSummary>(prepareJob));
+      const payload = parseJobPayload<LocalInstalledWaiverApplyReportSummary>(waiverApplyJob);
+      if (completedMode === 'prepare') {
+        setPreparePayload(payload);
+      } else if (completedMode === 'stage') {
+        setStagePayload(payload);
+      } else {
+        setVerifyPayload(payload);
+      }
       void loadWaiverApplyState();
     } catch (error) {
       setErrorMessage(
         `Unable to parse waiver/apply handoff output: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }, [loadWaiverApplyState, prepareJob]);
+  }, [jobMode, loadWaiverApplyState, waiverApplyJob]);
 
-  async function runWaiverApplyPrepare() {
+  async function runWaiverApplyAction(
+    mode: WaiverApplyActionMode,
+    pathname: string,
+    fallbackMessage: string
+  ) {
     setErrorMessage(null);
-    setPreparePending(true);
+    if (mode === 'prepare') {
+      setPreparePayload(null);
+    } else if (mode === 'stage') {
+      setStagePayload(null);
+    } else {
+      setVerifyPayload(null);
+    }
+    setWaiverApplyJob(null);
+    setJobMode(mode);
 
     try {
-      const response = await fetch('/api/local/state/governance/waiver-apply/prepare', {
+      const response = await fetch(pathname, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -314,20 +373,18 @@ export function InstalledWaiverApplyPanel({
 
       const payload = (await response.json()) as LocalJobRecord | { detail?: string };
       if (!response.ok) {
-        setPreparePending(false);
+        setJobMode(null);
         setErrorMessage(
-          payload && 'detail' in payload
-            ? payload.detail ?? 'Waiver/apply handoff preparation failed.'
-            : 'Waiver/apply handoff preparation failed.'
+          payload && 'detail' in payload ? payload.detail ?? fallbackMessage : fallbackMessage
         );
         return;
       }
 
-      setPrepareJob(payload as LocalJobRecord);
+      setWaiverApplyJob(payload as LocalJobRecord);
     } catch (error) {
-      setPreparePending(false);
+      setJobMode(null);
       setErrorMessage(
-        `Waiver/apply handoff request failed: ${error instanceof Error ? error.message : String(error)}`
+        `${fallbackMessage.replace(/\.$/, '')}: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -338,6 +395,13 @@ export function InstalledWaiverApplyPanel({
   );
   const latestReport = waiverApplyState?.latest_report;
   const recentActions = useMemo(() => latestReport?.actions ?? [], [latestReport?.actions]);
+  const actionPending = Boolean(
+    jobMode && waiverApplyJob && (waiverApplyJob.status === 'queued' || waiverApplyJob.status === 'running')
+  );
+  const canStage = Boolean(latestReport && latestReport.action_count > 0 && handoffDescription.canPrepare);
+  const canVerify = Boolean(
+    latestReport?.apply_execution.available && latestReport.apply_execution.action_count > 0
+  );
 
   return (
     <Card className="p-5" data-testid={panelTestId}>
@@ -356,7 +420,7 @@ export function InstalledWaiverApplyPanel({
             </p>
           </div>
           <p className="text-xs text-muted" data-testid={`${panelTestId}-fallback-note`}>
-            This first frontend pass only prepares read-only apply packs, patch files, and CLI follow-ups. Stage mode and write mode still stay review-first outside this page because they update repo governance sources instead of the installed target root itself.
+            This frontend pass can prepare, safely stage, and re-verify waiver/apply artifacts inside the governance staging flow. Write mode still stays review-first outside this page because it updates repo governance sources after explicit approval.
           </p>
         </div>
 
@@ -365,18 +429,66 @@ export function InstalledWaiverApplyPanel({
             type="button"
             variant="secondary"
             onClick={reloadWaiverApplyState}
-            disabled={preparePending}
+            disabled={actionPending}
             data-testid={`${panelTestId}-reload`}
           >
             Reload handoff
           </Button>
           <Button
             type="button"
-            onClick={() => void runWaiverApplyPrepare()}
-            disabled={preparePending || !handoffDescription.canPrepare}
+            onClick={() =>
+              void runWaiverApplyAction(
+                'prepare',
+                '/api/local/state/governance/waiver-apply/prepare',
+                'Waiver/apply handoff preparation failed.'
+              )
+            }
+            disabled={actionPending || !handoffDescription.canPrepare}
             data-testid={`${panelTestId}-prepare`}
           >
-            {preparePending ? 'Preparing handoff...' : latestReport ? 'Refresh apply handoff' : 'Prepare apply handoff'}
+            {actionPending && jobMode === 'prepare'
+              ? 'Preparing handoff...'
+              : latestReport
+                ? 'Refresh apply handoff'
+                : 'Prepare apply handoff'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              void runWaiverApplyAction(
+                'stage',
+                '/api/local/state/governance/waiver-apply/stage',
+                'Waiver/apply stage refresh failed.'
+              )
+            }
+            disabled={actionPending || !canStage}
+            data-testid={`${panelTestId}-stage`}
+          >
+            {actionPending && jobMode === 'stage'
+              ? 'Staging apply...'
+              : latestReport?.apply_execution.available
+                ? 'Restage apply changes'
+                : 'Stage apply changes'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() =>
+              void runWaiverApplyAction(
+                'verify',
+                '/api/local/state/governance/waiver-apply/verify',
+                'Waiver/apply verification refresh failed.'
+              )
+            }
+            disabled={actionPending || !canVerify}
+            data-testid={`${panelTestId}-verify`}
+          >
+            {actionPending && jobMode === 'verify'
+              ? 'Refreshing verification...'
+              : latestReport?.apply_verification.action_count
+                ? 'Refresh verification'
+                : 'Verify staged changes'}
           </Button>
         </div>
       </div>
@@ -385,6 +497,16 @@ export function InstalledWaiverApplyPanel({
         {loading && (
           <p className="text-xs text-muted" data-testid={`${panelTestId}-loading`}>
             Loading waiver/apply handoff...
+          </p>
+        )}
+
+        {actionPending && jobMode && (
+          <p className="text-xs text-muted" data-testid={`${panelTestId}-${jobMode}-loading`}>
+            {jobMode === 'prepare'
+              ? 'Preparing the latest apply handoff pack...'
+              : jobMode === 'stage'
+                ? 'Staging reviewed apply targets and refreshing the report...'
+                : 'Re-verifying staged apply targets and refreshing the report...'}
           </p>
         )}
 
@@ -434,6 +556,25 @@ export function InstalledWaiverApplyPanel({
                     <dd>{latestReport.apply.patch_count}</dd>
                   </div>
                   <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Apply execute summary</dt>
+                    <dd className="text-right break-all">{latestReport.apply_execute_summary_path || '-'}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Stage records</dt>
+                    <dd>
+                      {latestReport.apply_execution.staged_update_count +
+                        latestReport.apply_execution.staged_delete_count}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Blocked apply actions</dt>
+                    <dd>{latestReport.apply_execution.blocked_action_count}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-muted">Verified actions</dt>
+                    <dd>{latestReport.apply_verification.verified_count}</dd>
+                  </div>
+                  <div className="flex justify-between gap-3">
                     <dt className="text-muted">Pending verification</dt>
                     <dd>{latestReport.apply_verification.pending_count}</dd>
                   </div>
@@ -473,6 +614,9 @@ export function InstalledWaiverApplyPanel({
                   )}
                   {action.apply_patch_path && (
                     <p className="mt-1 break-all text-muted">patch: {action.apply_patch_path}</p>
+                  )}
+                  {action.apply_execute_stage_path && (
+                    <p className="mt-1 break-all text-muted">staged: {action.apply_execute_stage_path}</p>
                   )}
                   {action.verification_message && <p className="mt-1 text-muted">{action.verification_message}</p>}
                 </div>
@@ -518,6 +662,68 @@ export function InstalledWaiverApplyPanel({
               <div className="flex justify-between gap-3">
                 <dt className="text-muted">Pending verification</dt>
                 <dd>{preparePayload.apply_verification.pending_count}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+
+        {stagePayload && (
+          <div
+            className="rounded-card border border-line bg-paper/70 px-4 py-4"
+            data-testid={`${panelTestId}-stage-summary`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip variant={stagePayload.apply_verification.passes ? 'stable' : 'beta'}>Stage refreshed</Chip>
+              <p className="text-sm font-semibold text-ink">{stagePayload.report_state}</p>
+            </div>
+            <dl className="mt-3 space-y-2 text-xs text-ink">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Staged updates</dt>
+                <dd>{stagePayload.apply_execution.staged_update_count}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Staged deletes</dt>
+                <dd>{stagePayload.apply_execution.staged_delete_count}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Blocked actions</dt>
+                <dd>{stagePayload.apply_execution.blocked_action_count}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Verified actions</dt>
+                <dd>{stagePayload.apply_verification.verified_count}</dd>
+              </div>
+            </dl>
+          </div>
+        )}
+
+        {verifyPayload && (
+          <div
+            className="rounded-card border border-line bg-paper/70 px-4 py-4"
+            data-testid={`${panelTestId}-verify-summary`}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Chip variant={verifyPayload.apply_verification.passes ? 'stable' : 'beta'}>
+                Verification refreshed
+              </Chip>
+              <p className="text-sm font-semibold text-ink">{verifyPayload.report_state}</p>
+            </div>
+            <dl className="mt-3 space-y-2 text-xs text-ink">
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Verified actions</dt>
+                <dd>{verifyPayload.apply_verification.verified_count}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Pending verification</dt>
+                <dd>{verifyPayload.apply_verification.pending_count}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Blocked verification</dt>
+                <dd>{verifyPayload.apply_verification.blocked_count}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-muted">Drift findings</dt>
+                <dd>{verifyPayload.apply_verification.drift_count}</dd>
               </div>
             </dl>
           </div>
