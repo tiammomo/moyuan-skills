@@ -562,10 +562,19 @@ export interface RemoteTrustEntry {
   tone?: 'default' | 'positive' | 'warning' | 'critical';
 }
 
+export interface RemoteExecutionPolicyGate {
+  state: 'ready' | 'review' | 'blocked';
+  title: string;
+  summary: string;
+  follow_ups: string[];
+  blocks_execution: boolean;
+}
+
 export interface RemoteExecutionTrustSummary {
   title: string;
   entries: RemoteTrustEntry[];
   warnings: string[];
+  policy_gate: RemoteExecutionPolicyGate;
   approval_required: boolean;
   approval_label: string;
   approval_help: string;

@@ -140,6 +140,172 @@ async function hasPackagedProvenance(skillName: string, version: string): Promis
   return fileExists(path.join(DATA_ROOT, 'dist', 'market', 'provenance', `${skillName}-${version}.json`));
 }
 
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function buildSkillPolicyGate({
+  publisherVerified,
+  reviewStatus,
+  lifecycleStatus,
+  humanReviewRequired,
+}: {
+  publisherVerified: boolean;
+  reviewStatus: string;
+  lifecycleStatus: string;
+  humanReviewRequired: boolean;
+}): RemoteExecutionTrustSummary['policy_gate'] {
+  if (lifecycleStatus === 'blocked' || lifecycleStatus === 'archived') {
+    return {
+      state: 'blocked',
+      title: 'Policy gate blocks this remote install',
+      summary: `Lifecycle status is ${formatLifecycleStatus(lifecycleStatus).toLowerCase()}, so the frontend keeps the remote install button disabled for this version.`,
+      follow_ups: uniqueStrings([
+        'Choose a different skill version or release channel before retrying.',
+        'Review replacement or sunset notes in the skill metadata.',
+        'Keep using the copy-first CLI guidance if you only need to inspect the packaged install spec.',
+      ]),
+      blocks_execution: true,
+    };
+  }
+
+  const reasons: string[] = [];
+  const followUps: string[] = [];
+
+  if (!publisherVerified) {
+    reasons.push('the publisher is not marked as verified');
+    followUps.push('Confirm the publisher identity before allowing the network fetch.');
+  }
+  if (reviewStatus !== 'reviewed') {
+    reasons.push(`review status is ${formatReviewStatus(reviewStatus).toLowerCase()}`);
+    followUps.push('Prefer a reviewed release when one is available.');
+  }
+  if (lifecycleStatus === 'deprecated') {
+    reasons.push('lifecycle status is deprecated');
+    followUps.push('Review replacement or sunset notes before continuing.');
+  }
+  if (humanReviewRequired) {
+    reasons.push('the skill requests human review');
+    followUps.push('Keep a human reviewer in the loop for this run.');
+  }
+
+  if (reasons.length > 0) {
+    return {
+      state: 'review',
+      title: 'Policy gate requires operator review',
+      summary: `Remote execution is still available, but ${reasons.join(', ')}.`,
+      follow_ups: uniqueStrings([
+        ...followUps,
+        'Approval must still be captured in-page before the backend job can start.',
+      ]),
+      blocks_execution: false,
+    };
+  }
+
+  return {
+    state: 'ready',
+    title: 'Policy gate cleared',
+    summary:
+      'The current publisher, review, and lifecycle signals do not block remote execution. Approval is still required before the backend job can start.',
+    follow_ups: [
+      'Confirm the registry URL and cache target before you run the backend job.',
+      'Use rollback if a later failed run leaves this remote target root in an unwanted state.',
+    ],
+    blocks_execution: false,
+  };
+}
+
+function buildBundlePolicyGate({
+  manifestCount,
+  publisherVerifiedCount,
+  reviewedCount,
+  deprecatedCount,
+  blockedCount,
+  archivedCount,
+  humanReviewCount,
+}: {
+  manifestCount: number;
+  publisherVerifiedCount: number;
+  reviewedCount: number;
+  deprecatedCount: number;
+  blockedCount: number;
+  archivedCount: number;
+  humanReviewCount: number;
+}): RemoteExecutionTrustSummary['policy_gate'] {
+  if (manifestCount === 0) {
+    return {
+      state: 'blocked',
+      title: 'Policy gate blocks this remote bundle install',
+      summary:
+        'The bundle members could not be resolved from local market metadata, so the frontend cannot safely classify the remote install.',
+      follow_ups: [
+        'Refresh the local market artifacts before retrying.',
+        'Use the copy-first bundle commands if you only need an operator-visible plan.',
+      ],
+      blocks_execution: true,
+    };
+  }
+
+  if (blockedCount > 0 || archivedCount > 0) {
+    return {
+      state: 'blocked',
+      title: 'Policy gate blocks this remote bundle install',
+      summary: `Bundle members include ${blockedCount} blocked and ${archivedCount} archived skill(s), so the frontend keeps remote execution disabled for this bundle.`,
+      follow_ups: uniqueStrings([
+        'Choose a safer bundle or remove blocked members before retrying.',
+        'Inspect lifecycle notes for the affected bundle members.',
+        'Keep using the copy-first local bundle commands when you only need a reviewable plan.',
+      ]),
+      blocks_execution: true,
+    };
+  }
+
+  const reasons: string[] = [];
+  const followUps: string[] = [];
+
+  if (publisherVerifiedCount !== manifestCount) {
+    reasons.push('one or more publishers are not marked as verified');
+    followUps.push('Confirm the bundle publishers before allowing the network fetch.');
+  }
+  if (reviewedCount !== manifestCount) {
+    reasons.push(`${reviewedCount} of ${manifestCount} members are reviewed`);
+    followUps.push('Prefer a bundle whose members all stay on reviewed releases.');
+  }
+  if (deprecatedCount > 0) {
+    reasons.push(`${deprecatedCount} member(s) are deprecated`);
+    followUps.push('Review replacement or sunset notes for the deprecated members.');
+  }
+  if (humanReviewCount > 0) {
+    reasons.push(`${humanReviewCount} member(s) request human review`);
+    followUps.push('Keep a human reviewer in the loop for this bundle run.');
+  }
+
+  if (reasons.length > 0) {
+    return {
+      state: 'review',
+      title: 'Policy gate requires operator review',
+      summary: `Remote bundle execution is still available, but ${reasons.join(', ')}.`,
+      follow_ups: uniqueStrings([
+        ...followUps,
+        'Approval must still be captured in-page before the backend job can start.',
+      ]),
+      blocks_execution: false,
+    };
+  }
+
+  return {
+    state: 'ready',
+    title: 'Policy gate cleared',
+    summary:
+      'The current bundle publishers, review coverage, and lifecycle mix do not block remote execution. Approval is still required before the backend job can start.',
+    follow_ups: [
+      'Confirm the registry URL and cache target before you run the backend job.',
+      'Use rollback if a later failed run leaves this bundle target root in an unwanted state.',
+    ],
+    blocks_execution: false,
+  };
+}
+
 export async function getSkillRemoteTrustSummary(
   detail: SkillDetailPayload
 ): Promise<RemoteExecutionTrustSummary> {
@@ -148,6 +314,12 @@ export async function getSkillRemoteTrustSummary(
   const reviewStatus = manifest.quality?.review_status || manifest.review_status;
   const lifecycleStatus = manifest.lifecycle?.status || 'unknown';
   const provenanceAvailable = await hasPackagedProvenance(manifest.name, manifest.version);
+  const policyGate = buildSkillPolicyGate({
+    publisherVerified: Boolean(publisherProfile?.verified),
+    reviewStatus,
+    lifecycleStatus,
+    humanReviewRequired: Boolean(manifest.permissions?.human_review_required),
+  });
   const warnings: string[] = [];
 
   if (!publisherProfile?.verified) {
@@ -197,7 +369,8 @@ export async function getSkillRemoteTrustSummary(
       },
     ],
     warnings,
-    approval_required: true,
+    policy_gate: policyGate,
+    approval_required: !policyGate.blocks_execution,
     approval_label:
       'I reviewed the publisher, lifecycle status, and cache target before submitting this remote skill install.',
     approval_help:
@@ -228,6 +401,19 @@ export async function getBundleRemoteTrustSummary(
   const provenanceCount = (
     await Promise.all(manifests.map((manifest) => hasPackagedProvenance(manifest.name, manifest.version)))
   ).filter(Boolean).length;
+  const publisherVerifiedCount = publisherProfiles.filter((profile) => profile?.verified).length;
+  const deprecatedCount = lifecycleCounts.deprecated || 0;
+  const blockedCount = lifecycleCounts.blocked || 0;
+  const archivedCount = lifecycleCounts.archived || 0;
+  const policyGate = buildBundlePolicyGate({
+    manifestCount: manifests.length,
+    publisherVerifiedCount,
+    reviewedCount,
+    deprecatedCount,
+    blockedCount,
+    archivedCount,
+    humanReviewCount,
+  });
   const warnings: string[] = [];
 
   if (publisherProfiles.some((profile) => !profile?.verified)) {
@@ -285,7 +471,8 @@ export async function getBundleRemoteTrustSummary(
       },
     ],
     warnings,
-    approval_required: true,
+    policy_gate: policyGate,
+    approval_required: !policyGate.blocks_execution,
     approval_label:
       'I reviewed the bundle publishers, lifecycle warnings, and cache target before submitting this remote bundle install.',
     approval_help:

@@ -84,6 +84,7 @@ POST /api/v1/local/state/repair
 POST /api/v1/registry/skills/install
 POST /api/v1/registry/bundles/install
 POST /api/v1/registry/cleanup
+POST /api/v1/registry/rollback
 GET /api/v1/local/jobs/{job_id}
 GET /api/v1/local/state
 GET /api/v1/docs/catalog
@@ -91,6 +92,7 @@ GET /api/v1/docs/teaching/{doc_id}
 GET /api/v1/docs/project/{doc_id}
 
 `GET /api/v1/docs/catalog` now returns per-family doc arrays plus a flattened `all_docs` list for frontend filtering.
+The registry mutation layer now also distinguishes staged-cache cleanup from dedicated frontend remote-target rollback, so the UI can offer a lower-risk recovery step after a failed remote run.
 ```
 
 Local lifecycle notes:

@@ -19,6 +19,7 @@ export type ExecutionRequestPath =
   | '/api/local/bundles/update'
   | '/api/local/bundles/remove'
   | '/api/registry/cleanup'
+  | '/api/registry/rollback'
   | '/api/registry/skills/install'
   | '/api/registry/bundles/install';
 
@@ -48,6 +49,10 @@ export interface LocalExecutionCardProps {
   remoteTrust?: RemoteExecutionTrustSummary | null;
   cleanupRequestPath?: ExecutionRequestPath;
   cleanupRequestBody?: Record<string, unknown>;
+  rollbackRequestPath?: ExecutionRequestPath;
+  rollbackRequestBody?: Record<string, unknown>;
+  rollbackButtonLabel?: string;
+  rollbackRunningLabel?: string;
   onJobSettled?: (job: LocalJobRecord) => void;
 }
 
@@ -57,6 +62,8 @@ interface RecoveryDescriptor {
   summary: string;
   hints: string[];
 }
+
+type RecoveryMode = 'cleanup' | 'rollback';
 
 function formatValue(value: unknown): string {
   if (Array.isArray(value)) {
@@ -95,6 +102,28 @@ function formatStatus(status: LocalJobRecord['status'] | 'idle'): string {
   return 'Failed';
 }
 
+function formatPolicyGateState(state: RemoteExecutionTrustSummary['policy_gate']['state']): string {
+  if (state === 'blocked') {
+    return 'Blocked';
+  }
+  if (state === 'review') {
+    return 'Needs review';
+  }
+  return 'Ready';
+}
+
+function policyGateVariant(
+  state: RemoteExecutionTrustSummary['policy_gate']['state']
+): 'keyword' | 'beta' | 'internal' {
+  if (state === 'blocked') {
+    return 'internal';
+  }
+  if (state === 'review') {
+    return 'beta';
+  }
+  return 'keyword';
+}
+
 function isRegistryExecutionPath(path: ExecutionRequestPath): boolean {
   return path === '/api/registry/skills/install' || path === '/api/registry/bundles/install';
 }
@@ -124,7 +153,7 @@ function detectRecoveryDescriptor(job: LocalJobRecord | null, errorMessage: stri
       hints: [
         'Check the registry URL and make sure the hosted registry is reachable from the backend.',
         'Retry after the registry fixture or remote host is available again.',
-        'Use cleanup if you want to clear partially staged cache or target files before retrying.',
+        'Use cleanup to clear staged cache, or rollback to reset the dedicated remote target root before retrying.',
       ],
     };
   }
@@ -145,7 +174,7 @@ function detectRecoveryDescriptor(job: LocalJobRecord | null, errorMessage: stri
       hints: [
         'Review the trust summary, lifecycle status, and provenance hints before retrying.',
         'Choose a different skill or bundle version if the current one is blocked, archived, or otherwise not installable.',
-        'Use cleanup if you want to reset staged files before trying a safer target.',
+        'Use cleanup to clear staged cache, or rollback if you want to reset the dedicated remote target root.',
       ],
     };
   }
@@ -157,7 +186,7 @@ function detectRecoveryDescriptor(job: LocalJobRecord | null, errorMessage: stri
       summary: errorMessage,
       hints: [
         'Check the backend proxy health and the required form fields before retrying.',
-        'If the request reached the backend earlier, use cleanup to clear any partially staged files.',
+        'If the request reached the backend earlier, use cleanup to clear staged cache or rollback to reset the remote target root.',
       ],
     };
   }
@@ -168,7 +197,7 @@ function detectRecoveryDescriptor(job: LocalJobRecord | null, errorMessage: stri
     summary: 'The remote payload was staged, but the downstream local installer still failed to complete cleanly.',
     hints: [
       'Review stdout and stderr to see whether the failure happened during extraction or lockfile reconciliation.',
-      'Use cleanup to remove staged cache and target files before retrying.',
+      'Use cleanup to clear staged cache or rollback to reset the dedicated remote target root before retrying.',
       'Keep the copy-first CLI fallback available if you want to rerun the exact command manually.',
     ],
   };
@@ -191,6 +220,10 @@ export function LocalExecutionCard({
   remoteTrust = null,
   cleanupRequestPath,
   cleanupRequestBody,
+  rollbackRequestPath,
+  rollbackRequestBody,
+  rollbackButtonLabel = 'Rollback remote target',
+  rollbackRunningLabel = 'Rolling back...',
   onJobSettled,
 }: LocalExecutionCardProps) {
   const [availability, setAvailability] = useState<LocalBackendStatus | null>(null);
@@ -198,7 +231,7 @@ export function LocalExecutionCard({
   const [recoveryJob, setRecoveryJob] = useState<LocalJobRecord | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeMode, setActiveMode] = useState<'install' | 'dry-run' | null>(null);
-  const [recoveryMode, setRecoveryMode] = useState<'cleanup' | null>(null);
+  const [recoveryMode, setRecoveryMode] = useState<RecoveryMode | null>(null);
   const [reportedCompletionJobId, setReportedCompletionJobId] = useState<string | null>(null);
   const [approvalChecked, setApprovalChecked] = useState(false);
   const [lastSubmittedDryRun, setLastSubmittedDryRun] = useState<boolean | null>(null);
@@ -208,6 +241,8 @@ export function LocalExecutionCard({
 
   const approvalRequired = Boolean(remoteTrust?.approval_required);
   const approvalMissing = approvalRequired && !approvalChecked;
+  const policyGate = remoteTrust?.policy_gate ?? null;
+  const policyBlocked = Boolean(policyGate?.blocks_execution);
   const isRegistryExecution = isRegistryExecutionPath(requestPath);
 
   useEffect(() => {
@@ -366,8 +401,15 @@ export function LocalExecutionCard({
   async function runExecution(dryRun: boolean) {
     setErrorMessage(null);
     setRecoveryJob(null);
+    setRecoveryMode(null);
     setActiveMode(dryRun ? 'dry-run' : 'install');
     setLastSubmittedDryRun(dryRun);
+
+    if (policyBlocked) {
+      setActiveMode(null);
+      setErrorMessage(policyGate?.summary ?? 'Remote execution is blocked by the current policy gate.');
+      return;
+    }
 
     if (approvalMissing) {
       setActiveMode(null);
@@ -418,21 +460,23 @@ export function LocalExecutionCard({
     }
   }
 
-  async function runCleanup() {
-    if (!cleanupRequestPath || !cleanupRequestBody) {
+  async function runRecovery(mode: RecoveryMode) {
+    const requestPathForMode = mode === 'rollback' ? rollbackRequestPath : cleanupRequestPath;
+    const requestBodyForMode = mode === 'rollback' ? rollbackRequestBody : cleanupRequestBody;
+    if (!requestPathForMode || !requestBodyForMode) {
       return;
     }
 
     setErrorMessage(null);
-    setRecoveryMode('cleanup');
+    setRecoveryMode(mode);
 
     try {
-      const response = await fetch(cleanupRequestPath, {
+      const response = await fetch(requestPathForMode, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
         },
-        body: JSON.stringify(cleanupRequestBody),
+        body: JSON.stringify(requestBodyForMode),
       });
 
       const payload = (await response.json()) as LocalJobRecord | { detail?: string };
@@ -440,7 +484,11 @@ export function LocalExecutionCard({
         setRecoveryJob(null);
         setRecoveryMode(null);
         setErrorMessage(
-          payload && 'detail' in payload ? payload.detail ?? 'Remote cleanup failed.' : 'Remote cleanup failed.'
+          payload && 'detail' in payload
+            ? payload.detail ?? (mode === 'rollback' ? 'Remote rollback failed.' : 'Remote cleanup failed.')
+            : mode === 'rollback'
+              ? 'Remote rollback failed.'
+              : 'Remote cleanup failed.'
         );
         return;
       }
@@ -449,11 +497,15 @@ export function LocalExecutionCard({
     } catch (error) {
       setRecoveryJob(null);
       setRecoveryMode(null);
-      setErrorMessage(`Remote cleanup request failed: ${error instanceof Error ? error.message : String(error)}`);
+      setErrorMessage(
+        `${mode === 'rollback' ? 'Remote rollback' : 'Remote cleanup'} request failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
     }
   }
 
-  const buttonsDisabled = !availability?.available || activeMode !== null || approvalMissing;
+  const buttonsDisabled = !availability?.available || activeMode !== null || approvalMissing || policyBlocked;
   const recoveryButtonsDisabled = !availability?.available || recoveryMode !== null;
   const status = formatStatus(job?.status ?? 'idle');
   const statusVariant =
@@ -461,6 +513,13 @@ export function LocalExecutionCard({
   const recoveryDescriptor = isRegistryExecution ? detectRecoveryDescriptor(job, errorMessage) : null;
   const canRetry = Boolean(recoveryDescriptor) && lastSubmittedDryRun !== null;
   const canCleanup = Boolean(recoveryDescriptor) && Boolean(cleanupRequestPath && cleanupRequestBody);
+  const canRollback =
+    Boolean(recoveryDescriptor) &&
+    lastSubmittedDryRun === false &&
+    Boolean(rollbackRequestPath && rollbackRequestBody);
+  const recoveryJobModeResolved: RecoveryMode | null = recoveryMode
+    ?? (recoveryJob && String(recoveryJob.summary.mode) === 'rollback' ? 'rollback' : recoveryJob ? 'cleanup' : null);
+  const recoveryJobLabel = recoveryJobModeResolved === 'rollback' ? 'Rollback job' : 'Cleanup job';
 
   const summaryEntries = job
     ? [
@@ -526,6 +585,36 @@ export function LocalExecutionCard({
                 </p>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {policyGate && (
+        <div
+          className="mb-4 rounded-card border border-line bg-bg/70 px-4 py-4"
+          data-testid={`${panelTestId}-policy-gate`}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip
+              variant={policyGateVariant(policyGate.state)}
+              data-testid={`${panelTestId}-policy-gate-state`}
+            >
+              {formatPolicyGateState(policyGate.state)}
+            </Chip>
+            <p className="text-sm font-semibold text-ink">{policyGate.title}</p>
+          </div>
+          <p className="mt-2 text-sm text-ink" data-testid={`${panelTestId}-policy-gate-summary`}>
+            {policyGate.summary}
+          </p>
+          <div className="mt-3 space-y-1 text-xs text-ink" data-testid={`${panelTestId}-policy-gate-follow-ups`}>
+            {policyGate.follow_ups.map((followUp) => (
+              <p key={followUp}>{followUp}</p>
+            ))}
+          </div>
+          {policyBlocked && (
+            <p className="mt-3 text-xs text-accent" data-testid={`${panelTestId}-policy-gate-blocked`}>
+              Remote execution stays disabled until this policy gate is cleared.
+            </p>
           )}
         </div>
       )}
@@ -655,25 +744,39 @@ export function LocalExecutionCard({
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => void runCleanup()}
+                  onClick={() => void runRecovery('cleanup')}
                   disabled={recoveryButtonsDisabled}
                   data-testid={`${panelTestId}-cleanup`}
                 >
                   {recoveryMode === 'cleanup' ? 'Cleaning up...' : 'Clean staged remote files'}
                 </Button>
               )}
+              {canRollback && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => void runRecovery('rollback')}
+                  disabled={recoveryButtonsDisabled}
+                  data-testid={`${panelTestId}-rollback`}
+                >
+                  {recoveryMode === 'rollback' ? rollbackRunningLabel : rollbackButtonLabel}
+                </Button>
+              )}
             </div>
 
             {recoveryJob && (
-              <div className="mt-4 rounded-card border border-line bg-paper/70 px-3 py-3" data-testid={`${panelTestId}-cleanup-summary`}>
+              <div
+                className="mt-4 rounded-card border border-line bg-paper/70 px-3 py-3"
+                data-testid={`${panelTestId}-${recoveryJobModeResolved === 'rollback' ? 'rollback' : 'cleanup'}-summary`}
+              >
                 <div className="flex flex-wrap items-center gap-2">
                   <Chip
                     variant={recoveryJob.status === 'succeeded' ? 'keyword' : recoveryJob.status === 'failed' ? 'internal' : 'tag'}
-                    data-testid={`${panelTestId}-cleanup-status`}
+                    data-testid={`${panelTestId}-${recoveryJobModeResolved === 'rollback' ? 'rollback' : 'cleanup'}-status`}
                   >
                     {formatStatus(recoveryJob.status)}
                   </Chip>
-                  <span className="text-xs text-muted">Cleanup job</span>
+                  <span className="text-xs text-muted">{recoveryJobLabel}</span>
                 </div>
                 <dl className="mt-2 space-y-2 text-xs text-ink">
                   <div className="flex justify-between gap-3">

@@ -1,20 +1,16 @@
-# Skills Market Docs
-## Frontend Execution Status
+# Skills Market 文档索引
+## 当前前端执行状态
 
-The current frontend surface now supports:
+当前前端产品面已经支持：
 
-- local skill install, update, and remove through the backend
-- local bundle install, update, and remove through the backend
-- installed-state doctor plus low-risk repair on skill and bundle detail pages
-- installed-state baseline capture plus retained baseline history on skill and bundle detail pages
-- installed-state governance summary refresh on skill and bundle detail pages
-- installed-state waiver/apply handoff prepare on skill and bundle detail pages
-- installed-state detail panels refreshing target-root state from backend job completion plus manual refresh
-- remote registry install for skills and bundles
-- explicit trust summaries plus approval before remote execution starts
-- retry plus staged-file cleanup after the first failed remote registry runs
+- 通过 backend 执行本地 skill / bundle install、update、remove
+- 在 skill / bundle 详情页读取 installed-state，并执行 doctor、repair、baseline、governance、waiver/apply prepare
+- 远端 registry install
+- 远端 trust summary、policy gate、approval
+- 远端失败后的 retry、staged cache cleanup、remote target rollback
+- installed-state 面板在 backend job 完成后按 target root 刷新，同时保留手动刷新
 
-The next gap is stronger remote policy gating and rollback, while deeper waiver write-mode execution still stays in a later installed-state pass. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md) and the current iteration note [frontend-remote-policy-rollback-iteration.md](./frontend-remote-policy-rollback-iteration.md).
+当前下一块缺口已经转向 governance write-mode execution。路线图见 [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md)，下一轮规划见 [frontend-governance-write-mode-iteration.md](./frontend-governance-write-mode-iteration.md)。
 
 ## 新增中文 Skills 教学案例
 

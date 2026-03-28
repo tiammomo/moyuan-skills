@@ -166,6 +166,11 @@ export default async function SkillDetailPage({ params }: Props) {
                     }}
                     cleanupRequestPath="/api/registry/cleanup"
                     cleanupRequestBody={{
+                      cache_root: 'dist/frontend-remote-execution/cache',
+                      scope: `remote-skill:${manifest.id}`,
+                    }}
+                    rollbackRequestPath="/api/registry/rollback"
+                    rollbackRequestBody={{
                       target_root: `dist/frontend-remote-execution/skills/${manifest.name}`,
                       cache_root: 'dist/frontend-remote-execution/cache',
                       scope: `remote-skill:${manifest.id}`,
@@ -183,7 +188,7 @@ export default async function SkillDetailPage({ params }: Props) {
                         required: true,
                       },
                     ]}
-                    fallbackNote="This frontend pass now exposes trust, approval, retry, and cleanup for remote install. Rollback and deeper policy gating still live in later roadmap phases."
+                    fallbackNote="This frontend pass now exposes trust, policy gating, approval, retry, staged-cache cleanup, and dedicated remote-target rollback for remote install."
                   />
                 </div>
               </Card>

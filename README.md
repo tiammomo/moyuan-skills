@@ -10,10 +10,10 @@
 - skill 详情页和 bundle 详情页生成第一版 waiver / apply handoff prepare，并展示 patch pack 与 CLI follow-up
 - installed-state 面板在 backend job 完成后按 target root 刷新，同时保留显式 `Refresh state`
 - skill 与 bundle 的 remote registry install
-- remote execution 前的显式 trust summary 与 approval
-- 第一次 remote registry 失败后的 retry 与 staged-file cleanup
+- remote execution 前的显式 trust summary、policy gate 与 approval
+- 第一次 remote registry 失败后的 retry、staged-file cleanup 与 remote target rollback
 
-当前下一块缺口主要是更强的 remote policy gating、rollback，以及更深一层的 waiver write-mode execution。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)。
+当前下一块缺口主要是更深一层的 waiver write-mode execution。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)。
 
 Python-only 的开发辅助依赖已经迁到 `backend/requirements-dev.txt`，这样仓库根目录只保留主入口文件。
 仓库也会继续忽略被跟踪的 PowerShell 辅助脚本，避免工具链逐渐漂移成 Windows-only 入口。
@@ -223,6 +223,8 @@ python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --
 - `python scripts/check_market_pipeline.py --output-root dist/market-smoke-readme`
 - `npm run build --prefix frontend`
 - `npm run e2e --prefix frontend`
+
+其中 `npm run build --prefix frontend` 当前默认走 `next build --webpack`，用于规避当前 Windows 环境下默认 Turbopack worker 的间歇性崩溃。
 
 ## 一句话定位
 

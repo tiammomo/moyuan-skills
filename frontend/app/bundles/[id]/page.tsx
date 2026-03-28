@@ -159,6 +159,11 @@ export default async function BundleDetailPage({ params }: Props) {
               }}
               cleanupRequestPath="/api/registry/cleanup"
               cleanupRequestBody={{
+                cache_root: 'dist/frontend-remote-execution/cache',
+                scope: `remote-bundle:${bundle.id}`,
+              }}
+              rollbackRequestPath="/api/registry/rollback"
+              rollbackRequestBody={{
                 target_root: `dist/frontend-remote-execution/bundles/${bundle.id}`,
                 cache_root: 'dist/frontend-remote-execution/cache',
                 scope: `remote-bundle:${bundle.id}`,
@@ -176,7 +181,7 @@ export default async function BundleDetailPage({ params }: Props) {
                   required: true,
                 },
               ]}
-              fallbackNote="This frontend pass now exposes trust, approval, retry, and cleanup for remote bundle install. Update, remove, and deeper recovery UI still live in later roadmap phases."
+              fallbackNote="This frontend pass now exposes trust, policy gating, approval, retry, staged-cache cleanup, and dedicated remote-target rollback for remote bundle install."
             />
           </section>
 

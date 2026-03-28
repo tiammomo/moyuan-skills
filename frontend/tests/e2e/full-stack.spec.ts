@@ -9,8 +9,14 @@ test.setTimeout(120_000);
 test('frontend works against the Python backend across core market flows', async ({ page }) => {
   const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
   const bundleTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'bundles', 'release-engineering-starter');
+  const remoteSkillTargetRoot = path.join(repoRoot, 'dist', 'frontend-remote-execution', 'skills', 'release-note-writer');
+  const remoteBundleTargetRoot = path.join(repoRoot, 'dist', 'frontend-remote-execution', 'bundles', 'release-engineering-starter');
+  const remoteCacheRoot = path.join(repoRoot, 'dist', 'frontend-remote-execution', 'cache');
   await fs.rm(skillTargetRoot, { recursive: true, force: true });
   await fs.rm(bundleTargetRoot, { recursive: true, force: true });
+  await fs.rm(remoteSkillTargetRoot, { recursive: true, force: true });
+  await fs.rm(remoteBundleTargetRoot, { recursive: true, force: true });
+  await fs.rm(remoteCacheRoot, { recursive: true, force: true });
 
   await page.goto('/');
 
@@ -148,6 +154,9 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-registry-execution-trust')).toContainText(
     'Moyuan Skills Team (official verified)'
   );
+  await expect(page.getByTestId('skill-registry-execution-policy-gate-state')).toContainText(
+    /Ready|Needs review/
+  );
   await expect(page.getByTestId('skill-registry-execution-approval-state')).toContainText(
     'Waiting for explicit approval'
   );
@@ -165,6 +174,7 @@ test('frontend works against the Python backend across core market flows', async
   );
   await expect(page.getByTestId('skill-registry-execution-retry')).toBeVisible();
   await expect(page.getByTestId('skill-registry-execution-cleanup')).toBeVisible();
+  await expect(page.getByTestId('skill-registry-execution-rollback')).toBeVisible();
   await page.getByTestId('skill-registry-execution-cleanup').click();
   await expect(page.getByTestId('skill-registry-execution-cleanup-status')).toContainText('Succeeded', {
     timeout: 20000,
@@ -174,6 +184,31 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('moyuan.release-note-writer');
   await expect(page.getByTestId('skill-registry-execution-summary')).toContainText('http://127.0.0.1:38765');
+  await expect(await fs.stat(remoteSkillTargetRoot).then(() => true).catch(() => false)).toBeTruthy();
+  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38766');
+  await page.getByTestId('skill-registry-execution-run').click();
+  await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Failed', { timeout: 20000 });
+  await page.getByTestId('skill-registry-execution-rollback').click();
+  await expect(page.getByTestId('skill-registry-execution-rollback-status')).toContainText('Succeeded', {
+    timeout: 20000,
+  });
+  await expect(await fs.stat(remoteSkillTargetRoot).then(() => true).catch(() => false)).toBeFalsy();
+  await expect(await fs.stat(remoteCacheRoot).then(() => true).catch(() => false)).toBeFalsy();
+  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await page.getByTestId('skill-registry-execution-retry').click();
+  await expect(page.getByTestId('skill-registry-execution-status')).toContainText('Succeeded', { timeout: 20000 });
+
+  await page.goto('/skills/harness-engineering');
+  await expect(page.getByTestId('skill-registry-execution-policy-gate-state')).toContainText('Blocked');
+  await expect(page.getByTestId('skill-registry-execution-policy-gate-summary')).toContainText(
+    'Lifecycle status is archived'
+  );
+  await expect(page.getByTestId('skill-registry-execution-policy-gate-blocked')).toContainText(
+    'Remote execution stays disabled'
+  );
+  await page.getByTestId('skill-registry-execution-field-registry_url').fill('http://127.0.0.1:38765');
+  await expect(page.getByTestId('skill-registry-execution-run')).toBeDisabled();
+  await expect(page.getByTestId('skill-registry-execution-dry-run')).toBeDisabled();
 
   await page.goto('/bundles');
   await expect(page.getByTestId('bundle-card-release-engineering-starter')).toBeVisible();
@@ -213,6 +248,9 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('bundle-registry-execution-trust')).toContainText(
     '3 of 3 skills reviewed'
   );
+  await expect(page.getByTestId('bundle-registry-execution-policy-gate-state')).toContainText(
+    /Ready|Needs review/
+  );
   await expect(page.getByTestId('bundle-registry-execution-approval-state')).toContainText(
     'Waiting for explicit approval'
   );
@@ -237,7 +275,7 @@ test('frontend works against the Python backend across core market flows', async
     page.waitForURL(/\/docs\/project\/frontend-backend-integration$/),
     page.getByTestId('docs-result-project-frontend-backend-integration').click(),
   ]);
-  await expect(page.getByRole('heading', { name: /frontend \/ backend integration/i }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: /前端\s*\/\s*后端集成/i }).first()).toBeVisible();
   await expect(page.getByTestId('doc-action-panel')).toBeVisible();
   await expect(page.getByTestId('doc-action-runbook-hint')).toContainText('Recommended run order');
   await expect(page.getByTestId('doc-action-sequence-1')).toContainText('Step 1 - Start here');

@@ -146,6 +146,19 @@ class RemoteCleanupRequest(BaseModel):
     scope: str = Field(default="remote-registry-execution", description="UI scope label for the cleanup action.")
 
 
+class RemoteRollbackRequest(BaseModel):
+    target_root: str = Field(
+        ...,
+        min_length=3,
+        description="Dedicated remote target directory to reset after a failed or abandoned frontend registry run.",
+    )
+    cache_root: str | None = Field(
+        default=None,
+        description="Optional dedicated remote cache directory to reset alongside the target root.",
+    )
+    scope: str = Field(default="remote-registry-execution", description="UI scope label for the rollback action.")
+
+
 class LocalStateDoctorRequest(BaseModel):
     target_root: str | None = Field(
         default="dist/backend-installed-market",
@@ -555,6 +568,39 @@ def registry_cleanup(request: RemoteCleanupRequest) -> dict:
         },
         artifacts={
             "target_root": str(target_root) if target_root is not None else "",
+            "cache_root": str(cache_root) if cache_root is not None else "",
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/registry/rollback", status_code=202)
+def registry_rollback(request: RemoteRollbackRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, request.target_root)
+    cache_root = (
+        resolve_local_target_path(settings.repo_root, request.cache_root, request.cache_root)
+        if request.cache_root
+        else None
+    )
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "rollback_remote_install.py"),
+        "--target-root",
+        str(target_root),
+    ]
+    if cache_root is not None:
+        command.extend(["--cache-root", str(cache_root)])
+
+    job = _create_local_job(
+        kind="registry-rollback",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "rollback",
+        },
+        artifacts={
+            "target_root": str(target_root),
             "cache_root": str(cache_root) if cache_root is not None else "",
         },
         request_payload=request.model_dump(),
