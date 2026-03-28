@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Input } from '@/components/ui/Input';
+import {
+  dispatchLocalTargetUpdated,
+  getLocalTargetRootForJob,
+} from '@/lib/local-target-events';
 
 export type ExecutionRequestPath =
   | '/api/local/skills/install'
@@ -341,8 +345,16 @@ export function LocalExecutionCard({
       return;
     }
     setReportedCompletionJobId(job.job_id);
+    const targetRoot = getLocalTargetRootForJob(job, requestBody);
+    if (targetRoot) {
+      dispatchLocalTargetUpdated({
+        targetRoot,
+        jobId: job.job_id,
+        status: job.status,
+      });
+    }
     onJobSettled?.(job);
-  }, [job, onJobSettled, reportedCompletionJobId]);
+  }, [job, onJobSettled, reportedCompletionJobId, requestBody]);
 
   function updateFieldValue(fieldName: string, value: string) {
     setFieldValues((currentValues) => ({

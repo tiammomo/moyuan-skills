@@ -313,6 +313,63 @@ def main() -> int:
         print("ERROR: backend governance state should surface the latest refreshed governance policy")
         return 1
 
+    waiver_apply_state_response = client.get(
+        "/api/v1/local/state/governance/waiver-apply",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if waiver_apply_state_response.status_code != 200:
+        print(
+            "ERROR: backend waiver/apply handoff state should return 200, "
+            f"got {waiver_apply_state_response.status_code}"
+        )
+        return 1
+    waiver_apply_state = waiver_apply_state_response.json()
+    if not waiver_apply_state.get("can_prepare") or waiver_apply_state.get("report_summary_exists"):
+        print("ERROR: backend waiver/apply handoff state should be prepare-ready before the first handoff refresh")
+        return 1
+
+    waiver_apply_prepare_response = client.post(
+        "/api/v1/local/state/governance/waiver-apply/prepare",
+        json={
+            "target_root": str(local_target_root / "skills"),
+            "scope": "backend-smoke",
+        },
+    )
+    if waiver_apply_prepare_response.status_code != 202:
+        print(
+            "ERROR: backend waiver/apply handoff prepare should return 202, "
+            f"got {waiver_apply_prepare_response.status_code}"
+        )
+        return 1
+    waiver_apply_prepare_job = wait_for_job(client, waiver_apply_prepare_response.json()["job_id"])
+    if waiver_apply_prepare_job.get("status") != "succeeded":
+        print("ERROR: backend waiver/apply handoff prepare job should succeed")
+        print(waiver_apply_prepare_job.get("stdout", ""))
+        print(waiver_apply_prepare_job.get("stderr", ""))
+        return 1
+    waiver_apply_prepare_payload = json.loads(waiver_apply_prepare_job.get("stdout", "{}"))
+    if not waiver_apply_prepare_payload.get("apply_summary_path") or not waiver_apply_prepare_payload.get("report_state"):
+        print("ERROR: backend waiver/apply handoff prepare should emit a report summary payload")
+        return 1
+
+    waiver_apply_state_after_response = client.get(
+        "/api/v1/local/state/governance/waiver-apply",
+        params={"target_root": str(local_target_root / "skills")},
+    )
+    if waiver_apply_state_after_response.status_code != 200:
+        print(
+            "ERROR: backend waiver/apply handoff state after prepare should return 200, "
+            f"got {waiver_apply_state_after_response.status_code}"
+        )
+        return 1
+    waiver_apply_state_after = waiver_apply_state_after_response.json()
+    if not waiver_apply_state_after.get("report_summary_exists"):
+        print("ERROR: backend waiver/apply handoff state should expose the prepared report summary")
+        return 1
+    if not waiver_apply_state_after.get("latest_report", {}).get("apply", {}).get("summary_path"):
+        print("ERROR: backend waiver/apply handoff state should surface the latest apply summary metadata")
+        return 1
+
     bundle_state_response = client.get(
         "/api/v1/local/state",
         params={"target_root": str(local_target_root / "bundles")},
@@ -614,7 +671,7 @@ def main() -> int:
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local, remote, doctor, repair, baseline, governance, and cleanup lifecycle jobs."
+        "plus local, remote, doctor, repair, baseline, governance, waiver/apply handoff, and cleanup lifecycle jobs."
     )
     return 0
 

@@ -15,6 +15,8 @@ interface InstalledGovernancePanelProps {
   panelTestId: string;
   targetRoot: string;
   refreshToken?: number;
+  onGovernanceSettled?: () => void;
+  onGovernanceStateChange?: (governanceState: LocalInstalledGovernanceState | null) => void;
 }
 
 function parseJobPayload<T>(job: LocalJobRecord): T {
@@ -78,6 +80,8 @@ export function InstalledGovernancePanel({
   panelTestId,
   targetRoot,
   refreshToken,
+  onGovernanceSettled,
+  onGovernanceStateChange,
 }: InstalledGovernancePanelProps) {
   const [governanceState, setGovernanceState] = useState<LocalInstalledGovernanceState | null>(null);
   const [governanceJob, setGovernanceJob] = useState<LocalJobRecord | null>(null);
@@ -94,7 +98,6 @@ export function InstalledGovernancePanel({
       });
       const payload = (await response.json()) as LocalInstalledGovernanceState | { detail?: string };
       if (!response.ok) {
-        setGovernanceState(null);
         setErrorMessage(
           payload && 'detail' in payload ? payload.detail ?? 'Unable to read installed governance state.' : 'Unable to read installed governance state.'
         );
@@ -102,25 +105,33 @@ export function InstalledGovernancePanel({
         return;
       }
       setGovernanceState(payload as LocalInstalledGovernanceState);
+      onGovernanceStateChange?.(payload as LocalInstalledGovernanceState);
       setLoading(false);
     } catch (error) {
-      setGovernanceState(null);
       setErrorMessage(
         `Unable to read installed governance state: ${error instanceof Error ? error.message : String(error)}`
       );
       setLoading(false);
     }
-  }, [targetRoot]);
+  }, [onGovernanceStateChange, targetRoot]);
+
+  const reloadGovernanceState = useCallback(() => {
+    setLoading(true);
+    void loadGovernanceState();
+  }, [loadGovernanceState]);
 
   useEffect(() => {
-    setGovernanceState(null);
+    if (governanceState?.target_root !== targetRoot) {
+      setGovernanceState(null);
+      onGovernanceStateChange?.(null);
+    }
     setGovernanceJob(null);
     setRefreshPayload(null);
     setLoading(true);
     setRefreshPending(false);
     setErrorMessage(null);
     void loadGovernanceState();
-  }, [loadGovernanceState, refreshToken, targetRoot]);
+  }, [loadGovernanceState, onGovernanceStateChange, refreshToken, targetRoot]);
 
   useEffect(() => {
     if (!governanceJob || (governanceJob.status !== 'queued' && governanceJob.status !== 'running')) {
@@ -160,13 +171,14 @@ export function InstalledGovernancePanel({
 
     try {
       setRefreshPayload(parseJobPayload<LocalInstalledGovernanceSummary>(governanceJob));
+      onGovernanceSettled?.();
       void loadGovernanceState();
     } catch (error) {
       setErrorMessage(
         `Unable to parse governance refresh output: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-  }, [governanceJob, loadGovernanceState]);
+  }, [governanceJob, loadGovernanceState, onGovernanceSettled]);
 
   async function runGovernanceRefresh() {
     setErrorMessage(null);
@@ -232,7 +244,7 @@ export function InstalledGovernancePanel({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => void loadGovernanceState()}
+            onClick={reloadGovernanceState}
             disabled={refreshPending}
             data-testid={`${panelTestId}-reload`}
           >

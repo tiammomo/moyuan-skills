@@ -1,21 +1,22 @@
 # Moyuan Skills Market
-## Frontend Execution Status
+## 前端执行状态
 
-The current frontend product surface now supports:
+当前前端产品面已经支持：
 
-- local skill install, update, and remove through the backend
-- local bundle install, update, and remove through the backend
-- installed-state doctor plus low-risk repair on skill and bundle detail pages
-- installed-state baseline capture plus retained baseline history on skill and bundle detail pages
-- installed-state governance summary refresh on skill and bundle detail pages
-- remote registry install for skills and bundles
-- explicit trust summaries plus approval before remote execution starts
-- retry plus staged-file cleanup after the first failed remote registry runs
+- skill 详情页和 bundle 详情页通过 backend 执行本地 install、update、remove
+- skill 详情页和 bundle 详情页执行 installed-state doctor 与低风险 repair
+- skill 详情页和 bundle 详情页执行 baseline capture 与 retained baseline history
+- skill 详情页和 bundle 详情页执行 governance summary refresh
+- skill 详情页和 bundle 详情页生成第一版 waiver / apply handoff prepare，并展示 patch pack 与 CLI follow-up
+- installed-state 面板在 backend job 完成后按 target root 刷新，同时保留显式 `Refresh state`
+- skill 与 bundle 的 remote registry install
+- remote execution 前的显式 trust summary 与 approval
+- 第一次 remote registry 失败后的 retry 与 staged-file cleanup
 
-The next gap is deeper installed-state waiver/apply surfaces plus stronger remote policy gating and rollback. Track that work in [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md).
+当前下一块缺口主要是更强的 remote policy gating、rollback，以及更深一层的 waiver write-mode execution。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)。
 
-Python-only developer helper dependencies now live in `backend/requirements-dev.txt` so the repo root stays focused on primary project entry files.
-Tracked PowerShell helper scripts are intentionally ignored so repository tooling stays cross-platform instead of drifting toward Windows-only entrypoints.
+Python-only 的开发辅助依赖已经迁到 `backend/requirements-dev.txt`，这样仓库根目录只保留主入口文件。
+仓库也会继续忽略被跟踪的 PowerShell 辅助脚本，避免工具链逐渐漂移成 Windows-only 入口。
 
 ## 新增中文 Skills 案例
 
@@ -128,7 +129,7 @@ Tracked PowerShell helper scripts are intentionally ignored so repository toolin
 
 ### 4. 跑通 client lifecycle 与治理链路
 
-- install / update / remove / bundle / doctor / repair / baseline / waiver / gate 都已落地
+- install / update / remove / bundle / doctor / repair / baseline / waiver / apply handoff / gate 都已落地
 - 治理说明见 [docs/market-governance.md](./docs/market-governance.md)
 
 ### 5. 跑通前后端联调
@@ -140,7 +141,7 @@ Tracked PowerShell helper scripts are intentionally ignored so repository toolin
 - backend 现在也已经补了第一版远端 registry install 接口：`POST /api/v1/registry/skills/install` 和 `POST /api/v1/registry/bundles/install`
 - skill 详情页现在同时提供 `Copy install command` 和 `Run via backend`，bundle 详情页也已经接入 bundle install 的本地执行 UI，同时保留 bundle 级 `install-bundle / update-bundle / remove-bundle` copy-first 命令
 - docs 详情页现在会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
-- 当前前端已经能对 skill / bundle 的 install、update、remove 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API、installed-state doctor / repair / baseline API 和 remote registry install API。还没补完的是更深层的 installed-state 产品面，例如 waiver / gate / audit，以及更深的远端安装治理 UI，例如 policy gating / rollback。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 当前前端已经能对 skill / bundle 的 install、update、remove 走真实 backend 本地执行，也能从 skill / bundle 详情页直接触发远端 registry install；backend 则已经补齐 local lifecycle API、installed-state doctor / repair / baseline / governance / waiver-apply handoff API。当前前端对 waiver/apply 的支持仍然停留在安全的 patch pack prepare 与 CLI follow-up，write-mode execution 和更强的远端 policy gating / rollback 还会在后续迭代继续补完。后续路线见 [docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
 
 ## 核心文档入口
 

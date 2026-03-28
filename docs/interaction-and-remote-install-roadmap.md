@@ -13,8 +13,8 @@ Current status:
 
 The two biggest gaps are now:
 
-1. many deeper governance buttons are still guidance or command-copy affordances, not true lifecycle execution flows
-2. remote install policy gating and rollback surfaces are still not productized in the frontend
+1. remote install policy gating and rollback surfaces are still not productized in the frontend
+2. waiver/apply now has a first prepare handoff in the frontend, but write-mode governance execution is still intentionally CLI-only
 
 ## Current-state assessment
 
@@ -56,7 +56,7 @@ What is already good:
 
 What is still incomplete:
 
-- waiver / apply / deeper gate actions are still not exposed as frontend-installed-state surfaces
+- waiver / apply 现在已经补上第一版 handoff prepare，但 write-mode execution 仍然没有前端化
 - docs action panels are still guidance widgets, not executable actions
 - rollback and deeper policy gating still are not exposed for remote execution failures
 
@@ -82,7 +82,7 @@ Current reality:
 
 What is still incomplete:
 
-- the current frontend now uses install/update/remove/state/doctor/repair/baseline/governance surfaces, but not yet the deeper waiver/apply flows
+- the current frontend now uses install/update/remove/state/doctor/repair/baseline/governance/waiver-apply handoff surfaces, but write-mode waiver execution still stays outside the page
 
 ### 4. Remote skill pull / download
 
@@ -302,6 +302,9 @@ Status:
   - backend now exposes installed-state governance read and refresh endpoints
   - skill and bundle detail pages now expose a first review-oriented governance summary refresh in-page
   - Playwright now verifies one retained baseline can refresh governance summary context in-page
+  - backend now exposes installed-state governance waiver/apply read and prepare endpoints
+  - skill and bundle detail pages now expose the first waiver/apply handoff prepare pack in-page
+  - Playwright now verifies one retained baseline can prepare a waiver/apply handoff and continue via CLI follow-up hints
 
 ## Priority recommendation
 
@@ -320,9 +323,9 @@ Why:
 If you need a simple conclusion:
 
 - `frontend/backend interaction` is already strong for browsing and teaching
-- `frontend execution` is now working for local skill and bundle install/update/remove, installed-state doctor/repair/baseline/governance, plus remote-registry install flows with trust summaries, explicit approval, retry, and cleanup
+- `frontend execution` is now working for local skill and bundle install/update/remove, installed-state doctor/repair/baseline/governance/waiver-apply handoff, plus remote-registry install flows with trust summaries, explicit approval, retry, and cleanup
 - `remote skill download and install` is now supported from CLI, backend APIs, and frontend install surfaces
 
-The next implementation target is now the first installed-state waiver/apply pass, while a later product pass can keep strengthening remote policy gating and rollback beyond the detail pages.
+The next implementation target is now stronger remote policy gating and rollback, while a later installed-state pass can decide whether waiver write-mode execution should become a first-class frontend surface.
 
-The current next implementation note is [frontend-installed-waiver-apply-iteration.md](./frontend-installed-waiver-apply-iteration.md).
+The current next implementation note is [frontend-remote-policy-rollback-iteration.md](./frontend-remote-policy-rollback-iteration.md).

@@ -183,6 +183,17 @@ class LocalStateGovernanceRefreshRequest(BaseModel):
     scope: str = Field(default="installed-state-governance", description="UI scope label for the governance action.")
 
 
+class LocalStateGovernanceWaiverApplyPrepareRequest(BaseModel):
+    target_root: str | None = Field(
+        default="dist/backend-installed-market",
+        description="Installed target directory whose retained governance summary should drive the first waiver/apply handoff pack.",
+    )
+    scope: str = Field(
+        default="installed-state-governance-waiver-apply",
+        description="UI scope label for the waiver/apply prepare action.",
+    )
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -643,6 +654,12 @@ def local_state_governance(target_root: str = "dist/backend-installed-market") -
     return repository.get_installed_governance_state(resolved_root)
 
 
+@app.get("/api/v1/local/state/governance/waiver-apply")
+def local_state_governance_waiver_apply(target_root: str = "dist/backend-installed-market") -> dict:
+    resolved_root = resolve_local_target_path(settings.repo_root, target_root, "dist/backend-installed-market")
+    return repository.get_installed_governance_waiver_apply_state(resolved_root)
+
+
 @app.post("/api/v1/local/state/doctor", status_code=202)
 def local_state_doctor(request: LocalStateDoctorRequest) -> dict:
     target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
@@ -748,6 +765,66 @@ def local_state_governance_refresh(request: LocalStateGovernanceRefreshRequest) 
             "output_dir": str(output_dir),
             "summary_path": str(summary_path),
             "summary_markdown_path": str(summary_markdown_path),
+        },
+        request_payload=request.model_dump(),
+    )
+    return job
+
+
+@app.post("/api/v1/local/state/governance/waiver-apply/prepare", status_code=202)
+def local_state_governance_waiver_apply_prepare(request: LocalStateGovernanceWaiverApplyPrepareRequest) -> dict:
+    target_root = resolve_local_target_path(settings.repo_root, request.target_root, "dist/backend-installed-market")
+    history_path = target_root / "snapshots" / "baseline-history.json"
+    governance_dir = target_root / "snapshots" / "governance"
+    governance_summary_path = governance_dir / "governance-summary.json"
+    output_dir = governance_dir / "waiver-apply"
+    stage_dir = output_dir / "source-reconcile-gate-waiver-apply-staged-root"
+    apply_summary_path = output_dir / "source-reconcile-gate-waiver-apply-summary.json"
+    verify_summary_path = output_dir / "source-reconcile-gate-waiver-apply-verify-summary.json"
+    report_summary_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.json"
+    report_markdown_path = output_dir / "source-reconcile-gate-waiver-apply-report-summary.md"
+
+    if not history_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply handoff needs a retained baseline history first. Capture a baseline before preparing the apply pack.",
+        )
+    if not governance_summary_path.is_file():
+        raise HTTPException(
+            status_code=400,
+            detail="Waiver/apply handoff needs a governance summary first. Refresh governance before preparing the apply pack.",
+        )
+
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "report_source_reconcile_gate_waiver_apply.py"),
+        str(history_path),
+        "--output-dir",
+        str(output_dir),
+        "--target-root",
+        str(target_root),
+        "--stage-dir",
+        str(stage_dir),
+        "--json",
+    ]
+
+    job = _create_local_job(
+        kind="state-governance-waiver-apply-prepare",
+        command=command,
+        summary={
+            "scope": request.scope,
+            "mode": "governance-waiver-apply-prepare",
+        },
+        artifacts={
+            "target_root": str(target_root),
+            "history_path": str(history_path),
+            "governance_summary_path": str(governance_summary_path),
+            "output_dir": str(output_dir),
+            "stage_dir": str(stage_dir),
+            "apply_summary_path": str(apply_summary_path),
+            "verify_summary_path": str(verify_summary_path),
+            "report_summary_path": str(report_summary_path),
+            "report_markdown_path": str(report_markdown_path),
         },
         request_payload=request.model_dump(),
     )

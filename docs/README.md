@@ -8,11 +8,13 @@ The current frontend surface now supports:
 - installed-state doctor plus low-risk repair on skill and bundle detail pages
 - installed-state baseline capture plus retained baseline history on skill and bundle detail pages
 - installed-state governance summary refresh on skill and bundle detail pages
+- installed-state waiver/apply handoff prepare on skill and bundle detail pages
+- installed-state detail panels refreshing target-root state from backend job completion plus manual refresh
 - remote registry install for skills and bundles
 - explicit trust summaries plus approval before remote execution starts
 - retry plus staged-file cleanup after the first failed remote registry runs
 
-The next gap is deeper installed-state waiver/apply surfaces plus stronger remote policy gating and rollback. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).
+The next gap is stronger remote policy gating and rollback, while deeper waiver write-mode execution still stays in a later installed-state pass. Track that work in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md) and the current iteration note [frontend-remote-policy-rollback-iteration.md](./frontend-remote-policy-rollback-iteration.md).
 
 ## 新增中文 Skills 教学案例
 

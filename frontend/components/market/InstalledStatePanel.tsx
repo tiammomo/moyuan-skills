@@ -3,16 +3,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   LocalInstalledDoctorSnapshot,
+  LocalInstalledGovernanceState,
   LocalInstalledSkillRecord,
   LocalInstalledState,
 } from '@/types/market';
 import { InstalledBaselinePanel } from '@/components/market/InstalledBaselinePanel';
 import { InstalledGovernancePanel } from '@/components/market/InstalledGovernancePanel';
+import { InstalledWaiverApplyPanel } from '@/components/market/InstalledWaiverApplyPanel';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { Button } from '@/components/ui/Button';
 import { InstalledDoctorPanel } from '@/components/market/InstalledDoctorPanel';
 import { LocalExecutionCard, type LocalExecutionCardProps } from '@/components/market/LocalExecutionCard';
+import {
+  LOCAL_TARGET_UPDATED_EVENT,
+  type LocalTargetUpdatedDetail,
+} from '@/lib/local-target-events';
 
 interface InstalledStatePanelProps {
   panelTestId: string;
@@ -44,6 +50,7 @@ export function InstalledStatePanel({
 }: InstalledStatePanelProps) {
   const [statePayload, setStatePayload] = useState<LocalInstalledState | null>(null);
   const [doctorSnapshot, setDoctorSnapshot] = useState<LocalInstalledDoctorSnapshot | null>(null);
+  const [governanceState, setGovernanceState] = useState<LocalInstalledGovernanceState | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshCounter, setRefreshCounter] = useState(0);
@@ -68,7 +75,6 @@ export function InstalledStatePanel({
         const payload = (await response.json()) as LocalInstalledState | { detail?: string };
         if (!response.ok) {
           if (!cancelled) {
-            setStatePayload(null);
             setErrorMessage(
               payload && 'detail' in payload ? payload.detail ?? 'Unable to read installed state.' : 'Unable to read installed state.'
             );
@@ -84,7 +90,6 @@ export function InstalledStatePanel({
         }
       } catch (error) {
         if (!cancelled) {
-          setStatePayload(null);
           setErrorMessage(
             `Unable to read installed state: ${error instanceof Error ? error.message : String(error)}`
           );
@@ -95,15 +100,26 @@ export function InstalledStatePanel({
     }
 
     void loadState();
-    const intervalId = window.setInterval(() => {
-      void loadState();
-    }, 2000);
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
     };
   }, [refreshCounter, targetRoot]);
+
+  useEffect(() => {
+    function handleLocalTargetUpdated(event: Event) {
+      const customEvent = event as CustomEvent<LocalTargetUpdatedDetail>;
+      if (customEvent.detail?.targetRoot !== targetRoot) {
+        return;
+      }
+      refreshState();
+    }
+
+    window.addEventListener(LOCAL_TARGET_UPDATED_EVENT, handleLocalTargetUpdated as EventListener);
+    return () => {
+      window.removeEventListener(LOCAL_TARGET_UPDATED_EVENT, handleLocalTargetUpdated as EventListener);
+    };
+  }, [refreshState, targetRoot]);
 
   const installedSkill = useMemo(() => {
     if (!statePayload || !skillId) {
@@ -253,6 +269,13 @@ export function InstalledStatePanel({
         panelTestId={`${panelTestId}-governance`}
         targetRoot={targetRoot}
         refreshToken={refreshCounter}
+        onGovernanceStateChange={setGovernanceState}
+      />
+
+      <InstalledWaiverApplyPanel
+        panelTestId={`${panelTestId}-waiver-apply`}
+        targetRoot={targetRoot}
+        governanceState={governanceState}
       />
 
       {actions.map((action) => (

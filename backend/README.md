@@ -77,6 +77,8 @@ GET /api/v1/local/state/baseline
 POST /api/v1/local/state/baseline/promote
 GET /api/v1/local/state/governance
 POST /api/v1/local/state/governance/refresh
+GET /api/v1/local/state/governance/waiver-apply
+POST /api/v1/local/state/governance/waiver-apply/prepare
 POST /api/v1/local/state/doctor
 POST /api/v1/local/state/repair
 POST /api/v1/registry/skills/install
@@ -96,7 +98,7 @@ Local lifecycle notes:
 - the backend reuses the existing lifecycle scripts under `scripts/`
 - the response returns a `job_id`, and clients poll `GET /api/v1/local/jobs/{job_id}` for completion
 - the frontend now wires skill install and bundle install through local proxy routes while keeping copy-first fallbacks visible
-- update/remove/state/doctor/repair/baseline/governance APIs are now consumed by the first frontend installed-state lifecycle surfaces on skill and bundle detail pages
+- update/remove/state/doctor/repair/baseline/governance/waiver-apply APIs are now consumed by the frontend installed-state lifecycle surfaces on skill and bundle detail pages
 
 Remote registry notes:
 
@@ -107,6 +109,7 @@ Remote registry notes:
 - the frontend now requires explicit in-page approval before those remote jobs are submitted
 - remote execution cards now surface publisher verification, review status, lifecycle status, and provenance hints before execution starts
 - the backend now also exposes a cleanup job endpoint so the frontend can clear staged cache or failed target roots after a failed remote run
+- the waiver/apply prepare endpoint stays read-only from the frontend: it writes review packs under the target root snapshot area, while stage-mode and write-mode governance source changes still remain CLI-only
 
 ## Suggested frontend mapping
 
@@ -160,10 +163,10 @@ What is now available:
 - remote registry install APIs for skill and bundle downloads over HTTP
 - frontend-consumable remote install flows for skill and bundle detail pages
 - frontend trust, approval, retry, and cleanup affordances for the first remote install failure paths
-- frontend-consumable installed-state read, update, remove, doctor, low-risk repair, baseline-history, and governance-summary flows on skill and bundle detail pages
-- backend smoke coverage for repository reads plus local, remote, doctor, repair, baseline, governance, and cleanup lifecycle jobs
+- frontend-consumable installed-state read, update, remove, doctor, low-risk repair, baseline-history, governance-summary, and waiver/apply handoff prepare flows on skill and bundle detail pages
+- backend smoke coverage for repository reads plus local, remote, doctor, repair, baseline, governance, waiver/apply handoff, and cleanup lifecycle jobs
 
 What is still next:
 
-- deeper installed-state product surfaces such as waiver review, gate apply, and execution handoff views
+- deeper installed-state write-mode waiver execution and review-stage governance workspace controls
 - deeper remote policy gating and rollback/reconciliation surfaces for remote installs

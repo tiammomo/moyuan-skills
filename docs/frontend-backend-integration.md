@@ -38,6 +38,8 @@ Core endpoints:
 - `POST /api/v1/local/state/baseline/promote`
 - `GET /api/v1/local/state/governance`
 - `POST /api/v1/local/state/governance/refresh`
+- `GET /api/v1/local/state/governance/waiver-apply`
+- `POST /api/v1/local/state/governance/waiver-apply/prepare`
 - `POST /api/v1/local/state/doctor`
 - `POST /api/v1/local/state/repair`
 - `POST /api/v1/registry/skills/install`
@@ -54,6 +56,7 @@ That same shared payload now also supports detail-page related navigation, conte
 Skill detail and bundle detail pages now distinguish copy-first CLI fallbacks from true backend execution flows, so the current UI stays honest while still exposing one-click local install for the flows that are already wired.
 The backend now exposes both the local mutation/job layer and the first remote registry install job layer; the frontend now proxies the local install flows plus the first registry-backed skill and bundle install flows.
 The remote execution cards now also surface a first trust layer, require explicit approval before those registry-backed jobs can start, and expose a first recovery layer with retry plus staged-file cleanup, so the UI no longer implies that a network install is fire-and-forget.
+The installed-state detail panels now refresh on demand and on matching backend job completion events instead of relying on permanent background polling, which keeps the target-root UI current without continuously churning the local proxy layer.
 
 The repository layer reads these real assets directly:
 
@@ -176,6 +179,8 @@ Then it validates:
 - skill and bundle detail pages can now run installed-state doctor checks plus low-risk repair through the backend
 - skill and bundle detail pages can now capture retained installed-state baselines and read baseline history through the backend
 - skill and bundle detail pages can now refresh review-oriented governance summaries through the backend
+- skill detail pages can now prepare the first waiver/apply handoff pack through the backend and keep write-mode governance changes in CLI follow-up
+- installed-state detail pages now refresh target-root state from explicit refreshes plus matching backend job completion events, so the e2e flow no longer depends on always-on polling
 
 Run:
 
@@ -220,6 +225,7 @@ It is now implemented as:
 - backend local install job APIs for skill and bundle execution
 - registry-backed remote install execution cards on skill and bundle detail pages
 - installed-state lifecycle cards on skill and bundle detail pages
+- waiver/apply handoff prepare cards on skill and bundle detail pages
 - Playwright end-to-end coverage for the core market path
 
 ## Current gaps
@@ -242,7 +248,7 @@ What is still partial:
 
 - frontend now supports backend execution for local skill and bundle install/update/remove plus installed-state reads, doctor, low-risk repair, baseline capture/history, and governance summary refresh on detail pages
 - docs action panels are guidance-oriented and do not execute commands
-- deeper installed-state UI such as waiver review and apply handoff still needs another iteration
+- frontend now supports the first waiver/apply handoff prepare pass, but write-mode governance-source execution still stays CLI-only
 - remote trust, approval, retry, and cleanup are now present, but deeper policy gating and rollback UX for remote installs still needs another iteration
 
 The project roadmap for closing these gaps lives in [interaction-and-remote-install-roadmap.md](./interaction-and-remote-install-roadmap.md).

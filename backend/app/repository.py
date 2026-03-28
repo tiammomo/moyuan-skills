@@ -20,6 +20,13 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _display_repo_path(path: Path, repo_root: Path) -> str:
+    try:
+        return str(path.relative_to(repo_root)).replace("\\", "/")
+    except ValueError:
+        return str(path)
+
+
 def _first_heading(markdown: str, fallback: str) -> str:
     for line in markdown.splitlines():
         stripped = line.strip()
@@ -509,4 +516,96 @@ class MarketRepository:
                 },
             },
             "latest_summary": summary_payload if isinstance(summary_payload, dict) else None,
+        }
+
+    def get_installed_governance_waiver_apply_state(self, target_root: Path) -> dict[str, Any]:
+        resolved_root = target_root.resolve()
+        snapshots_dir = resolved_root / "snapshots"
+        history_path = snapshots_dir / "baseline-history.json"
+        governance_dir = snapshots_dir / "governance"
+        governance_summary_path = governance_dir / "governance-summary.json"
+        waiver_apply_dir = governance_dir / "waiver-apply"
+        apply_summary_path = waiver_apply_dir / "source-reconcile-gate-waiver-apply-summary.json"
+        verify_summary_path = waiver_apply_dir / "source-reconcile-gate-waiver-apply-verify-summary.json"
+        report_summary_path = waiver_apply_dir / "source-reconcile-gate-waiver-apply-report-summary.json"
+        stage_dir = waiver_apply_dir / "source-reconcile-gate-waiver-apply-staged-root"
+
+        governance_summary_payload = _read_json(governance_summary_path) if governance_summary_path.is_file() else None
+        report_payload = _read_json(report_summary_path) if report_summary_path.is_file() else None
+
+        display_history_path = _display_repo_path(history_path, self.repo_root)
+        display_target_root = _display_repo_path(resolved_root, self.repo_root)
+        display_output_dir = _display_repo_path(waiver_apply_dir, self.repo_root)
+        display_stage_dir = _display_repo_path(stage_dir, self.repo_root)
+        governance_action_count = (
+            int(governance_summary_payload.get("report", {}).get("action_count", 0))
+            if isinstance(governance_summary_payload, dict)
+            else 0
+        )
+        governance_report_state = (
+            str(governance_summary_payload.get("report", {}).get("report_state", ""))
+            if isinstance(governance_summary_payload, dict)
+            else ""
+        )
+
+        return {
+            "target_root": str(resolved_root),
+            "snapshots_dir": str(snapshots_dir),
+            "history_path": str(history_path),
+            "governance_dir": str(governance_dir),
+            "governance_summary_path": str(governance_summary_path),
+            "waiver_apply_dir": str(waiver_apply_dir),
+            "apply_summary_path": str(apply_summary_path),
+            "verify_summary_path": str(verify_summary_path),
+            "report_summary_path": str(report_summary_path),
+            "stage_dir": str(stage_dir),
+            "history_exists": history_path.is_file(),
+            "governance_summary_exists": governance_summary_path.is_file(),
+            "apply_summary_exists": apply_summary_path.is_file(),
+            "verify_summary_exists": verify_summary_path.is_file(),
+            "report_summary_exists": report_summary_path.is_file(),
+            "can_prepare": history_path.is_file() and governance_summary_path.is_file(),
+            "governance_report_state": governance_report_state,
+            "governance_action_count": governance_action_count,
+            "latest_report": report_payload if isinstance(report_payload, dict) else None,
+            "recommended_follow_ups": (
+                [
+                    {
+                        "label": "Refresh apply handoff pack",
+                        "command": (
+                            "python scripts/report_source_reconcile_gate_waiver_apply.py "
+                            f"{display_history_path} --output-dir {display_output_dir} "
+                            f"--target-root {display_target_root} --stage-dir {display_stage_dir} --json"
+                        ),
+                        "description": "Regenerate the read-only waiver/apply handoff pack for this retained baseline history.",
+                    },
+                    {
+                        "label": "Stage repo governance changes",
+                        "command": (
+                            "python scripts/execute_source_reconcile_gate_waiver_apply.py "
+                            f"{display_history_path} --output-dir {display_output_dir} "
+                            f"--stage-dir {display_stage_dir} --json"
+                        ),
+                        "description": "Stage reviewed governance-source updates inside a safe staging root before any write-mode apply run.",
+                    },
+                    {
+                        "label": "Write approved governance changes",
+                        "command": (
+                            "python scripts/execute_source_reconcile_gate_waiver_apply.py "
+                            f"{display_history_path} --output-dir {display_output_dir} --write --json"
+                        ),
+                        "description": "Apply approved waiver updates into repo governance files after manual review. This remains CLI-only because it is write mode.",
+                    },
+                    {
+                        "label": "Verify staged or written results",
+                        "command": (
+                            "python scripts/verify_source_reconcile_gate_waiver_apply.py "
+                            f"{display_history_path} --output-dir {display_output_dir} --json"
+                        ),
+                        "description": "Re-verify staged or written governance changes against the prepared apply artifacts.",
+                    },
+                ]
+                if history_path.is_file() and governance_summary_path.is_file()
+                else []
+            ),
         }

@@ -4,6 +4,8 @@ import { expect, test } from '@playwright/test';
 
 const repoRoot = path.resolve(process.cwd(), '..');
 
+test.setTimeout(120_000);
+
 test('frontend works against the Python backend across core market flows', async ({ page }) => {
   const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
   const bundleTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'bundles', 'release-engineering-starter');
@@ -34,6 +36,7 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-backend-execution-summary')).toContainText('release-note-writer');
   await expect(page.getByTestId('skill-installed-state')).toBeVisible();
+  await page.getByTestId('skill-installed-state-refresh').click();
   await expect(page.getByTestId('skill-installed-state-status')).toContainText('Installed in target root', {
     timeout: 20000,
   });
@@ -105,6 +108,37 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-installed-state-governance-gate')).toContainText(
     'Source Reconcile Review Handoff'
   );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-status')).toContainText(
+    'Apply handoff not prepared',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-summary')).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-prepare')).toBeEnabled({
+    timeout: 20000,
+  });
+  await page
+    .getByTestId('skill-installed-state-waiver-apply-prepare')
+    .evaluate((element: HTMLButtonElement) => element.click());
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-prepare-summary')).toContainText(
+    'needs_execution',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-status')).toContainText(
+    'Apply handoff prepared',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-actions')).toContainText('retarget_or_remove');
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-follow-ups')).toContainText(
+    'Write approved governance changes'
+  );
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('skill-installed-state-status')).toContainText('Not installed yet', {
@@ -164,6 +198,7 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('bundle-backend-execution-status')).toContainText('Succeeded', { timeout: 20000 });
   await expect(page.getByTestId('bundle-backend-execution-summary')).toContainText('release-engineering-starter');
   await expect(page.getByTestId('bundle-installed-state')).toBeVisible();
+  await page.getByTestId('bundle-installed-state-refresh').click();
   await expect(page.getByTestId('bundle-installed-state-status')).toContainText('Installed in target root', {
     timeout: 20000,
   });

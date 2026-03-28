@@ -398,6 +398,115 @@ export interface LocalInstalledGovernanceState {
   latest_summary: LocalInstalledGovernanceSummary | null;
 }
 
+export interface LocalInstalledWaiverApplyReportAction {
+  waiver_id: string;
+  action_code: string;
+  apply_mode: string;
+  apply_summary: string;
+  apply_source_path: string;
+  apply_preview_path: string;
+  apply_target_path: string;
+  apply_patch_path: string;
+  apply_review_artifact_path: string;
+  apply_execute_status: string;
+  apply_execute_message: string;
+  apply_execute_stage_path: string;
+  apply_execute_write_path: string;
+  verification_state: string;
+  verification_execute_status: string;
+  verification_expected_state: string;
+  verification_path: string;
+  verification_message: string;
+  verification_passes: boolean | null;
+}
+
+export interface LocalInstalledWaiverApplyReportSummary {
+  history_path: string;
+  output_dir: string;
+  target_root: string;
+  stage_dir: string;
+  source_reconcile_execute_summary_path: string;
+  apply_summary_path: string;
+  apply_execute_summary_path: string;
+  apply_verify_summary_path: string;
+  report_complete: boolean;
+  report_state: string;
+  waiver_count: number;
+  action_count: number;
+  apply: {
+    summary_path: string;
+    waiver_count: number;
+    finding_count: number;
+    preview_count: number;
+    action_count: number;
+    patch_count: number;
+    update_patch_count: number;
+    delete_patch_count: number;
+    manual_review_count: number;
+    passes: boolean;
+  };
+  apply_execution: {
+    summary_path: string;
+    available: boolean;
+    write_mode: boolean;
+    stage_dir: string;
+    target_root: string;
+    action_count: number;
+    staged_update_count: number;
+    staged_delete_count: number;
+    written_update_count: number;
+    written_delete_count: number;
+    blocked_action_count: number;
+    blocked_manual_review_count: number;
+    source_mismatch_count: number;
+    passes: boolean;
+  };
+  apply_verification: {
+    summary_path: string;
+    target_root: string;
+    stage_dir: string;
+    action_count: number;
+    verified_count: number;
+    staged_target_match_count: number;
+    staged_delete_match_count: number;
+    written_target_match_count: number;
+    written_delete_match_count: number;
+    manual_review_count: number;
+    pending_count: number;
+    blocked_count: number;
+    drift_count: number;
+    passes: boolean;
+  };
+  actions: LocalInstalledWaiverApplyReportAction[];
+}
+
+export interface LocalInstalledWaiverApplyState {
+  target_root: string;
+  snapshots_dir: string;
+  history_path: string;
+  governance_dir: string;
+  governance_summary_path: string;
+  waiver_apply_dir: string;
+  apply_summary_path: string;
+  verify_summary_path: string;
+  report_summary_path: string;
+  stage_dir: string;
+  history_exists: boolean;
+  governance_summary_exists: boolean;
+  apply_summary_exists: boolean;
+  verify_summary_exists: boolean;
+  report_summary_exists: boolean;
+  can_prepare: boolean;
+  governance_report_state: string;
+  governance_action_count: number;
+  latest_report: LocalInstalledWaiverApplyReportSummary | null;
+  recommended_follow_ups: Array<{
+    label: string;
+    command: string;
+    description: string;
+  }>;
+}
+
 export interface MarketCommandAction {
   label: string;
   command: string;
