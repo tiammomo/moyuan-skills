@@ -249,6 +249,41 @@ function describeWriteHandoffVariant(
   return 'tag';
 }
 
+function describeWriteEvidenceVariant(
+  writeHandoff: LocalInstalledWaiverApplyWriteHandoff | null
+): 'keyword' | 'stable' | 'beta' | 'internal' | 'tag' {
+  if (!writeHandoff) {
+    return 'tag';
+  }
+
+  if (writeHandoff.evidence.state === 'post_write_verified' || writeHandoff.evidence.state === 'pre_write_ready') {
+    return 'stable';
+  }
+
+  if (writeHandoff.evidence.state === 'post_write_drifted' || writeHandoff.evidence.state === 'drifted') {
+    return 'beta';
+  }
+
+  if (writeHandoff.state === 'blocked') {
+    return 'internal';
+  }
+
+  return 'tag';
+}
+
+function formatApprovalCapturedAt(value: string | null): string {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString();
+}
+
 export function InstalledWaiverApplyPanel({
   panelTestId,
   targetRoot,
@@ -262,6 +297,7 @@ export function InstalledWaiverApplyPanel({
   const [verifyPayload, setVerifyPayload] = useState<LocalInstalledWaiverApplyReportSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [approvalCapturedAt, setApprovalCapturedAt] = useState<string | null>(null);
 
   const loadWaiverApplyState = useCallback(async () => {
     setErrorMessage(null);
@@ -423,6 +459,23 @@ export function InstalledWaiverApplyPanel({
     () => describeWriteHandoffVariant(writeHandoff),
     [writeHandoff]
   );
+  const writeEvidenceVariant = useMemo(
+    () => describeWriteEvidenceVariant(writeHandoff),
+    [writeHandoff]
+  );
+  const approvalStorageKey = useMemo(() => {
+    if (!writeHandoff || !waiverApplyState?.report_summary_path) {
+      return null;
+    }
+
+    return [
+      'moyuan-write-handoff-approval',
+      targetRoot,
+      waiverApplyState.report_summary_path,
+      latestReport?.apply_execute_summary_path ?? '',
+      latestReport?.report_state ?? '',
+    ].join(':');
+  }, [latestReport?.apply_execute_summary_path, latestReport?.report_state, targetRoot, waiverApplyState?.report_summary_path, writeHandoff]);
   const actionPending = Boolean(
     jobMode && waiverApplyJob && (waiverApplyJob.status === 'queued' || waiverApplyJob.status === 'running')
   );
@@ -430,6 +483,35 @@ export function InstalledWaiverApplyPanel({
   const canVerify = Boolean(
     latestReport?.apply_execution.available && latestReport.apply_execution.action_count > 0
   );
+  const approvalEnabled = Boolean(writeHandoff?.approval_enabled);
+  const approvalCaptured = Boolean(approvalCapturedAt);
+
+  useEffect(() => {
+    if (!approvalStorageKey || typeof window === 'undefined') {
+      setApprovalCapturedAt(null);
+      return;
+    }
+
+    const storedValue = window.localStorage.getItem(approvalStorageKey);
+    setApprovalCapturedAt(storedValue && storedValue.trim() ? storedValue : null);
+  }, [approvalStorageKey]);
+
+  function handleApprovalChange(checked: boolean) {
+    if (!approvalStorageKey || typeof window === 'undefined') {
+      setApprovalCapturedAt(null);
+      return;
+    }
+
+    if (!checked) {
+      window.localStorage.removeItem(approvalStorageKey);
+      setApprovalCapturedAt(null);
+      return;
+    }
+
+    const capturedAt = new Date().toISOString();
+    window.localStorage.setItem(approvalStorageKey, capturedAt);
+    setApprovalCapturedAt(capturedAt);
+  }
 
   return (
     <Card className="p-5" data-testid={panelTestId}>
@@ -661,6 +743,33 @@ export function InstalledWaiverApplyPanel({
               </div>
             )}
 
+            <div
+              className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+              data-testid={`${panelTestId}-write-approval`}
+            >
+              <label className="flex items-start gap-3 text-sm text-ink">
+                <input
+                  type="checkbox"
+                  checked={approvalCaptured}
+                  onChange={(event) => handleApprovalChange(event.target.checked)}
+                  disabled={!approvalEnabled}
+                  className="mt-1 h-4 w-4 rounded border border-line disabled:cursor-not-allowed"
+                  data-testid={`${panelTestId}-write-approval-checkbox`}
+                />
+                <span>{writeHandoff.approval_label}</span>
+              </label>
+              <p className="mt-2 text-xs text-muted" data-testid={`${panelTestId}-write-approval-help`}>
+                {writeHandoff.approval_help}
+              </p>
+              <p className="mt-2 text-xs text-muted" data-testid={`${panelTestId}-write-approval-state`}>
+                {approvalEnabled
+                  ? approvalCaptured
+                    ? `Approval captured in this browser at ${formatApprovalCapturedAt(approvalCapturedAt)}.`
+                    : 'Waiting for explicit approval capture before handing off the CLI write pack.'
+                  : 'Approval capture unlocks only after the latest handoff reaches a clean ready or completed state.'}
+              </p>
+            </div>
+
             <div className="mt-3 grid gap-3 lg:grid-cols-2">
               {writeHandoff.write_command && (
                 <div className="rounded-card border border-line bg-bg/70 px-3 py-3">
@@ -738,6 +847,42 @@ export function InstalledWaiverApplyPanel({
                 </ul>
               </div>
             )}
+
+            <div
+              className="mt-3 rounded-card border border-line bg-bg/70 px-3 py-3"
+              data-testid={`${panelTestId}-write-evidence`}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip variant={writeEvidenceVariant}>{writeHandoff.evidence.title}</Chip>
+                <Chip variant="tag">Evidence pack</Chip>
+              </div>
+              <p className="mt-2 text-sm text-ink" data-testid={`${panelTestId}-write-evidence-summary`}>
+                {writeHandoff.evidence.summary}
+              </p>
+              <dl className="mt-3 space-y-2 text-xs text-ink">
+                {writeHandoff.evidence.entries.map((entry) => (
+                  <div key={`${entry.label}-${entry.value}`} className="flex justify-between gap-3">
+                    <dt className="text-muted">{entry.label}</dt>
+                    <dd className="text-right break-all">{entry.value || '-'}</dd>
+                  </div>
+                ))}
+              </dl>
+              {writeHandoff.evidence.follow_ups.length > 0 && (
+                <div
+                  className="mt-3 rounded-card border border-dashed border-line bg-paper/70 px-3 py-3"
+                  data-testid={`${panelTestId}-write-evidence-follow-ups`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    Evidence follow-ups
+                  </p>
+                  <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                    {writeHandoff.evidence.follow_ups.map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
 
             <div
               className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3 text-xs leading-6 text-ink"

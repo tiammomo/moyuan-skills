@@ -278,10 +278,135 @@ def _build_waiver_apply_write_handoff(
         )
     )
 
+    evidence_entries = [
+        {
+            "label": "Apply report",
+            "value": display_report_summary_path if report_payload else "-",
+        },
+        {
+            "label": "Apply summary",
+            "value": report_apply_summary_path or display_apply_summary_path if report_payload else "-",
+        },
+        {
+            "label": "Execute summary",
+            "value": report_apply_execute_summary_path or display_apply_execute_summary_path
+            if apply_execution.get("available", False)
+            else "-",
+        },
+        {
+            "label": "Verify summary",
+            "value": report_verify_summary_path or display_verify_summary_path if report_payload else "-",
+        },
+        {
+            "label": "Write target root",
+            "value": str(apply_verification.get("target_root", "")).strip()
+            or str(apply_execution.get("target_root", "")).strip()
+            or "-",
+        },
+        {
+            "label": "Stage directory",
+            "value": display_stage_dir if apply_execution.get("available", False) else "-",
+        },
+        {
+            "label": "Written changes",
+            "value": str(written_count),
+        },
+        {
+            "label": "Verified actions",
+            "value": str(verified_count),
+        },
+        {
+            "label": "Verification drift",
+            "value": str(drift_count),
+        },
+    ]
+    evidence_state = "pending"
+    evidence_title = "Evidence pack pending"
+    evidence_summary = "Prepare and stage the latest apply pack first so this page can point to real execution and verification evidence."
+    evidence_follow_ups = [
+        "Keep the review artifacts and staged outputs together before asking anyone to run the CLI write.",
+        "Use the verify summary as the last gate before the write handoff is approved.",
+    ]
+
+    if write_mode and report_state == "verified":
+        evidence_state = "post_write_verified"
+        evidence_title = "Post-write evidence ready"
+        evidence_summary = (
+            f"The latest CLI write run recorded {written_count} written change(s), "
+            "and the refreshed verify summary still matches the reviewed artifacts."
+        )
+        evidence_follow_ups = [
+            "Keep the execute summary, verify summary, and aggregate report with the approval record.",
+            "Re-run the verify command after any manual edit to the same governance source files.",
+            "Use normal Git review before merging or releasing the written governance updates.",
+        ]
+    elif write_mode and report_state == "drifted":
+        evidence_state = "post_write_drifted"
+        evidence_title = "Post-write evidence needs follow-up"
+        evidence_summary = (
+            f"The latest CLI write run exists, but verification now reports {max(drift_count, 1)} drift finding(s). "
+            "Review the written targets again before treating the evidence pack as complete."
+        )
+        evidence_follow_ups = [
+            "Inspect the written target root and compare it with the reviewed target artifacts.",
+            "Re-run the verify command after restoring or restaging the drifted files.",
+        ]
+    elif write_mode:
+        evidence_state = "post_write_pending"
+        evidence_title = "Post-write evidence pending verification"
+        evidence_summary = (
+            "A CLI write run is recorded, but the latest verification summary still needs follow-up before the evidence pack is complete."
+        )
+        evidence_follow_ups = [
+            "Re-run the verify command and make sure the written targets still match the reviewed artifacts.",
+            "Keep the partial write evidence out of the final approval record until verification is clean.",
+        ]
+    elif state == "ready":
+        evidence_state = "pre_write_ready"
+        evidence_title = "Pre-write evidence ready"
+        evidence_summary = (
+            f"The staged governance targets currently have {verified_count} verified action(s), "
+            "so the evidence pack is ready to support an explicit CLI write approval."
+        )
+        evidence_follow_ups = [
+            "Capture explicit operator approval before anyone runs the CLI write command.",
+            "After the CLI write completes, refresh verification and archive the updated evidence pack.",
+        ]
+    elif report_payload and action_count == 0:
+        evidence_state = "empty"
+        evidence_title = "No write evidence required"
+        evidence_summary = "The latest handoff refresh does not contain any governance-source changes that need write approval."
+        evidence_follow_ups = [
+            "No write evidence pack is needed for this target root unless a future governance refresh generates new apply actions."
+        ]
+    elif report_state == "drifted":
+        evidence_state = "drifted"
+        evidence_title = "Evidence pack paused for drift"
+        evidence_summary = (
+            f"The latest staged verification now reports {max(drift_count, 1)} drift finding(s), "
+            "so the evidence pack is no longer safe to hand off."
+        )
+        evidence_follow_ups = [
+            "Restage or rebuild the apply pack until verification returns to a clean verified state.",
+            "Only then should the evidence pack be attached to an approval record.",
+        ]
+    elif report_payload:
+        evidence_state = "pre_write_pending"
+        evidence_title = "Evidence pack still forming"
+        evidence_summary = (
+            "The apply pack exists, but staged execution and verification are not yet clean enough to support an approval record."
+        )
+        evidence_follow_ups = [
+            "Finish stage and verify first so the evidence pack points to real execution artifacts instead of patches alone.",
+        ]
+
     return {
         "state": state,
         "ready": state == "ready",
         "requires_explicit_approval": True,
+        "approval_enabled": state in {"ready", "completed"},
+        "approval_label": "I reviewed the staged governance artifacts and understand the final CLI write still happens outside this page.",
+        "approval_help": "This checkbox only records the handoff acknowledgement in the browser UI. Repo governance source write still requires someone to run the CLI command explicitly.",
         "title": title,
         "summary": summary,
         "write_command": write_command if commands_available else "",
@@ -291,6 +416,13 @@ def _build_waiver_apply_write_handoff(
         "checklist": checklist,
         "governance_source_paths": source_paths,
         "artifact_paths": artifact_paths,
+        "evidence": {
+            "state": evidence_state,
+            "title": evidence_title,
+            "summary": evidence_summary,
+            "entries": evidence_entries,
+            "follow_ups": evidence_follow_ups,
+        },
     }
 
 

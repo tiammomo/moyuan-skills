@@ -1,58 +1,49 @@
 # Moyuan Skills Market
 
-这是一个面向 `skills market` 的教学型参考仓库。
-
-仓库同时覆盖 6 层能力：
-
-1. skill 设计、渐进式披露与 harness/eval
-2. market manifest、package、provenance 与发布分发
-3. client install / update / remove / bundle lifecycle
-4. installed-state doctor / repair / baseline / governance
-5. waiver / policy / gate / source reconcile 治理链路
-6. frontend / backend / HTML 交付与前后端联调
+这是一个面向 `skills market` 的中文教学型参考仓库，覆盖从 skill 设计、market 分发、client lifecycle、governance 到前后端联调的完整链路。
 
 ## 最新进展
 
-这轮把 installed-state governance 的 write-approval 再往前推进了一步：
+这一轮把 installed-state governance 的 write execution 再往前推进了一步：
 
-- skill / bundle 详情页里的 waiver / apply 面板现在支持 `prepare / stage / verify + write handoff`
-- 页面会区分 `pending / ready / blocked / drifted / completed` 五种 write 资格，并解释为什么当前还不能进入 CLI write
-- handoff 区块会直接展示 CLI `write` / `verify` 命令、planned governance source、review artifacts、approval checklist 和 rollback hint
-- repo governance source 的真实 `write` 仍然保持 CLI-only；页面负责把高风险动作解释清楚并交接出去
-- Playwright 已覆盖 `stage verified -> write handoff ready` 以及 `tamper staged artifact -> drifted / handoff disabled` 两条真实路径
-- Windows 下 staged artifact 继续使用短名 + hash，避免超长路径导致 stage 失败
+- skill / bundle 详情页里的 waiver / apply 面板已经支持 `prepare / stage / verify + write handoff`
+- write handoff 现在会展示 `pending / ready / blocked / drifted / completed` 五种状态，并解释为什么当前还不能进入最终 CLI write
+- 页面新增显式 approval capture，明确说明“页面只记录交接确认，真正的 repo governance source write 仍然是 CLI-only”
+- 页面新增 evidence pack，能展示 apply / execute / verify / target root 等交接证据，并区分 pre-write 与 post-write 两类状态
+- Playwright 已覆盖 `stage verified -> approval captured -> post-write evidence refreshed` 这条真实路径
+- Windows 下 staged artifact 继续使用短名 + hash，降低超长路径导致 stage 失败的风险
 
-另外，前端构建当前默认仍走 `next build --webpack`，并在 [frontend/next.config.js](./frontend/next.config.js) 中把 `experimental.cpus` 收敛到更保守的值，用来降低 Windows 下 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
+前端构建当前默认仍使用 `next build --webpack`，并在 [frontend/next.config.js](./frontend/next.config.js) 中把 `experimental.cpus` 收敛到更保守的值，减少 Windows 环境里 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
 
 ## 当前能力
 
 ### 1. Skills 教学与案例
 
-- skill 设计与教学见 [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
+- skill 设计与学习路径见 [docs/skill-learning-guide.md](./docs/skill-learning-guide.md)
 - 快速上手见 [docs/skill-quickstart.md](./docs/skill-quickstart.md)
-- 渐进式披露与 harness 参考见 [docs/progressive-disclosure.md](./docs/progressive-disclosure.md) 与 [docs/harness-engineering.md](./docs/harness-engineering.md)
-- 新增的中文业务案例见 [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md) 与 [docs/yuque-openapi.md](./docs/yuque-openapi.md)
+- 渐进式披露与 harness 参考见 [docs/progressive-disclosure.md](./docs/progressive-disclosure.md) 和 [docs/harness-engineering.md](./docs/harness-engineering.md)
+- 飞书与语雀案例见 [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md) 和 [docs/yuque-openapi.md](./docs/yuque-openapi.md)
 
 ### 2. Skills Market 与分发
 
-- package / index / catalog / recommendations / federation / registry 都已经具备本地脚本入口
+- package / index / catalog / recommendations / federation / registry 都有本地脚本入口
 - 统一 CLI 入口见 [scripts/skills_market.py](./scripts/skills_market.py)
 - 规范与发布说明见 [docs/market-spec.md](./docs/market-spec.md)、[docs/publisher-guide.md](./docs/publisher-guide.md)、[docs/consumer-guide.md](./docs/consumer-guide.md)
 - registry / federation 说明见 [docs/market-registry.md](./docs/market-registry.md)
 
 ### 3. Client Lifecycle 与治理
 
-- install / update / remove / bundle / doctor / repair / baseline / governance / waiver / apply handoff / gate 已全部落地
-- installed-state 现在已经能从页面跑通 doctor、低风险 repair、baseline capture、governance refresh
-- waiver / apply 现在已经能从页面跑通 `prepare / stage / verify`，并页面化展示 write handoff
+- install / update / remove / bundle / doctor / repair / baseline / governance / waiver / apply handoff / gate 已经全部落地
+- installed-state 可以从页面跑通 doctor、低风险 repair、baseline capture、governance refresh
+- waiver / apply 可以从页面跑通 `prepare / stage / verify`，并页面化展示 write handoff、approval capture 和 evidence pack
 - 治理说明见 [docs/market-governance.md](./docs/market-governance.md)
 
 ### 4. 前后端联调
 
-- Python backend 见 [backend/README.md](./backend/README.md)
-- 前后端契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
-- skill / bundle 详情页已经支持真实 backend 本地执行与远端 registry install
-- docs 详情页会把 repo 命令、顺序提示、前置条件、预期结果和产物输出提示一起展示出来
+- Python backend 说明见 [backend/README.md](./backend/README.md)
+- 契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
+- skill / bundle 详情页支持真实 backend 本地执行与远端 registry install
+- docs 详情页会把 repo 命令、顺序提示、前置条件、预期结果和产物提示一起展示
 - Playwright 已覆盖首页、skills、bundles、docs 与详情页的端到端联调
 
 ## 中文 Skills 教学入口
@@ -65,7 +56,7 @@
 4. [docs/teaching/18-skills-market-learning-map.md](./docs/teaching/18-skills-market-learning-map.md)
 5. [docs/teaching/22-doc-sync-skill-case-studies.md](./docs/teaching/22-doc-sync-skill-case-studies.md)
 
-如果你更关心真实案例，可以直接看：
+如果更关心真实案例，可以直接看：
 
 - [docs/feishu-doc-sync.md](./docs/feishu-doc-sync.md)
 - [docs/yuque-openapi.md](./docs/yuque-openapi.md)
@@ -138,7 +129,7 @@ npm run dev:local --prefix frontend
 `- templates/
 ```
 
-## 常用校验命令
+## 常用验证命令
 
 - `python scripts/check_progressive_skills.py`
 - `python scripts/check_docs_links.py`

@@ -1,33 +1,13 @@
+import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
+import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
 
 const repoRoot = path.resolve(process.cwd(), '..');
+const execFileAsync = promisify(execFile);
 
 test.setTimeout(120_000);
-
-async function findFirstMatchingFile(
-  root: string,
-  matcher: (candidatePath: string) => boolean
-): Promise<string | null> {
-  const entries = await fs.readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    const candidatePath = path.join(root, entry.name);
-    if (entry.isDirectory()) {
-      const nestedMatch = await findFirstMatchingFile(candidatePath, matcher);
-      if (nestedMatch) {
-        return nestedMatch;
-      }
-      continue;
-    }
-
-    if (entry.isFile() && matcher(candidatePath)) {
-      return candidatePath;
-    }
-  }
-
-  return null;
-}
 
 test('frontend works against the Python backend across core market flows', async ({ page }) => {
   const skillTargetRoot = path.join(repoRoot, 'dist', 'frontend-local-execution', 'skills', 'release-note-writer');
@@ -203,60 +183,130 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-sources')).toContainText(
     'governance'
   );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-evidence-summary')).toContainText(
+    'ready to support an explicit CLI write approval'
+  );
   await expect(page.getByTestId('skill-installed-state-waiver-apply-actions')).toContainText(
     'matches_staged_target'
   );
-  const waiverApplyStageDir = path.join(
-    skillTargetRoot,
-    'snapshots',
-    'governance',
-    'waiver-apply',
-    'source-reconcile-gate-waiver-apply-staged-root'
-  );
-  const stagedApplyArtifact = await findFirstMatchingFile(
-    waiverApplyStageDir,
-    (candidatePath) => candidatePath.endsWith('.json') && path.basename(candidatePath) !== 'deletions.json'
-  );
-  expect(stagedApplyArtifact).toBeTruthy();
-  if (!stagedApplyArtifact) {
-    throw new Error('Expected a staged waiver/apply artifact to exist after stage.');
-  }
-  await fs.writeFile(
-    stagedApplyArtifact,
-    JSON.stringify(
-      {
-        tampered: true,
-        source: 'playwright-drift-check',
-      },
-      null,
-      2
-    ) + '\n',
-    'utf-8'
-  );
-  await expect(page.getByTestId('skill-installed-state-waiver-apply-verify')).toBeEnabled({
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-checkbox')).toBeEnabled({
     timeout: 20000,
   });
-  await page.getByTestId('skill-installed-state-waiver-apply-verify').click();
-  await expect(page.getByTestId('skill-installed-state-waiver-apply-verify-summary')).toContainText(
-    'drifted',
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
+    'Waiting for explicit approval capture',
     {
       timeout: 20000,
     }
   );
+  await page.getByTestId('skill-installed-state-waiver-apply-write-approval-checkbox').check();
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
+    'Approval captured in this browser',
+    {
+      timeout: 20000,
+    }
+  );
+
+  const baselineHistoryPath = path.join(skillTargetRoot, 'snapshots', 'baseline-history.json');
+  const waiverApplyDir = path.join(skillTargetRoot, 'snapshots', 'governance', 'waiver-apply');
+  const applyExecuteSummaryPath = path.join(
+    waiverApplyDir,
+    'source-reconcile-gate-waiver-apply-execute-summary.json'
+  );
+  const governanceWriteMirrorRoot = path.join(skillTargetRoot, 'governance-write-root');
+  const governanceWriteMirrorRootDisplay = path.relative(repoRoot, governanceWriteMirrorRoot).split(path.sep).join('/');
+  await fs.rm(governanceWriteMirrorRoot, { recursive: true, force: true });
+  await fs.mkdir(governanceWriteMirrorRoot, { recursive: true });
+  await fs.cp(path.join(repoRoot, 'governance'), path.join(governanceWriteMirrorRoot, 'governance'), {
+    recursive: true,
+  });
+
+  await execFileAsync(
+    'python',
+    [
+      'scripts/execute_source_reconcile_gate_waiver_apply.py',
+      baselineHistoryPath,
+      '--output-dir',
+      waiverApplyDir,
+      '--target-root',
+      governanceWriteMirrorRoot,
+      '--write',
+      '--json',
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      windowsHide: true,
+    }
+  );
+  await execFileAsync(
+    'python',
+    [
+      'scripts/verify_source_reconcile_gate_waiver_apply.py',
+      baselineHistoryPath,
+      '--output-dir',
+      waiverApplyDir,
+      '--target-root',
+      governanceWriteMirrorRoot,
+      '--apply-execute-summary-path',
+      applyExecuteSummaryPath,
+      '--json',
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      windowsHide: true,
+    }
+  );
+  await execFileAsync(
+    'python',
+    [
+      'scripts/report_source_reconcile_gate_waiver_apply.py',
+      baselineHistoryPath,
+      '--output-dir',
+      waiverApplyDir,
+      '--target-root',
+      governanceWriteMirrorRoot,
+      '--apply-execute-summary-path',
+      applyExecuteSummaryPath,
+      '--json',
+    ],
+    {
+      cwd: repoRoot,
+      encoding: 'utf-8',
+      windowsHide: true,
+    }
+  );
+
+  await page.getByTestId('skill-installed-state-waiver-apply-reload').click();
   await expect(page.getByTestId('skill-installed-state-waiver-apply-status')).toContainText(
-    'Apply handoff drift detected',
+    'Written apply verified',
     {
       timeout: 20000,
     }
   );
   await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-status')).toContainText(
-    'Write handoff paused for drift',
+    'CLI write already verified',
     {
       timeout: 20000,
     }
   );
-  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-handoff-blockers')).toContainText(
-    'drift finding'
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-evidence')).toContainText(
+    'Post-write evidence ready'
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-evidence-summary')).toContainText(
+    'recorded 1 written change',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-evidence')).toContainText(
+    governanceWriteMirrorRootDisplay
+  );
+  await expect(page.getByTestId('skill-installed-state-waiver-apply-write-approval-state')).toContainText(
+    'Approval captured in this browser',
+    {
+      timeout: 20000,
+    }
   );
   await page.getByTestId('skill-remove-execution-run').click();
   await expect(page.getByTestId('skill-remove-execution-status')).toContainText('Succeeded', { timeout: 20000 });

@@ -327,6 +327,14 @@ def main() -> int:
     if not waiver_apply_state.get("can_prepare") or waiver_apply_state.get("report_summary_exists"):
         print("ERROR: backend waiver/apply handoff state should be prepare-ready before the first handoff refresh")
         return 1
+    waiver_apply_write_handoff = waiver_apply_state.get("write_handoff", {})
+    waiver_apply_evidence = waiver_apply_write_handoff.get("evidence", {})
+    if not waiver_apply_write_handoff.get("approval_label") or not waiver_apply_write_handoff.get("approval_help"):
+        print("ERROR: backend waiver/apply handoff state should expose approval capture guidance before prepare")
+        return 1
+    if not waiver_apply_evidence.get("title") or not isinstance(waiver_apply_evidence.get("entries"), list):
+        print("ERROR: backend waiver/apply handoff state should expose an evidence pack before prepare")
+        return 1
 
     waiver_apply_prepare_response = client.post(
         "/api/v1/local/state/governance/waiver-apply/prepare",
@@ -368,6 +376,16 @@ def main() -> int:
         return 1
     if not waiver_apply_state_after.get("latest_report", {}).get("apply", {}).get("summary_path"):
         print("ERROR: backend waiver/apply handoff state should surface the latest apply summary metadata")
+        return 1
+    waiver_apply_write_handoff_after = waiver_apply_state_after.get("write_handoff", {})
+    waiver_apply_evidence_after = waiver_apply_write_handoff_after.get("evidence", {})
+    if not waiver_apply_write_handoff_after.get("write_command") or not waiver_apply_write_handoff_after.get(
+        "verify_command"
+    ):
+        print("ERROR: backend waiver/apply handoff state should expose CLI write and verify commands after prepare")
+        return 1
+    if not waiver_apply_evidence_after.get("summary") or not waiver_apply_evidence_after.get("follow_ups"):
+        print("ERROR: backend waiver/apply handoff state should expose evidence guidance after prepare")
         return 1
 
     bundle_state_response = client.get(

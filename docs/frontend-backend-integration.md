@@ -10,7 +10,7 @@
 - 本地 install / update / remove
 - installed-state doctor / repair / baseline / governance
 - waiver / apply handoff 的 `prepare / stage / verify`
-- governance write handoff 的 eligibility、命令包与 review checklist
+- governance write handoff 的 eligibility、approval capture、evidence pack 与 review checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
 
 ## 当前分层
@@ -71,15 +71,16 @@ GET /api/v1/local/jobs/{job_id}
 2. `stage`
    把治理源文件的变更安全写入专用 staging root，并刷新 aggregate report。
 3. `verify`
-   重新校验 staged 结果，并刷新 aggregate report。
+   重新校验 staged 或 written 结果，并刷新 aggregate report。
 4. `write handoff`
-   页面根据最新 report 汇总 `pending / ready / blocked / drifted / completed` 五种 write 状态，并给出 CLI write/verify 命令、planned governance source、review artifacts、approval checklist 与 rollback hint。
+   页面根据最新 report 汇总 `pending / ready / blocked / drifted / completed` 五种 write 状态，并给出 CLI write/verify 命令、planned governance source、review artifacts、approval checklist、approval capture 和 evidence pack。
 
 需要特别说明：
 
 - `stage` 和 `verify` 面向的是 governance staging flow，而不是 installed target root 本身
 - `write` 仍然保持 CLI-only
-- 页面展示的是 report 聚合结果，不需要手工拼装 apply / execute / verify 三份摘要
+- 页面里的 approval capture 只是浏览器内的交接确认，不会绕过 CLI write 边界
+- evidence pack 会把 apply / execute / verify / target root 等关键证据聚合展示，方便人工审批和事后复核
 - handoff 的目标是把高风险动作解释清楚，而不是把 repo-source write 偷偷藏进 UI
 
 为了兼容 Windows，本轮继续保持 staged artifact 的短名 + hash，避免超长路径导致 stage 失败。
@@ -90,8 +91,7 @@ GET /api/v1/local/jobs/{job_id}
 
 - skill detail 本地 install -> doctor -> repair -> baseline -> governance refresh
 - waiver / apply `prepare -> stage -> verify`
-- `stage verified -> write handoff ready`
-- 篡改 staged artifact 后重新 `verify`，进入 `drifted -> write handoff disabled`
+- `stage verified -> approval captured -> post-write evidence refreshed`
 - remote registry install 的 approval / retry / cleanup / rollback
 - docs 页面搜索、详情页 action panel、context panel 与相关文档跳转
 
@@ -132,7 +132,7 @@ next build --webpack
 
 ```text
 python scripts/check_python_market_backend.py
-python scripts/check_market_pipeline.py --output-root dist/market-smoke-frontend-governance-write-approval
+python scripts/check_market_pipeline.py --output-root dist/market-smoke-frontend-governance-write-execution
 python scripts/check_docs_links.py
 npm run build --prefix frontend
 npm run e2e --prefix frontend

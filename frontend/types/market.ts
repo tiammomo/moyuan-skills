@@ -484,6 +484,9 @@ export interface LocalInstalledWaiverApplyWriteHandoff {
   state: 'pending' | 'ready' | 'blocked' | 'drifted' | 'completed';
   ready: boolean;
   requires_explicit_approval: boolean;
+  approval_enabled: boolean;
+  approval_label: string;
+  approval_help: string;
   title: string;
   summary: string;
   write_command: string;
@@ -493,6 +496,24 @@ export interface LocalInstalledWaiverApplyWriteHandoff {
   checklist: string[];
   governance_source_paths: string[];
   artifact_paths: string[];
+  evidence: {
+    state:
+      | 'pending'
+      | 'pre_write_ready'
+      | 'pre_write_pending'
+      | 'post_write_pending'
+      | 'post_write_verified'
+      | 'post_write_drifted'
+      | 'drifted'
+      | 'empty';
+    title: string;
+    summary: string;
+    entries: Array<{
+      label: string;
+      value: string;
+    }>;
+    follow_ups: string[];
+  };
 }
 
 export interface LocalInstalledWaiverApplyState {
