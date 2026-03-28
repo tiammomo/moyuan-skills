@@ -106,6 +106,20 @@ export interface LocalJobRecord {
   error: string | null;
 }
 
+export interface LocalDocsActionHistoryEntry {
+  action_id: string;
+  label: string;
+  recent_runs: LocalJobRecord[];
+  last_success: LocalJobRecord | null;
+}
+
+export interface LocalDocsActionHistoryPayload {
+  doc_kind: DocsCatalogEntry['kind'];
+  doc_id: string;
+  action_count: number;
+  actions: LocalDocsActionHistoryEntry[];
+}
+
 export interface LocalInstalledSkillRecord {
   skill_id: string;
   skill_name: string;

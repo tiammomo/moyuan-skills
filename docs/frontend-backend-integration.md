@@ -12,7 +12,7 @@
 - waiver / apply handoff 的 `prepare / stage / verify`
 - governance write handoff 的 eligibility、approval record、audit timeline、evidence pack 与 review checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
-- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态与结果摘要
+- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态、recent runs 与结果回看
 
 ## 当前分层
 
@@ -26,7 +26,7 @@
 它还负责把 skill / bundle / docs 数据整理成前端真正需要的结构，例如：
 
 - docs 上下文面板
-- action panel 的命令、执行模式、顺序、前置条件、预期产物与结果摘要
+- action panel 的命令、执行模式、顺序、前置条件、预期产物、result summary、recent runs 与 last-success
 - remote execution 的 trust summary、policy gate、approval 文案
 
 ### 2. Next.js API 代理层
@@ -40,6 +40,7 @@
 - remote registry lifecycle
 - docs catalog 与详情
 - docs action execution 代理
+- docs action history 代理
 
 waiver / apply 相关代理包括：
 
@@ -48,6 +49,7 @@ waiver / apply 相关代理包括：
 - `/api/local/state/governance/waiver-apply/prepare`
 - `/api/local/state/governance/waiver-apply/stage`
 - `/api/local/state/governance/waiver-apply/verify`
+- `/api/local/docs/actions/history`
 - `/api/local/docs/actions/run`
 
 ### 3. Python backend
@@ -64,6 +66,7 @@ POST /api/v1/local/state/governance/waiver-apply/approval
 POST /api/v1/local/state/governance/waiver-apply/prepare
 POST /api/v1/local/state/governance/waiver-apply/stage
 POST /api/v1/local/state/governance/waiver-apply/verify
+GET /api/v1/local/docs/actions/history
 POST /api/v1/local/docs/actions/run
 GET /api/v1/local/jobs/{job_id}
 ```
@@ -102,7 +105,7 @@ GET /api/v1/local/jobs/{job_id}
 - waiver / apply `prepare -> stage -> verify`
 - `approval persisted -> audit trail visible -> restage invalidates old approval -> post-write evidence refreshed`
 - remote registry install 的 approval / retry / cleanup / rollback
-- docs 页面搜索、详情页 action panel、context panel、相关文档跳转与 project doc allowlist action 真执行
+- docs 页面搜索、详情页 action panel、context panel、相关文档跳转、project doc allowlist action 真执行，以及 docs action history / last-success 回看
 
 ## 本地联调
 

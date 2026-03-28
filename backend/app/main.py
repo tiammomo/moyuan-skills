@@ -727,7 +727,7 @@ def local_job_detail(job_id: str) -> dict:
     return payload
 
 
-@app.post("/api/v1/local/docs/actions/run")
+@app.post("/api/v1/local/docs/actions/run", status_code=202)
 def local_docs_action_run(request: LocalDocsActionRunRequest) -> dict:
     payload = repository.get_doc_action_execution(request.doc_kind, request.doc_id, request.action_id)
     if not payload:
@@ -744,6 +744,56 @@ def local_docs_action_run(request: LocalDocsActionRunRequest) -> dict:
         artifacts=dict(payload["artifacts"]),
         request_payload=request.model_dump(),
     )
+
+
+@app.get("/api/v1/local/docs/actions/history")
+def local_docs_action_history(
+    doc_kind: str,
+    doc_id: str,
+    limit: Annotated[int, Query(ge=1, le=10)] = 5,
+) -> dict:
+    jobs = job_store.list_jobs(
+        kind_prefix="docs-",
+        summary_filters={
+            "doc_kind": doc_kind,
+            "doc_id": doc_id,
+            "mode": "docs-action-run",
+        },
+    )
+
+    grouped_actions: dict[str, dict] = {}
+    for job in jobs:
+        summary = job.get("summary", {})
+        if not isinstance(summary, dict):
+            continue
+        action_id = str(summary.get("action_id", "")).strip()
+        if not action_id:
+            continue
+        action_entry = grouped_actions.setdefault(
+            action_id,
+            {
+                "action_id": action_id,
+                "label": str(summary.get("label", "")).strip(),
+                "recent_runs": [],
+                "last_success": None,
+            },
+        )
+        if len(action_entry["recent_runs"]) < limit:
+            action_entry["recent_runs"].append(job)
+        if job.get("status") == "succeeded" and action_entry["last_success"] is None:
+            action_entry["last_success"] = job
+
+    actions = sorted(
+        grouped_actions.values(),
+        key=lambda action: str(action["recent_runs"][0].get("created_at", "")) if action["recent_runs"] else "",
+        reverse=True,
+    )
+    return {
+        "doc_kind": doc_kind,
+        "doc_id": doc_id,
+        "action_count": len(actions),
+        "actions": actions,
+    }
 
 
 @app.get("/api/v1/local/state")

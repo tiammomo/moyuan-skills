@@ -133,6 +133,73 @@ def main() -> int:
         print("ERROR: backend should expose project doc content for known project docs")
         return 1
 
+    docs_action_history_response = client.get(
+        "/api/v1/local/docs/actions/history",
+        params={
+            "doc_kind": "project",
+            "doc_id": "repo-commands",
+            "limit": 5,
+        },
+    )
+    if docs_action_history_response.status_code != 200:
+        print(
+            "ERROR: backend docs action history should return 200, "
+            f"got {docs_action_history_response.status_code}"
+        )
+        return 1
+    docs_action_history = docs_action_history_response.json()
+    if docs_action_history.get("action_count") != 0:
+        print("ERROR: backend docs action history should start empty before the first docs action run")
+        return 1
+
+    docs_action_run_response = client.post(
+        "/api/v1/local/docs/actions/run",
+        json={
+            "doc_kind": "project",
+            "doc_id": "repo-commands",
+            "action_id": "check-docs-links",
+            "scope": "backend-smoke",
+        },
+    )
+    if docs_action_run_response.status_code != 202:
+        print(
+            "ERROR: backend docs action run should return 202, "
+            f"got {docs_action_run_response.status_code}"
+        )
+        return 1
+    docs_action_job = wait_for_job(client, docs_action_run_response.json()["job_id"])
+    if docs_action_job.get("status") != "succeeded":
+        print("ERROR: backend docs action run should succeed")
+        print(docs_action_job.get("stdout", ""))
+        print(docs_action_job.get("stderr", ""))
+        return 1
+
+    docs_action_history_after_response = client.get(
+        "/api/v1/local/docs/actions/history",
+        params={
+            "doc_kind": "project",
+            "doc_id": "repo-commands",
+            "limit": 5,
+        },
+    )
+    if docs_action_history_after_response.status_code != 200:
+        print(
+            "ERROR: backend docs action history after run should return 200, "
+            f"got {docs_action_history_after_response.status_code}"
+        )
+        return 1
+    docs_action_history_after = docs_action_history_after_response.json()
+    if docs_action_history_after.get("action_count", 0) < 1:
+        print("ERROR: backend docs action history should expose the executed docs action")
+        return 1
+    docs_action_entries = docs_action_history_after.get("actions", [])
+    if not docs_action_entries or docs_action_entries[0].get("action_id") != "check-docs-links":
+        print("ERROR: backend docs action history should keep the executed action id")
+        return 1
+    if not docs_action_entries[0].get("last_success"):
+        print("ERROR: backend docs action history should keep the latest successful docs action run")
+        return 1
+
     leaked_internal_doc = repository.get_project_doc("frontend-project-docs-iteration")
     if leaked_internal_doc is not None:
         print("ERROR: temporary iteration notes should not leak through the project docs API")

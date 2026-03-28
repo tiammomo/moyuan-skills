@@ -15,11 +15,13 @@ test('frontend works against the Python backend across core market flows', async
   const remoteSkillTargetRoot = path.join(repoRoot, 'dist', 'frontend-remote-execution', 'skills', 'release-note-writer');
   const remoteBundleTargetRoot = path.join(repoRoot, 'dist', 'frontend-remote-execution', 'bundles', 'release-engineering-starter');
   const remoteCacheRoot = path.join(repoRoot, 'dist', 'frontend-remote-execution', 'cache');
+  const docActionHistoryFailurePath = path.join(repoRoot, 'backend', '_doc_action_history_failure.py');
   await fs.rm(skillTargetRoot, { recursive: true, force: true });
   await fs.rm(bundleTargetRoot, { recursive: true, force: true });
   await fs.rm(remoteSkillTargetRoot, { recursive: true, force: true });
   await fs.rm(remoteBundleTargetRoot, { recursive: true, force: true });
   await fs.rm(remoteCacheRoot, { recursive: true, force: true });
+  await fs.rm(docActionHistoryFailurePath, { force: true });
 
   await page.goto('/');
 
@@ -518,6 +520,22 @@ test('frontend works against the Python backend across core market flows', async
     }
   );
   await expect(page.getByTestId('doc-action-summary-project-primary')).toContainText('check_python_market_backend.py');
+  await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
+    'Viewing the latest in-page run.'
+  );
+  await expect(page.getByTestId('doc-action-history-project-primary')).toContainText('Recent runs');
+  await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText('Last success');
+  await expect(page.getByTestId('doc-action-history-entry-project-primary-1')).toContainText('Succeeded');
+  await page.reload();
+  await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
+    'completed successfully',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
+    'Viewing the last successful run saved in recent history.'
+  );
   await expect(page.getByTestId('doc-context-panel')).toBeVisible();
   await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/frontend-backend-integration.md');
   const firstRelatedDoc = page.locator('[data-testid^="related-doc-link-"]').first();
@@ -532,6 +550,34 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-context-project-center')).toHaveAttribute('href', '/docs');
   await page.goto('/docs');
   await expect(page.getByTestId('docs-search-input')).toBeVisible();
+
+  await page.goto('/docs/project/dev-setup');
+  await expect(page.getByTestId('doc-action-project-primary')).toContainText('python -m compileall backend');
+  await page.getByTestId('doc-action-run-project-primary').click();
+  await expect(page.getByTestId('doc-action-status-project-primary')).toContainText('Succeeded', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText('Last success');
+  await fs.writeFile(
+    docActionHistoryFailurePath,
+    "def broken(:\n    return 'broken'\n",
+    'utf-8'
+  );
+  await page.getByTestId('doc-action-run-project-primary').click();
+  await expect(page.getByTestId('doc-action-status-project-primary')).toContainText('Failed', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
+    'Viewing the latest in-page run.'
+  );
+  await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
+    'completed successfully'
+  );
+  await page.getByTestId('doc-action-history-entry-project-primary-2').click();
+  await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
+    'Viewing the last successful run saved in recent history.'
+  );
+  await fs.rm(docActionHistoryFailurePath, { force: true });
 
   await page.goto('/docs');
   await expect(page.getByTestId('skill-doc-card-release-note-writer')).toBeVisible();

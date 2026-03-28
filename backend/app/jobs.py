@@ -75,6 +75,37 @@ class LocalJobStore:
                 return None
             return dict(job)
 
+    def list_jobs(
+        self,
+        *,
+        kind_prefix: str | None = None,
+        summary_filters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
+        with self._lock:
+            jobs = [dict(job) for job in self._jobs.values()]
+
+        matched_jobs: list[dict[str, Any]] = []
+        for job in jobs:
+            if kind_prefix and not str(job.get("kind", "")).startswith(kind_prefix):
+                continue
+
+            if summary_filters:
+                summary = job.get("summary", {})
+                if not isinstance(summary, dict):
+                    continue
+                summary_mismatch = False
+                for key, expected in summary_filters.items():
+                    if str(summary.get(key, "")).strip() != str(expected).strip():
+                        summary_mismatch = True
+                        break
+                if summary_mismatch:
+                    continue
+
+            matched_jobs.append(job)
+
+        matched_jobs.sort(key=lambda job: str(job.get("created_at", "")), reverse=True)
+        return matched_jobs
+
     def _run_subprocess_job(self, job_id: str, command: list[str]) -> None:
         self._update_job(
             job_id,
