@@ -683,9 +683,17 @@ export interface ProjectDocPayload extends DocsCatalogEntry {
   markdown: string;
 }
 
+export type DocActionExecutionMode = 'copy' | 'backend-job';
+
+export type DocActionPrerequisiteState = 'ready' | 'manual' | 'blocked';
+
 export interface DocActionCommand {
+  actionId?: string;
   label: string;
   command: string;
+  executionMode?: DocActionExecutionMode;
+  prerequisitesState?: DocActionPrerequisiteState;
+  executionSummary?: string;
   prerequisites?: string;
   expectedOutcome?: string;
   artifacts?: string[];
@@ -699,6 +707,8 @@ export interface DocActionLink {
 }
 
 export interface DocActionPanelData {
+  docId: string;
+  docKind: DocsCatalogEntry['kind'];
   title: string;
   description: string;
   commands: DocActionCommand[];

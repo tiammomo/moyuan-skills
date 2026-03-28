@@ -492,15 +492,32 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-prerequisites-project-primary')).toContainText(
     'Install backend dependencies'
   );
+  await expect(page.getByTestId('doc-action-prerequisites-state-project-primary')).toContainText('Ready in-page');
   await expect(page.getByTestId('doc-action-outcome-project-primary')).toContainText(
     'The Python market backend check passes'
   );
   await expect(page.getByTestId('doc-action-artifacts-project-primary')).toContainText(
     'Backend payload-count summary printed in terminal output'
   );
+  await expect(page.getByTestId('doc-action-execution-summary-project-primary')).toContainText(
+    'Run the Python backend repository check directly from this project reference.'
+  );
+  await expect(page.getByTestId('doc-action-status-project-primary')).toContainText('Ready');
   await expect(page.getByTestId('doc-action-project-secondary')).toContainText('npm run e2e --prefix frontend');
+  await expect(page.getByTestId('doc-action-status-project-secondary')).toContainText('Copy only');
   await page.getByTestId('doc-action-copy-project-primary').click();
   await expect(page.getByTestId('doc-action-copy-project-primary')).toContainText('Copied');
+  await page.getByTestId('doc-action-run-project-primary').click();
+  await expect(page.getByTestId('doc-action-status-project-primary')).toContainText('Succeeded', {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('doc-action-summary-project-primary')).toContainText(
+    'frontend-backend-integration',
+    {
+      timeout: 20000,
+    }
+  );
+  await expect(page.getByTestId('doc-action-summary-project-primary')).toContainText('check_python_market_backend.py');
   await expect(page.getByTestId('doc-context-panel')).toBeVisible();
   await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/frontend-backend-integration.md');
   const firstRelatedDoc = page.locator('[data-testid^="related-doc-link-"]').first();

@@ -245,6 +245,13 @@ class LocalStateGovernanceWaiverApplyApprovalRequest(BaseModel):
     )
 
 
+class LocalDocsActionRunRequest(BaseModel):
+    doc_kind: str = Field(..., min_length=4, description="Doc family kind: skill, teaching, or project.")
+    doc_id: str = Field(..., min_length=1, description="Doc id used in the docs routes.")
+    action_id: str = Field(..., min_length=1, description="Allowlisted action id exposed by the docs action panel.")
+    scope: str = Field(default="docs-action-execution", description="UI scope label for the docs action execution.")
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -718,6 +725,25 @@ def local_job_detail(job_id: str) -> dict:
     if not payload:
         raise _not_found("job", job_id)
     return payload
+
+
+@app.post("/api/v1/local/docs/actions/run")
+def local_docs_action_run(request: LocalDocsActionRunRequest) -> dict:
+    payload = repository.get_doc_action_execution(request.doc_kind, request.doc_id, request.action_id)
+    if not payload:
+        raise _not_found("docs action", f"{request.doc_kind}:{request.doc_id}:{request.action_id}")
+
+    return _create_local_job(
+        kind=str(payload["kind"]),
+        command=list(payload["command"]),
+        summary={
+            **dict(payload["summary"]),
+            "scope": request.scope,
+            "mode": "docs-action-run",
+        },
+        artifacts=dict(payload["artifacts"]),
+        request_payload=request.model_dump(),
+    )
 
 
 @app.get("/api/v1/local/state")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shlex
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -1079,6 +1080,362 @@ class MarketRepository:
             "project_docs": root_docs,
             "all_docs": all_docs,
         }
+
+    def _split_doc_action_command(self, command: str) -> list[str]:
+        return shlex.split(command, posix=False)
+
+    def _doc_action_smoke_output_root(self, doc_kind: str, doc_id: str) -> str:
+        normalized_kind = re.sub(r"[^a-z0-9-]+", "-", doc_kind.lower()).strip("-") or "doc"
+        normalized_id = re.sub(r"[^a-z0-9-]+", "-", doc_id.lower()).strip("-") or "action"
+        return f"dist/market-smoke-doc-actions/{normalized_kind}-{normalized_id}"
+
+    def _build_doc_action_payload(
+        self,
+        *,
+        doc_kind: str,
+        doc_id: str,
+        doc_title: str,
+        doc_path: str,
+        action_id: str,
+        label: str,
+        command: list[str],
+        expected_artifacts: list[str],
+        execution_summary: str,
+    ) -> dict[str, Any]:
+        return {
+            "kind": f"docs-{doc_kind}-{action_id}",
+            "command": command,
+            "summary": {
+                "doc_kind": doc_kind,
+                "doc_id": doc_id,
+                "doc_title": doc_title,
+                "action_id": action_id,
+                "label": label,
+            },
+            "artifacts": {
+                "doc_path": doc_path,
+                "expected_artifacts": expected_artifacts,
+                "execution_summary": execution_summary,
+            },
+        }
+
+    def _get_skill_doc_action_execution(self, doc_id: str, action_id: str) -> dict[str, Any] | None:
+        detail = self.get_skill_detail(doc_id)
+        if not detail or action_id != "skill-checker":
+            return None
+
+        manifest = detail.get("manifest", {}) if isinstance(detail, dict) else {}
+        quality = manifest.get("quality", {}) if isinstance(manifest, dict) else {}
+        raw_command = str(quality.get("checker", "")).strip() or (
+            f"python skills/{doc_id}/scripts/check_{doc_id.replace('-', '_')}.py"
+        )
+        return self._build_doc_action_payload(
+            doc_kind="skill",
+            doc_id=doc_id,
+            doc_title=str(manifest.get("title", doc_id)).strip() or doc_id,
+            doc_path=f"docs/{doc_id}.md",
+            action_id=action_id,
+            label="Run checker",
+            command=self._split_doc_action_command(raw_command),
+            expected_artifacts=["Checker pass/fail summary printed in the terminal output"],
+            execution_summary="Run the repo-backed skill checker from the doc page and keep the copy command for manual reruns.",
+        )
+
+    def _get_teaching_doc_action_execution(self, doc_id: str, action_id: str) -> dict[str, Any] | None:
+        doc = self.get_teaching_doc(doc_id)
+        if not doc:
+            return None
+
+        title = str(doc.get("title", doc_id)).strip() or doc_id
+        doc_path = str(doc.get("path", f"docs/teaching/{doc_id}.md")).strip()
+        smoke_output_root = self._doc_action_smoke_output_root("teaching", doc_id)
+
+        if (
+            "build" in doc_id
+            or "skill-author" in doc_id
+            or "learner" in doc_id
+            or "read-the-repo" in doc_id
+        ):
+            if action_id == "check-progressive-structure":
+                return self._build_doc_action_payload(
+                    doc_kind="teaching",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Check progressive structure",
+                    command=["python", "scripts/check_progressive_skills.py"],
+                    expected_artifacts=["Repository-wide structural validation summary in terminal output"],
+                    execution_summary="Run the repository-wide progressive skill validation from this teaching page.",
+                )
+            if action_id == "check-build-skills":
+                return self._build_doc_action_payload(
+                    doc_kind="teaching",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Run build-skills checker",
+                    command=["python", "skills/build-skills/scripts/check_build_skills.py"],
+                    expected_artifacts=["build-skills checker summary in terminal output"],
+                    execution_summary="Run the build-skills lesson checker without leaving the teaching doc.",
+                )
+            return None
+
+        if "progressive-disclosure" in doc_id:
+            if action_id == "check-progressive-structure":
+                return self._build_doc_action_payload(
+                    doc_kind="teaching",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Check progressive structure",
+                    command=["python", "scripts/check_progressive_skills.py"],
+                    expected_artifacts=["Repository-wide structural validation summary in terminal output"],
+                    execution_summary="Run the repository-wide progressive skill validation from this teaching page.",
+                )
+            if action_id == "check-progressive-disclosure":
+                return self._build_doc_action_payload(
+                    doc_kind="teaching",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Run progressive-disclosure checker",
+                    command=["python", "skills/progressive-disclosure/scripts/check_progressive_disclosure.py"],
+                    expected_artifacts=["progressive-disclosure checker summary in terminal output"],
+                    execution_summary="Run the progressive-disclosure checker directly from the teaching lesson.",
+                )
+            return None
+
+        if "harness" in doc_id or "evals-and-prototypes" in doc_id:
+            if action_id != "check-harness-prototypes":
+                return None
+            return self._build_doc_action_payload(
+                doc_kind="teaching",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check harness prototypes",
+                command=["python", "scripts/check_harness_prototypes.py"],
+                expected_artifacts=["Prototype validation summary in terminal output"],
+                execution_summary="Run the prototype schema and asset validation from this lesson.",
+            )
+
+        if "market" in doc_id or "registry" in doc_id or "project-learning-roadmap" in doc_id:
+            if action_id == "run-market-smoke":
+                return self._build_doc_action_payload(
+                    doc_kind="teaching",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Run market smoke",
+                    command=["python", "scripts/check_market_pipeline.py", "--output-root", smoke_output_root],
+                    expected_artifacts=[f"Smoke output directory under {smoke_output_root}/ plus terminal summary"],
+                    execution_summary="Run the market smoke pipeline with a doc-scoped output root and inspect the result summary in-page.",
+                )
+            if action_id == "check-python-market-backend":
+                return self._build_doc_action_payload(
+                    doc_kind="teaching",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Check frontend/backend integration",
+                    command=["python", "scripts/check_python_market_backend.py"],
+                    expected_artifacts=["Backend payload-count summary printed in terminal output"],
+                    execution_summary="Run the Python backend payload checker directly from this teaching reference.",
+                )
+            return None
+
+        if action_id == "check-progressive-structure":
+            return self._build_doc_action_payload(
+                doc_kind="teaching",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check progressive structure",
+                command=["python", "scripts/check_progressive_skills.py"],
+                expected_artifacts=["Repository-wide structural validation summary in terminal output"],
+                execution_summary="Run the repository-wide progressive skill validation from this teaching page.",
+            )
+        if action_id == "check-docs-links":
+            return self._build_doc_action_payload(
+                doc_kind="teaching",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check docs links",
+                command=["python", "scripts/check_docs_links.py"],
+                expected_artifacts=["Docs link validation summary in terminal output"],
+                execution_summary="Run the docs link checker from this lesson and keep the command available for manual follow-up.",
+            )
+        return None
+
+    def _get_project_doc_action_execution(self, doc_id: str, action_id: str) -> dict[str, Any] | None:
+        doc = self.get_project_doc(doc_id)
+        if not doc:
+            return None
+
+        title = str(doc.get("title", doc_id)).strip() or doc_id
+        doc_path = str(doc.get("path", f"docs/{doc_id}.md")).strip()
+        smoke_output_root = self._doc_action_smoke_output_root("project", doc_id)
+
+        if doc_id == "frontend-backend-integration":
+            if action_id != "check-python-market-backend":
+                return None
+            return self._build_doc_action_payload(
+                doc_kind="project",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check backend repository layer",
+                command=["python", "scripts/check_python_market_backend.py"],
+                expected_artifacts=["Backend payload-count summary printed in terminal output"],
+                execution_summary="Run the Python backend repository check directly from this project reference.",
+            )
+
+        if doc_id == "dev-setup":
+            if action_id == "compile-backend":
+                return self._build_doc_action_payload(
+                    doc_kind="project",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Compile backend",
+                    command=["python", "-m", "compileall", "backend"],
+                    expected_artifacts=["Compiled bytecode under backend/__pycache__/ and nested package cache directories"],
+                    execution_summary="Compile the backend package tree and inspect the summary without leaving the setup guide.",
+                )
+            if action_id == "build-frontend":
+                return self._build_doc_action_payload(
+                    doc_kind="project",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Build frontend",
+                    command=["npm", "run", "build", "--prefix", "frontend"],
+                    expected_artifacts=["Production build artifacts under frontend/.next/"],
+                    execution_summary="Run the frontend production build from the setup guide and surface the result in-page.",
+                )
+            return None
+
+        if doc_id == "repo-commands":
+            if action_id == "check-progressive-structure":
+                return self._build_doc_action_payload(
+                    doc_kind="project",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Check progressive structure",
+                    command=["python", "scripts/check_progressive_skills.py"],
+                    expected_artifacts=["Repository-wide structural validation summary in terminal output"],
+                    execution_summary="Run the repository-wide structural validation from the repo commands reference.",
+                )
+            if action_id == "check-docs-links":
+                return self._build_doc_action_payload(
+                    doc_kind="project",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Check docs links",
+                    command=["python", "scripts/check_docs_links.py"],
+                    expected_artifacts=["Docs link validation summary in terminal output"],
+                    execution_summary="Run the docs link checker directly from this reference page.",
+                )
+            return None
+
+        if "market" in doc_id or "consumer-guide" in doc_id or "publisher-guide" in doc_id:
+            if action_id == "validate-market-manifests":
+                return self._build_doc_action_payload(
+                    doc_kind="project",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Validate market manifests",
+                    command=["python", "scripts/validate_market_manifest.py"],
+                    expected_artifacts=["Manifest validation summary in terminal output"],
+                    execution_summary="Run manifest validation from the current market reference and inspect the result in-page.",
+                )
+            if action_id == "run-market-smoke":
+                return self._build_doc_action_payload(
+                    doc_kind="project",
+                    doc_id=doc_id,
+                    doc_title=title,
+                    doc_path=doc_path,
+                    action_id=action_id,
+                    label="Run market smoke",
+                    command=["python", "scripts/check_market_pipeline.py", "--output-root", smoke_output_root],
+                    expected_artifacts=[f"Smoke output directory under {smoke_output_root}/ plus terminal summary"],
+                    execution_summary="Run the market smoke pipeline with a doc-scoped output root and inspect the summary in-page.",
+                )
+            return None
+
+        if "harness" in doc_id:
+            if action_id != "check-harness-prototypes":
+                return None
+            return self._build_doc_action_payload(
+                doc_kind="project",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check harness prototypes",
+                command=["python", "scripts/check_harness_prototypes.py"],
+                expected_artifacts=["Prototype validation summary in terminal output"],
+                execution_summary="Run harness prototype validation directly from this project reference.",
+            )
+
+        if action_id == "check-docs-links":
+            return self._build_doc_action_payload(
+                doc_kind="project",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check docs links",
+                command=["python", "scripts/check_docs_links.py"],
+                expected_artifacts=["Docs link validation summary in terminal output"],
+                execution_summary="Run the docs link checker directly from this project reference.",
+            )
+        if action_id == "check-progressive-structure":
+            return self._build_doc_action_payload(
+                doc_kind="project",
+                doc_id=doc_id,
+                doc_title=title,
+                doc_path=doc_path,
+                action_id=action_id,
+                label="Check progressive structure",
+                command=["python", "scripts/check_progressive_skills.py"],
+                expected_artifacts=["Repository-wide structural validation summary in terminal output"],
+                execution_summary="Run the repository-wide structural validation from this project reference.",
+            )
+        return None
+
+    def get_doc_action_execution(self, doc_kind: str, doc_id: str, action_id: str) -> dict[str, Any] | None:
+        normalized_kind = str(doc_kind).strip().lower()
+        normalized_id = str(doc_id).strip()
+        normalized_action_id = str(action_id).strip()
+        if not normalized_id or not normalized_action_id:
+            return None
+        if normalized_kind == "skill":
+            return self._get_skill_doc_action_execution(normalized_id, normalized_action_id)
+        if normalized_kind == "teaching":
+            return self._get_teaching_doc_action_execution(normalized_id, normalized_action_id)
+        if normalized_kind == "project":
+            return self._get_project_doc_action_execution(normalized_id, normalized_action_id)
+        return None
 
     def get_repo_snapshot(self) -> dict[str, Any]:
         index = self.get_market_index()

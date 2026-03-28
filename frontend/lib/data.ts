@@ -551,6 +551,19 @@ function docSearchText(doc: DocsCatalogEntry): string {
   return `${doc.title} ${doc.summary} ${doc.path} ${doc.kind}`;
 }
 
+function buildDocActionCommand(
+  command: Omit<DocActionCommand, 'executionMode' | 'prerequisitesState'> & {
+    executionMode?: DocActionCommand['executionMode'];
+    prerequisitesState?: DocActionCommand['prerequisitesState'];
+  }
+): DocActionCommand {
+  return {
+    executionMode: command.executionMode ?? 'copy',
+    prerequisitesState: command.prerequisitesState ?? (command.executionMode === 'backend-job' ? 'ready' : 'manual'),
+    ...command,
+  };
+}
+
 function dedupeCommands(commands: DocActionCommand[]): DocActionCommand[] {
   const seen = new Set<string>();
   const result: DocActionCommand[] = [];
@@ -1087,11 +1100,13 @@ export function getSkillDocActionPanel(
   const installSpecPath = `dist/market/install/${skillName}-${version}.json`;
 
   return {
+    docId: skillName,
+    docKind: 'skill',
     title: 'Run this skill',
     description:
       'Use these commands to install, validate, and evaluate the current skill without leaving the doc detail page.',
     commands: dedupeCommands([
-      {
+      buildDocActionCommand({
         label: 'Install locally',
         command: `python scripts/skills_market.py install ${installSpecPath} --target-root dist/installed-skills`,
         prerequisites: 'Generate the install spec first and run the command from the repo root.',
@@ -1101,23 +1116,27 @@ export function getSkillDocActionPanel(
           `Installed skill files under dist/installed-skills/${skillName}/`,
         ],
         testId: 'doc-action-skill-install',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'skill-checker',
         label: 'Run checker',
         command: detail?.manifest.quality.checker ?? `python skills/${skillName}/scripts/check_${skillName.replace(/-/g, '_')}.py`,
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the repo-backed skill checker from the doc page and keep the copy command for manual reruns.',
         prerequisites: 'Keep the repo checkout intact so the skill assets and sample inputs are available.',
         expectedOutcome: `${detail?.manifest.title ?? skillName} checker finishes with a passed status and no structural errors.`,
         artifacts: ['Checker pass/fail summary printed in the terminal output'],
         testId: 'doc-action-skill-checker',
-      },
-      {
+      }),
+      buildDocActionCommand({
         label: 'Run eval',
         command: detail?.manifest.quality.eval ?? `python scripts/run_eval_harness.py --skills ${skillName}`,
         prerequisites: 'Make sure the eval fixtures and baseline files are present in examples/eval-harness.',
         expectedOutcome: 'The eval harness reports the targeted cases as passed without a regression warning.',
         artifacts: ['Eval pass/fail summary and grader results printed in the terminal output'],
         testId: 'doc-action-skill-eval',
-      },
+      }),
     ]),
     links: dedupeLinks([
       { href: '/docs/project/repo-commands', label: 'Open repo command reference', testId: 'doc-action-skill-repo-commands' },
@@ -1138,53 +1157,73 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
     id.includes('read-the-repo')
   ) {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-progressive-structure',
         label: 'Check progressive structure',
         command: 'python scripts/check_progressive_skills.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the repository-wide progressive skill validation from this teaching page.',
         prerequisites: 'Run from the repo root so the checker can scan docs, templates, and skill bundles together.',
         expectedOutcome: 'Progressive skill validation passes, confirming the teaching flow still matches repo conventions.',
         artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'check-build-skills',
         label: 'Run build-skills checker',
         command: 'python skills/build-skills/scripts/check_build_skills.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the build-skills lesson checker without leaving the teaching doc.',
         prerequisites: 'Keep the teaching bundle assets in place under skills/build-skills/.',
         expectedOutcome: 'The build-skills teaching bundle check passes for the current lesson assets.',
         artifacts: ['build-skills checker summary in terminal output'],
         testId: 'doc-action-teaching-secondary',
-      }
+      })
     );
   } else if (id.includes('progressive-disclosure')) {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-progressive-structure',
         label: 'Check progressive structure',
         command: 'python scripts/check_progressive_skills.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the repository-wide progressive skill validation from this teaching page.',
         prerequisites: 'Run from the repo root so the checker can compare the disclosure assets against repo conventions.',
         expectedOutcome: 'Progressive skill validation passes before you verify the disclosure-specific example.',
         artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'check-progressive-disclosure',
         label: 'Run progressive-disclosure checker',
         command: 'python skills/progressive-disclosure/scripts/check_progressive_disclosure.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the progressive-disclosure checker directly from the teaching lesson.',
         prerequisites: 'Keep the progressive-disclosure teaching files and reference splits available in the repo.',
         expectedOutcome: 'The progressive-disclosure teaching bundle check passes for the current split-context assets.',
         artifacts: ['progressive-disclosure checker summary in terminal output'],
         testId: 'doc-action-teaching-secondary',
-      }
+      })
     );
   } else if (id.includes('harness') || id.includes('evals-and-prototypes')) {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-harness-prototypes',
         label: 'Check harness prototypes',
         command: 'python scripts/check_harness_prototypes.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the prototype schema and asset validation from this lesson.',
         prerequisites: 'Leave the prototype schemas, examples, and templates in their default repo locations.',
         expectedOutcome: 'Harness prototype validation passes, confirming schemas and runtime blueprints still line up.',
         artifacts: ['Prototype validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
         label: 'Run harness runtime',
         command:
           'python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml',
@@ -1192,49 +1231,67 @@ export function getTeachingDocActionPanel(doc: DocsCatalogEntry): DocActionPanel
         expectedOutcome: 'The runtime demo completes with PASS for the release-note-publication blueprint.',
         artifacts: ['Runtime execution report emitted under the command-selected dist output directory'],
         testId: 'doc-action-teaching-secondary',
-      }
+      })
     );
   } else if (id.includes('market') || id.includes('registry') || id.includes('project-learning-roadmap')) {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'run-market-smoke',
         label: 'Run market smoke',
-        command: 'python scripts/check_market_pipeline.py',
+        command: `python scripts/check_market_pipeline.py --output-root dist/market-smoke-doc-actions/teaching-${id}`,
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the market smoke pipeline with a doc-scoped output root and inspect the result summary in-page.',
         prerequisites: 'Keep dist/, governance/, and market packaging scripts available in the current repo checkout.',
         expectedOutcome: 'The market pipeline smoke test passes, including packaging, indexing, install, and governance checks.',
-        artifacts: ['Smoke output directory under dist/market-smoke-* plus terminal summary'],
+        artifacts: [`Smoke output directory under dist/market-smoke-doc-actions/teaching-${id}/ plus terminal summary`],
         testId: 'doc-action-teaching-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'check-python-market-backend',
         label: 'Check frontend/backend integration',
         command: 'python scripts/check_python_market_backend.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the Python backend payload checker directly from this teaching reference.',
         prerequisites: 'Install backend dependencies and keep the generated market assets available under dist/market.',
         expectedOutcome: 'The Python market backend check passes for the repo-backed API payloads.',
         artifacts: ['Backend payload-count summary printed in terminal output'],
         testId: 'doc-action-teaching-secondary',
-      }
+      })
     );
   } else {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-progressive-structure',
         label: 'Check progressive structure',
         command: 'python scripts/check_progressive_skills.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the repository-wide progressive skill validation from this teaching page.',
         prerequisites: 'Run from the repo root so docs, templates, and skills are checked together.',
         expectedOutcome: 'Progressive skill validation passes so the lesson can build on a clean repo state.',
         artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-teaching-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'check-docs-links',
         label: 'Check docs links',
         command: 'python scripts/check_docs_links.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the docs link checker from this lesson and keep the command available for manual follow-up.',
         prerequisites: 'Keep the docs tree and relative markdown links in their repo locations.',
         expectedOutcome: 'Documentation link checking passes with no broken relative links.',
         artifacts: ['Docs link validation summary in terminal output'],
         testId: 'doc-action-teaching-secondary',
-      }
+      })
     );
   }
 
   return {
+    docId: doc.id,
+    docKind: 'teaching',
     title: 'Try the learning step',
     description:
       'These commands give you one concrete practice step so the teaching doc turns into a hands-on path instead of a passive note.',
@@ -1252,60 +1309,80 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
 
   if (id === 'frontend-backend-integration') {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-python-market-backend',
         label: 'Check backend repository layer',
         command: 'python scripts/check_python_market_backend.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the Python backend repository check directly from this project reference.',
         prerequisites: 'Install backend dependencies and keep the repo-backed market assets available under dist/market.',
         expectedOutcome: 'The Python market backend check passes and confirms the API payloads still match repo assets.',
         artifacts: ['Backend payload-count summary printed in terminal output'],
         testId: 'doc-action-project-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
         label: 'Run frontend end-to-end check',
         command: 'npm run e2e --prefix frontend',
         prerequisites: 'Install frontend dependencies and build the Next.js app before starting the Playwright run.',
         expectedOutcome: 'Playwright reports the full-stack market flow as passed against the live frontend and backend.',
         artifacts: ['Playwright pass/fail report printed in terminal output'],
         testId: 'doc-action-project-secondary',
-      }
+      })
     );
   } else if (id === 'dev-setup') {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'compile-backend',
         label: 'Compile backend',
         command: 'python -m compileall backend',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Compile the backend package tree and inspect the summary without leaving the setup guide.',
         prerequisites: 'Have a working Python interpreter available from the repo root.',
         expectedOutcome: 'Python compiles the backend package tree without syntax errors.',
         artifacts: ['Compiled bytecode under backend/__pycache__/ and nested package cache directories'],
         testId: 'doc-action-project-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'build-frontend',
         label: 'Build frontend',
         command: 'npm run build --prefix frontend',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the frontend production build from the setup guide and surface the result in-page.',
         prerequisites: 'Install the frontend npm dependencies before running the build.',
         expectedOutcome: 'Next.js finishes a production build without type or route-generation failures.',
         artifacts: ['Production build artifacts under frontend/.next/'],
         testId: 'doc-action-project-secondary',
-      }
+      })
     );
   } else if (id === 'repo-commands') {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-progressive-structure',
         label: 'Check progressive structure',
         command: 'python scripts/check_progressive_skills.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the repository-wide structural validation from the repo commands reference.',
         prerequisites: 'Run from the repo root so the checker can inspect every skill and doc family together.',
         expectedOutcome: 'Progressive skill validation passes before you verify the rest of the repository references.',
         artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-project-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'check-docs-links',
         label: 'Check docs links',
         command: 'python scripts/check_docs_links.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the docs link checker directly from this reference page.',
         prerequisites: 'Keep the markdown docs and templates in place so relative links resolve correctly.',
         expectedOutcome: 'Documentation link checking passes with no broken repo references.',
         artifacts: ['Docs link validation summary in terminal output'],
         testId: 'doc-action-project-secondary',
-      }
+      })
     );
   } else if (
     id.includes('market') ||
@@ -1313,34 +1390,46 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
     id.includes('publisher-guide')
   ) {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'validate-market-manifests',
         label: 'Validate market manifests',
         command: 'python scripts/validate_market_manifest.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run manifest validation from the current market reference and inspect the result in-page.',
         prerequisites: 'Keep the skill market manifests and schema files present in their default repo locations.',
         expectedOutcome: 'Market manifest validation passes for all packaged skills in the repo.',
         artifacts: ['Manifest validation summary in terminal output'],
         testId: 'doc-action-project-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'run-market-smoke',
         label: 'Run market smoke',
-        command: 'python scripts/check_market_pipeline.py',
+        command: `python scripts/check_market_pipeline.py --output-root dist/market-smoke-doc-actions/project-${id}`,
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the market smoke pipeline with a doc-scoped output root and inspect the summary in-page.',
         prerequisites: 'Leave the dist/, governance/, bundle, and market script directories available to the smoke run.',
         expectedOutcome: 'The market smoke run completes successfully across packaging, install, and governance checkpoints.',
-        artifacts: ['Smoke output directory under dist/market-smoke-* plus terminal summary'],
+        artifacts: [`Smoke output directory under dist/market-smoke-doc-actions/project-${id}/ plus terminal summary`],
         testId: 'doc-action-project-secondary',
-      }
+      })
     );
   } else if (id.includes('harness')) {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-harness-prototypes',
         label: 'Check harness prototypes',
         command: 'python scripts/check_harness_prototypes.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run harness prototype validation directly from this project reference.',
         prerequisites: 'Keep the prototype examples, schemas, and templates available from the repo root.',
         expectedOutcome: 'Harness prototype validation passes for schemas, examples, and runtime assets.',
         artifacts: ['Prototype validation summary in terminal output'],
         testId: 'doc-action-project-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
         label: 'Run harness runtime',
         command:
           'python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml',
@@ -1348,30 +1437,40 @@ export function getProjectDocActionPanel(doc: DocsCatalogEntry): DocActionPanelD
         expectedOutcome: 'The harness runtime demo ends in PASS and writes the expected runtime report artifacts.',
         artifacts: ['Runtime execution report emitted under the command-selected dist output directory'],
         testId: 'doc-action-project-secondary',
-      }
+      })
     );
   } else {
     commands.push(
-      {
+      buildDocActionCommand({
+        actionId: 'check-docs-links',
         label: 'Check docs links',
         command: 'python scripts/check_docs_links.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the docs link checker directly from this project reference.',
         prerequisites: 'Keep the docs tree in place so the relative markdown links can be resolved.',
         expectedOutcome: 'Documentation link checking passes, confirming the reference is still safe to share.',
         artifacts: ['Docs link validation summary in terminal output'],
         testId: 'doc-action-project-primary',
-      },
-      {
+      }),
+      buildDocActionCommand({
+        actionId: 'check-progressive-structure',
         label: 'Check progressive structure',
         command: 'python scripts/check_progressive_skills.py',
+        executionMode: 'backend-job',
+        prerequisitesState: 'ready',
+        executionSummary: 'Run the repository-wide structural validation from this project reference.',
         prerequisites: 'Run from the repo root so the structural checks can inspect the full teaching and skill set.',
         expectedOutcome: 'Progressive skill validation passes so the wider repo remains structurally consistent.',
         artifacts: ['Repository-wide structural validation summary in terminal output'],
         testId: 'doc-action-project-secondary',
-      }
+      })
     );
   }
 
   return {
+    docId: doc.id,
+    docKind: 'project',
     title: 'Take the next step',
     description:
       'Use these commands to turn the current project reference into a concrete maintenance or verification action.',

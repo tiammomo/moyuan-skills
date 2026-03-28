@@ -12,6 +12,7 @@
 - waiver / apply handoff 的 `prepare / stage / verify`
 - governance write handoff 的 eligibility、approval record、audit timeline、evidence pack 与 review checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
+- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态与结果摘要
 
 ## 当前分层
 
@@ -25,7 +26,7 @@
 它还负责把 skill / bundle / docs 数据整理成前端真正需要的结构，例如：
 
 - docs 上下文面板
-- action panel 的命令、顺序、前置条件、预期产物
+- action panel 的命令、执行模式、顺序、前置条件、预期产物与结果摘要
 - remote execution 的 trust summary、policy gate、approval 文案
 
 ### 2. Next.js API 代理层
@@ -38,6 +39,7 @@
 - installed-state lifecycle
 - remote registry lifecycle
 - docs catalog 与详情
+- docs action execution 代理
 
 waiver / apply 相关代理包括：
 
@@ -46,12 +48,13 @@ waiver / apply 相关代理包括：
 - `/api/local/state/governance/waiver-apply/prepare`
 - `/api/local/state/governance/waiver-apply/stage`
 - `/api/local/state/governance/waiver-apply/verify`
+- `/api/local/docs/actions/run`
 
 ### 3. Python backend
 
 `backend/app/main.py` 负责把真实脚本封装成 job API。
 
-当前和 installed-state governance 直接相关的接口是：
+当前和页面执行链直接相关的接口是：
 
 ```text
 GET /api/v1/local/state/governance
@@ -61,6 +64,7 @@ POST /api/v1/local/state/governance/waiver-apply/approval
 POST /api/v1/local/state/governance/waiver-apply/prepare
 POST /api/v1/local/state/governance/waiver-apply/stage
 POST /api/v1/local/state/governance/waiver-apply/verify
+POST /api/v1/local/docs/actions/run
 GET /api/v1/local/jobs/{job_id}
 ```
 
@@ -98,7 +102,7 @@ GET /api/v1/local/jobs/{job_id}
 - waiver / apply `prepare -> stage -> verify`
 - `approval persisted -> audit trail visible -> restage invalidates old approval -> post-write evidence refreshed`
 - remote registry install 的 approval / retry / cleanup / rollback
-- docs 页面搜索、详情页 action panel、context panel 与相关文档跳转
+- docs 页面搜索、详情页 action panel、context panel、相关文档跳转与 project doc allowlist action 真执行
 
 ## 本地联调
 
@@ -137,7 +141,7 @@ next build --webpack
 
 ```text
 python scripts/check_python_market_backend.py
-python scripts/check_market_pipeline.py --output-root dist/market-smoke-frontend-governance-write-audit
+python scripts/check_market_pipeline.py --output-root dist/market-smoke-frontend-docs-action-execution
 python scripts/check_docs_links.py
 npm run build --prefix frontend
 npm run e2e --prefix frontend

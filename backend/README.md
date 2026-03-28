@@ -88,6 +88,7 @@ POST /api/v1/registry/bundles/install
 POST /api/v1/registry/cleanup
 POST /api/v1/registry/rollback
 GET /api/v1/local/jobs/{job_id}
+POST /api/v1/local/docs/actions/run
 GET /api/v1/docs/catalog
 GET /api/v1/docs/teaching/{doc_id}
 GET /api/v1/docs/project/{doc_id}
@@ -102,6 +103,7 @@ GET /api/v1/docs/project/{doc_id}
 - waiver / apply handoff 的 `prepare / safe stage / refresh verify`
 - governance write handoff 的状态说明、阻断原因、命令包、approval guidance、approval audit、evidence pack 与 checklist
 - remote registry install 的审批、失败恢复、staged cache cleanup、限定目标 rollback
+- docs action panel 的 allowlist `run / copy / prerequisite state / result summary`
 
 其中 waiver / apply 当前语义是：
 
@@ -120,6 +122,7 @@ GET /api/v1/docs/project/{doc_id}
 - mutation 返回 `job_id`
 - 页面通过 `GET /api/v1/local/jobs/{job_id}` 轮询 job 完成状态
 - docs catalog 同时返回按类型分组的数组和统一的 `all_docs`
+- docs 详情页通过 `POST /api/v1/local/docs/actions/run` 触发安全 allowlist 命令，而不是把任意命令字符串直接交给后端
 
 ## 本地联调
 
