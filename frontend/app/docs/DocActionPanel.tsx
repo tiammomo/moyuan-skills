@@ -36,6 +36,8 @@ interface CommandDrilldownState {
   stderr: boolean;
 }
 
+type CommandHistoryFilter = 'all' | 'failed' | 'succeeded';
+
 interface CommandSequenceMeta {
   badge: string;
   description: string;
@@ -114,6 +116,19 @@ function getLastSuccessTestId(testId?: string): string | undefined {
 function getHistoryEntryTestId(testId: string | undefined, index: number): string | undefined {
   const base = transformTestId(testId, 'doc-action-history-entry-');
   return base ? `${base}-${index}` : undefined;
+}
+
+function getHistorySummaryTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-history-summary-');
+}
+
+function getHistoryFilterTestId(testId: string | undefined, filter: CommandHistoryFilter): string | undefined {
+  const base = transformTestId(testId, 'doc-action-history-filter-');
+  return base ? `${base}-${filter}` : undefined;
+}
+
+function getCompareHintTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-compare-hint-');
 }
 
 function getArtifactToggleTestId(testId?: string): string | undefined {
@@ -301,6 +316,13 @@ function sortJobs(jobs: LocalJobRecord[]): LocalJobRecord[] {
   return [...jobs].sort((left, right) => right.created_at.localeCompare(left.created_at));
 }
 
+function filterHistoryJobs(jobs: LocalJobRecord[], filter: CommandHistoryFilter): LocalJobRecord[] {
+  if (filter === 'all') {
+    return jobs;
+  }
+  return jobs.filter((job) => localJobToRunState(job.status) === filter);
+}
+
 function mergeHistory(current: CommandHistoryState | undefined, job: LocalJobRecord): CommandHistoryState {
   const recentRuns = sortJobs(
     dedupeJobs([job, ...(current?.recentRuns ?? []), ...(current?.lastSuccess ? [current.lastSuccess] : [])])
@@ -334,6 +356,32 @@ function getDrilldownState(
   };
 }
 
+function getHistoryFilterLabel(filter: CommandHistoryFilter): string {
+  if (filter === 'failed') return 'Failed';
+  if (filter === 'succeeded') return 'Succeeded';
+  return 'All';
+}
+
+function getCompareHint(
+  selectedJob: LocalJobRecord | null,
+  latestJob: LocalJobRecord | null,
+  lastSuccess: LocalJobRecord | null
+): string {
+  if (!selectedJob) {
+    return '';
+  }
+  if (latestJob?.job_id === selectedJob.job_id && latestJob.status === 'failed' && lastSuccess) {
+    return 'This is the newest failed run. Compare it with the pinned last success to isolate the regression.';
+  }
+  if (lastSuccess?.job_id === selectedJob.job_id && latestJob && latestJob.job_id !== selectedJob.job_id) {
+    return 'This is the pinned passing baseline from recent history. Compare it with the newest run to spot changes quickly.';
+  }
+  if (latestJob?.job_id === selectedJob.job_id) {
+    return 'This is the latest recorded run for this docs action.';
+  }
+  return 'This historical run stays available for comparison against the latest recorded run.';
+}
+
 export function DocActionPanel({ panel }: DocActionPanelProps) {
   const [availability, setAvailability] = useState<LocalBackendStatus | null>(null);
   const [copiedCommandKey, setCopiedCommandKey] = useState<string | null>(null);
@@ -342,6 +390,7 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
   const [commandHistory, setCommandHistory] = useState<Record<string, CommandHistoryState>>({});
   const [selectedJobIds, setSelectedJobIds] = useState<Record<string, string>>({});
   const [drilldowns, setDrilldowns] = useState<Record<string, CommandDrilldownState>>({});
+  const [historyFilters, setHistoryFilters] = useState<Record<string, CommandHistoryFilter>>({});
 
   const hasBackendCommand = useMemo(
     () => panel.commands.some((command) => command.executionMode === 'backend-job' && command.actionId),
@@ -517,10 +566,15 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
         const candidates = sortJobs(
           dedupeJobs([...(currentJob ? [currentJob] : []), ...(history?.recentRuns ?? []), ...(history?.lastSuccess ? [history.lastSuccess] : [])])
         );
-        if (currentSelections[historyKey] && candidates.some((job) => job.job_id === currentSelections[historyKey])) {
+        const filter = historyFilters[historyKey] ?? 'all';
+        const filteredCandidates = filterHistoryJobs(candidates, filter);
+        if (currentSelections[historyKey] && filteredCandidates.some((job) => job.job_id === currentSelections[historyKey])) {
           continue;
         }
-        const nextJobId = currentJob?.job_id ?? candidates[0]?.job_id;
+        if (filter === 'all' && currentSelections[historyKey] && candidates.some((job) => job.job_id === currentSelections[historyKey])) {
+          continue;
+        }
+        const nextJobId = filteredCandidates[0]?.job_id ?? currentJob?.job_id ?? candidates[0]?.job_id;
         if (nextJobId) {
           nextSelections[historyKey] = nextJobId;
           changed = true;
@@ -528,7 +582,7 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
       }
       return changed ? nextSelections : currentSelections;
     });
-  }, [commandHistory, commandStates, panel.commands]);
+  }, [commandHistory, commandStates, historyFilters, panel.commands]);
 
   async function handleCopyCommand(commandLabel: string, commandText: string): Promise<void> {
     const commandKey = getCommandKey(commandLabel, commandText);
@@ -611,6 +665,26 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
     }));
   }
 
+  function handleHistoryFilterChange(historyKey: string, filter: CommandHistoryFilter, jobs: LocalJobRecord[]) {
+    setHistoryFilters((currentFilters) => ({
+      ...currentFilters,
+      [historyKey]: filter,
+    }));
+    const filteredJobs = filterHistoryJobs(jobs, filter);
+    if (filteredJobs.length === 0) {
+      return;
+    }
+    setSelectedJobIds((currentSelections) => {
+      if (currentSelections[historyKey] && filteredJobs.some((job) => job.job_id === currentSelections[historyKey])) {
+        return currentSelections;
+      }
+      return {
+        ...currentSelections,
+        [historyKey]: filteredJobs[0].job_id,
+      };
+    });
+  }
+
   return (
     <Card className="p-5" data-testid="doc-action-panel">
       <div className="mb-5">
@@ -642,14 +716,19 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
             runState !== 'checking' &&
             runState !== 'blocked' &&
             runState !== 'running';
-          const selectedJob = sortJobs(
+          const allRecentRuns = sortJobs(
             dedupeJobs([
               ...(commandState?.job ? [commandState.job] : []),
               ...(history?.recentRuns ?? []),
               ...(history?.lastSuccess ? [history.lastSuccess] : []),
             ])
-          ).find((job) => job.job_id === selectedJobIds[historyKey])
+          );
+          const latestJob = allRecentRuns[0] ?? null;
+          const historyFilter = historyFilters[historyKey] ?? 'all';
+          const filteredRecentRuns = filterHistoryJobs(allRecentRuns, historyFilter);
+          const selectedJob = allRecentRuns.find((job) => job.job_id === selectedJobIds[historyKey])
             ?? commandState?.job
+            ?? filteredRecentRuns[0]
             ?? history?.recentRuns[0]
             ?? history?.lastSuccess
             ?? null;
@@ -658,11 +737,17 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
           const drilldownState = getDrilldownState(drilldowns, historyKey);
           const hasStdout = Boolean(selectedJob?.stdout.trim());
           const hasStderr = Boolean(selectedJob?.stderr.trim());
+          const succeededRunCount = allRecentRuns.filter((job) => job.status === 'succeeded').length;
+          const failedRunCount = allRecentRuns.filter((job) => job.status === 'failed').length;
           const artifactSummary = artifactEntries.length
             ? `${artifactEntries.length} artifact field(s) captured for this run.`
             : 'No artifact paths or output metadata were captured for this run.';
           const stdoutSummary = selectedJob && hasStdout ? summarizeOutput(selectedJob.stdout) : 'No stdout captured.';
           const stderrSummary = selectedJob && hasStderr ? summarizeOutput(selectedJob.stderr) : 'No stderr captured.';
+          const historySummary = allRecentRuns.length
+            ? `Showing ${filteredRecentRuns.length} of ${allRecentRuns.length} recent run(s). ${failedRunCount} failed, ${succeededRunCount} succeeded.`
+            : 'No recent runs recorded yet.';
+          const compareHint = getCompareHint(selectedJob, latestJob, history?.lastSuccess ?? null);
           const summarySource =
             selectedJob?.job_id && commandState?.job?.job_id === selectedJob.job_id
               ? 'Viewing the latest in-page run.'
@@ -751,8 +836,8 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                 <div className="mt-3 rounded-card border border-dashed border-line bg-bg/70 px-3 py-3" data-testid={getHistoryTestId(command.testId)}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Recent runs</p>
-                    <span className="text-xs text-muted">
-                      {history?.recentRuns.length ? `Showing ${history.recentRuns.length} recent run(s) from this backend session.` : 'No recent runs recorded yet.'}
+                    <span className="text-xs text-muted" data-testid={getHistorySummaryTestId(command.testId)}>
+                      {historySummary}
                     </span>
                   </div>
                   <div className="mt-3 rounded-card border border-line bg-paper/70 px-3 py-3" data-testid={getLastSuccessTestId(command.testId)}>
@@ -777,11 +862,30 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                       <p className="text-xs text-muted">No successful run recorded yet. The first passing backend run will stay pinned here for revisit.</p>
                     )}
                   </div>
-                  {history?.recentRuns.length ? (
+                  {allRecentRuns.length ? (
                     <div className="mt-3 space-y-2">
-                      {history.recentRuns.map((job, historyIndex) => {
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(['all', 'failed', 'succeeded'] as CommandHistoryFilter[]).map((filter) => {
+                          const filterCount = filterHistoryJobs(allRecentRuns, filter).length;
+                          return (
+                            <Button
+                              key={filter}
+                              type="button"
+                              variant={historyFilter === filter ? 'primary' : 'ghost'}
+                              size="sm"
+                              data-testid={getHistoryFilterTestId(command.testId, filter)}
+                              onClick={() => handleHistoryFilterChange(historyKey, filter, allRecentRuns)}
+                            >
+                              {getHistoryFilterLabel(filter)} ({filterCount})
+                            </Button>
+                          );
+                        })}
+                      </div>
+                      {filteredRecentRuns.length ? filteredRecentRuns.map((job, historyIndex) => {
                         const historyStatus = localJobToRunState(job.status);
                         const isSelected = selectedJob?.job_id === job.job_id;
+                        const isLastSuccess = history?.lastSuccess?.job_id === job.job_id;
+                        const isLatest = latestJob?.job_id === job.job_id;
                         return (
                           <button
                             key={job.job_id}
@@ -793,6 +897,8 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                             <div className="flex flex-wrap items-center justify-between gap-2">
                               <div className="flex flex-wrap items-center gap-2">
                                 <Chip variant={runStateVariant(historyStatus)}>{formatRunState(historyStatus)}</Chip>
+                                {isLatest && <Chip variant="beta">Latest</Chip>}
+                                {isLastSuccess && <Chip variant="keyword">Pinned success</Chip>}
                                 <span className="text-xs text-muted">{formatJobTimestamp(job.finished_at ?? job.created_at)}</span>
                               </div>
                               <span className="text-xs text-muted">{isSelected ? 'Currently reviewing this run' : 'Click to review'}</span>
@@ -802,7 +908,11 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                             </p>
                           </button>
                         );
-                      })}
+                      }) : (
+                        <p className="rounded-card border border-line bg-paper/70 px-3 py-3 text-xs text-muted">
+                          No {getHistoryFilterLabel(historyFilter).toLowerCase()} runs are available yet. Switch filters to keep comparing recent history.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <p className="mt-3 text-xs text-muted">Use Run here to create the first backend record for this docs action.</p>
@@ -826,6 +936,11 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                       </span>
                     )}
                   </div>
+                  {compareHint && (
+                    <p className="mt-2 text-xs text-muted" data-testid={getCompareHintTestId(command.testId)}>
+                      {compareHint}
+                    </p>
+                  )}
                   <dl className="mt-2 space-y-2 text-xs text-ink">
                     <div className="flex justify-between gap-3">
                       <dt className="text-muted">Job ID</dt>

@@ -524,8 +524,16 @@ test('frontend works against the Python backend across core market flows', async
     'Viewing the latest in-page run.'
   );
   await expect(page.getByTestId('doc-action-history-project-primary')).toContainText('Recent runs');
+  await expect(page.getByTestId('doc-action-history-summary-project-primary')).toContainText(
+    'Showing 1 of 1 recent run(s). 0 failed, 1 succeeded.'
+  );
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText('Last success');
   await expect(page.getByTestId('doc-action-history-entry-project-primary-1')).toContainText('Succeeded');
+  await expect(page.getByTestId('doc-action-history-filter-project-primary-all')).toContainText('All (1)');
+  await expect(page.getByTestId('doc-action-history-filter-project-primary-failed')).toContainText('Failed (0)');
+  await expect(page.getByTestId('doc-action-history-filter-project-primary-succeeded')).toContainText(
+    'Succeeded (1)'
+  );
   await page.getByTestId('doc-action-artifact-toggle-project-primary').click();
   await expect(page.getByTestId('doc-action-artifact-drilldown-project-primary')).toContainText(
     'docs/frontend-backend-integration.md'
@@ -579,11 +587,21 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-status-project-primary')).toContainText('Failed', {
     timeout: 20000,
   });
+  await expect(page.getByTestId('doc-action-history-summary-project-primary')).toContainText(
+    'Showing 2 of 2 recent run(s). 1 failed, 1 succeeded.'
+  );
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the latest in-page run.'
   );
+  await expect(page.getByTestId('doc-action-compare-hint-project-primary')).toContainText(
+    'newest failed run'
+  );
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
     'completed successfully'
+  );
+  await page.getByTestId('doc-action-history-filter-project-primary-failed').click();
+  await expect(page.getByTestId('doc-action-history-summary-project-primary')).toContainText(
+    'Showing 1 of 2 recent run(s). 1 failed, 1 succeeded.'
   );
   const stderrToggle = page.getByTestId('doc-action-stderr-toggle-project-primary');
   if ((await stderrToggle.count()) > 0) {
@@ -597,6 +615,14 @@ test('frontend works against the Python backend across core market flows', async
       /SyntaxError|invalid syntax/
     );
   }
+  await page.getByTestId('doc-action-history-filter-project-primary-succeeded').click();
+  await expect(page.getByTestId('doc-action-history-summary-project-primary')).toContainText(
+    'Showing 1 of 2 recent run(s). 1 failed, 1 succeeded.'
+  );
+  await expect(page.getByTestId('doc-action-compare-hint-project-primary')).toContainText(
+    'pinned passing baseline'
+  );
+  await page.getByTestId('doc-action-history-filter-project-primary-all').click();
   await page.getByTestId('doc-action-history-entry-project-primary-2').click();
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the last successful run saved in recent history.'
