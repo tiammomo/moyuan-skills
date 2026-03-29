@@ -37,6 +37,20 @@ interface CommandDrilldownState {
 }
 
 type CommandHistoryFilter = 'all' | 'failed' | 'succeeded';
+type CommandRunDiffState = 'unavailable' | 'baseline' | 'compared';
+
+interface CommandRunDiffItem {
+  label: string;
+  detail: string;
+}
+
+interface CommandRunDiffSummary {
+  state: CommandRunDiffState;
+  summary: string;
+  focusHint: string | null;
+  changedItems: CommandRunDiffItem[];
+  stableItems: CommandRunDiffItem[];
+}
 
 interface CommandSequenceMeta {
   badge: string;
@@ -129,6 +143,22 @@ function getHistoryFilterTestId(testId: string | undefined, filter: CommandHisto
 
 function getCompareHintTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-compare-hint-');
+}
+
+function getRunDiffSummaryTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-run-diff-summary-');
+}
+
+function getRunDiffChangedTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-run-diff-changed-');
+}
+
+function getRunDiffStableTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-run-diff-stable-');
+}
+
+function getRunDiffFocusTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-run-diff-focus-');
 }
 
 function getArtifactToggleTestId(testId?: string): string | undefined {
@@ -230,6 +260,15 @@ function summarizeOutput(value: string): string {
   }
   const lineCount = normalized.split(/\r?\n/).length;
   return `${lineCount} line(s), ${normalized.length} char(s).`;
+}
+
+function summarizeOutputForDiff(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    return 'no output';
+  }
+  const lineCount = normalized.split(/\r?\n/).length;
+  return `${lineCount} line(s) / ${normalized.length} char(s)`;
 }
 
 function formatDetailedValue(value: unknown): string {
@@ -360,6 +399,151 @@ function getHistoryFilterLabel(filter: CommandHistoryFilter): string {
   if (filter === 'failed') return 'Failed';
   if (filter === 'succeeded') return 'Succeeded';
   return 'All';
+}
+
+function runDiffVariant(state: CommandRunDiffState): 'keyword' | 'tag' | 'beta' | 'internal' {
+  if (state === 'compared') return 'beta';
+  if (state === 'baseline') return 'keyword';
+  return 'tag';
+}
+
+function buildRunDiffSummary(
+  selectedJob: LocalJobRecord | null,
+  lastSuccess: LocalJobRecord | null,
+  latestJob: LocalJobRecord | null
+): CommandRunDiffSummary | null {
+  if (!selectedJob) {
+    return null;
+  }
+  if (!lastSuccess) {
+    return {
+      state: 'unavailable',
+      summary: 'No passing baseline is recorded yet. Run this action successfully once to unlock selected-vs-baseline diffs.',
+      focusHint: null,
+      changedItems: [],
+      stableItems: [],
+    };
+  }
+  if (selectedJob.job_id === lastSuccess.job_id) {
+    return {
+      state: 'baseline',
+      summary:
+        latestJob && latestJob.job_id !== lastSuccess.job_id
+          ? `This run is the pinned passing baseline. Compare it against the newer run ${latestJob.job_id} when you want to explain what changed.`
+          : 'This run currently serves as both the latest run and the pinned passing baseline.',
+      focusHint:
+        latestJob && latestJob.job_id !== lastSuccess.job_id
+          ? 'Select the newer run to see how it diverged from this passing baseline.'
+          : 'Run the action again to create a second snapshot for comparison.',
+      changedItems: [],
+      stableItems: [
+        {
+          label: 'Baseline status',
+          detail: `Pinned success with exit code ${lastSuccess.exit_code ?? 0}.`,
+        },
+      ],
+    };
+  }
+
+  const changedItems: CommandRunDiffItem[] = [];
+  const stableItems: CommandRunDiffItem[] = [];
+
+  if (selectedJob.status !== lastSuccess.status) {
+    changedItems.push({
+      label: 'Run status',
+      detail: `${formatRunState(localJobToRunState(selectedJob.status))} now vs ${formatRunState(localJobToRunState(lastSuccess.status))} in the pinned success.`,
+    });
+  } else {
+    stableItems.push({
+      label: 'Run status',
+      detail: `Both runs finished as ${formatRunState(localJobToRunState(selectedJob.status)).toLowerCase()}.`,
+    });
+  }
+
+  if ((selectedJob.exit_code ?? null) !== (lastSuccess.exit_code ?? null)) {
+    changedItems.push({
+      label: 'Exit code',
+      detail: `${selectedJob.exit_code ?? 'none'} now vs ${lastSuccess.exit_code ?? 'none'} in the pinned success.`,
+    });
+  } else {
+    stableItems.push({
+      label: 'Exit code',
+      detail: `Both runs reported exit code ${selectedJob.exit_code ?? 'none'}.`,
+    });
+  }
+
+  if (selectedJob.command_text !== lastSuccess.command_text) {
+    changedItems.push({
+      label: 'Command text',
+      detail: 'The selected run used a different command text than the pinned success.',
+    });
+  } else {
+    stableItems.push({
+      label: 'Command text',
+      detail: 'The selected run used the same command text as the pinned success.',
+    });
+  }
+
+  const selectedStdoutSummary = summarizeOutputForDiff(selectedJob.stdout);
+  const lastSuccessStdoutSummary = summarizeOutputForDiff(lastSuccess.stdout);
+  if (selectedStdoutSummary !== lastSuccessStdoutSummary) {
+    changedItems.push({
+      label: 'stdout footprint',
+      detail: `${selectedStdoutSummary} now vs ${lastSuccessStdoutSummary} in the pinned success.`,
+    });
+  } else {
+    stableItems.push({
+      label: 'stdout footprint',
+      detail: `Both runs produced ${selectedStdoutSummary}.`,
+    });
+  }
+
+  const selectedStderrSummary = summarizeOutputForDiff(selectedJob.stderr);
+  const lastSuccessStderrSummary = summarizeOutputForDiff(lastSuccess.stderr);
+  if (selectedStderrSummary !== lastSuccessStderrSummary) {
+    changedItems.push({
+      label: 'stderr footprint',
+      detail: `${selectedStderrSummary} now vs ${lastSuccessStderrSummary} in the pinned success.`,
+    });
+  } else {
+    stableItems.push({
+      label: 'stderr footprint',
+      detail: `Both runs produced ${selectedStderrSummary}.`,
+    });
+  }
+
+  const selectedArtifactFingerprint = JSON.stringify(selectedJob.artifacts);
+  const lastSuccessArtifactFingerprint = JSON.stringify(lastSuccess.artifacts);
+  if (selectedArtifactFingerprint !== lastSuccessArtifactFingerprint) {
+    changedItems.push({
+      label: 'Artifact metadata',
+      detail: 'Artifact metadata changed. Use the artifact drilldown to inspect path or payload differences.',
+    });
+  } else {
+    stableItems.push({
+      label: 'Artifact metadata',
+      detail: `Artifact metadata stayed stable across ${Object.keys(selectedJob.artifacts).length} field(s).`,
+    });
+  }
+
+  const focusHint = changedItems.some((item) => item.label === 'stderr footprint' && selectedJob.stderr.trim())
+    ? 'Start with stderr drilldown, then compare stdout if you still need more context.'
+    : changedItems.some((item) => item.label === 'stdout footprint' && selectedJob.stdout.trim())
+      ? 'Start with stdout drilldown to inspect the changed command output.'
+      : changedItems.some((item) => item.label === 'Artifact metadata')
+        ? 'Start with artifact drilldown to inspect the changed metadata.'
+        : null;
+
+  return {
+    state: 'compared',
+    summary:
+      changedItems.length > 0
+        ? `Comparing selected run ${selectedJob.job_id} against pinned success ${lastSuccess.job_id}.`
+        : `Selected run ${selectedJob.job_id} matches the pinned success ${lastSuccess.job_id} across the tracked summary signals.`,
+    focusHint,
+    changedItems,
+    stableItems,
+  };
 }
 
 function getCompareHint(
@@ -748,6 +932,7 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
             ? `Showing ${filteredRecentRuns.length} of ${allRecentRuns.length} recent run(s). ${failedRunCount} failed, ${succeededRunCount} succeeded.`
             : 'No recent runs recorded yet.';
           const compareHint = getCompareHint(selectedJob, latestJob, history?.lastSuccess ?? null);
+          const runDiffSummary = buildRunDiffSummary(selectedJob, history?.lastSuccess ?? null, latestJob);
           const summarySource =
             selectedJob?.job_id && commandState?.job?.job_id === selectedJob.job_id
               ? 'Viewing the latest in-page run.'
@@ -940,6 +1125,49 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                     <p className="mt-2 text-xs text-muted" data-testid={getCompareHintTestId(command.testId)}>
                       {compareHint}
                     </p>
+                  )}
+                  {runDiffSummary && (
+                    <div
+                      className="mt-3 rounded-card border border-dashed border-line bg-paper/70 px-3 py-3"
+                      data-testid={getRunDiffSummaryTestId(command.testId)}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Run diff summary</p>
+                        <Chip variant={runDiffVariant(runDiffSummary.state)}>
+                          {runDiffSummary.state === 'compared'
+                            ? 'Compared to pinned success'
+                            : runDiffSummary.state === 'baseline'
+                              ? 'Pinned success selected'
+                              : 'Waiting for baseline'}
+                        </Chip>
+                      </div>
+                      <p className="mt-2 text-xs leading-6 text-ink">{runDiffSummary.summary}</p>
+                      {runDiffSummary.focusHint && (
+                        <p className="mt-2 text-xs text-muted" data-testid={getRunDiffFocusTestId(command.testId)}>
+                          {runDiffSummary.focusHint}
+                        </p>
+                      )}
+                      {runDiffSummary.changedItems.length > 0 && (
+                        <div className="mt-3" data-testid={getRunDiffChangedTestId(command.testId)}>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Changed from pinned success</p>
+                          <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                            {runDiffSummary.changedItems.map((item) => (
+                              <li key={`changed-${item.label}`}>- {item.label}: {item.detail}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {runDiffSummary.stableItems.length > 0 && (
+                        <div className="mt-3" data-testid={getRunDiffStableTestId(command.testId)}>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Still aligned with pinned success</p>
+                          <ul className="mt-2 space-y-1 text-xs leading-6 text-ink">
+                            {runDiffSummary.stableItems.map((item) => (
+                              <li key={`stable-${item.label}`}>- {item.label}: {item.detail}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   )}
                   <dl className="mt-2 space-y-2 text-xs text-ink">
                     <div className="flex justify-between gap-3">

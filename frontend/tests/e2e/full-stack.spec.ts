@@ -520,6 +520,12 @@ test('frontend works against the Python backend across core market flows', async
     }
   );
   await expect(page.getByTestId('doc-action-summary-project-primary')).toContainText('check_python_market_backend.py');
+  await expect(page.getByTestId('doc-action-run-diff-summary-project-primary')).toContainText(
+    'both the latest run and the pinned passing baseline'
+  );
+  await expect(page.getByTestId('doc-action-run-diff-stable-project-primary')).toContainText(
+    'Baseline status'
+  );
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the latest in-page run.'
   );
@@ -596,6 +602,15 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-compare-hint-project-primary')).toContainText(
     'newest failed run'
   );
+  await expect(page.getByTestId('doc-action-run-diff-summary-project-primary')).toContainText(
+    'Comparing selected run'
+  );
+  await expect(page.getByTestId('doc-action-run-diff-changed-project-primary')).toContainText(
+    'Run status: Failed now vs Succeeded in the pinned success.'
+  );
+  await expect(page.getByTestId('doc-action-run-diff-changed-project-primary')).toContainText(
+    'Exit code: 1 now vs 0 in the pinned success.'
+  );
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
     'completed successfully'
   );
@@ -620,6 +635,9 @@ test('frontend works against the Python backend across core market flows', async
     'Showing 1 of 2 recent run(s). 1 failed, 1 succeeded.'
   );
   await expect(page.getByTestId('doc-action-compare-hint-project-primary')).toContainText(
+    'pinned passing baseline'
+  );
+  await expect(page.getByTestId('doc-action-run-diff-summary-project-primary')).toContainText(
     'pinned passing baseline'
   );
   await page.getByTestId('doc-action-history-filter-project-primary-all').click();

@@ -4,13 +4,13 @@
 
 ## 最新进展
 
-这一轮把 docs action 再往前推进了一步，从“能钻取结果细节”补到了“能更快比较最近几次运行”：
+这一轮把 docs action 再往前推进了一步，从“能比较最近几次运行”补到了“能直接解释选中运行和基线成功的差异”：
 
-- docs action 现在除了 artifact、stdout、stderr drilldown，还支持按 `All / Failed / Succeeded` 筛 recent runs
-- result summary 会明确提示当前查看的是最新失败、固定成功基线，还是普通历史运行，方便快速做 compare
-- recent runs 会突出 `Latest` 与 `Pinned success`，让“最新失败 vs 上一次成功”的对照更直接
+- docs action 现在除了 recent runs compare / filter，还会给出 selected run vs pinned success 的 run diff summary
+- result summary 会把“哪些信号变了、哪些还稳定、建议先看哪块 drilldown”直接展示出来
+- 最新失败运行现在不只是能和上一次成功并排回看，还能直接看到状态、exit code、stdout/stderr footprint、artifact metadata 的差异摘要
 - docs action history 仍然通过安全的 `doc kind + doc id + action id` 映射读取，前端只消费 allowlist action 的最近记录
-- Playwright 已覆盖 docs action 的 compare / filter、失败输出复盘，以及刷新后的 last-success revisit
+- Playwright 已覆盖 docs action 的 diff summary、compare / filter、失败输出复盘，以及刷新后的 last-success revisit
 
 前端构建当前默认仍使用 `next build --webpack`，并在 [frontend/next.config.js](./frontend/next.config.js) 中把 `experimental.cpus` 收敛到更保守的值，减少 Windows 环境里 page-data 阶段偶发 `spawn UNKNOWN` 的风险。
 
@@ -42,7 +42,7 @@
 - Python backend 说明见 [backend/README.md](./backend/README.md)
 - 契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - skill / bundle 详情页支持真实 backend 本地执行与远端 registry install
-- docs 详情页现在会把 repo 命令、安全执行状态、recent runs、compare / filter、last-success、artifact/stdout/stderr drilldown、顺序提示、前置条件、预期结果和产物提示一起展示，并为 allowlist 动作提供页内执行入口
+- docs 详情页现在会把 repo 命令、安全执行状态、recent runs、compare / filter、run diff summary、last-success、artifact/stdout/stderr drilldown、顺序提示、前置条件、预期结果和产物提示一起展示，并为 allowlist 动作提供页内执行入口
 - Playwright 已覆盖首页、skills、bundles、docs 与详情页的端到端联调
 
 ## 中文 Skills 教学入口
