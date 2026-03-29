@@ -12,6 +12,7 @@ import type {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
+import { cn } from '@/lib/utils';
 
 interface DocActionPanelProps {
   panel: DocActionPanelData;
@@ -38,6 +39,8 @@ interface CommandDrilldownState {
 
 type CommandHistoryFilter = 'all' | 'failed' | 'succeeded';
 type CommandRunDiffState = 'unavailable' | 'baseline' | 'compared';
+type CommandDrilldownSection = keyof CommandDrilldownState;
+type CommandSectionDiffState = 'unavailable' | 'baseline' | 'changed' | 'stable' | 'empty';
 
 interface CommandRunDiffItem {
   label: string;
@@ -48,8 +51,17 @@ interface CommandRunDiffSummary {
   state: CommandRunDiffState;
   summary: string;
   focusHint: string | null;
+  focusSection: CommandDrilldownSection | null;
   changedItems: CommandRunDiffItem[];
   stableItems: CommandRunDiffItem[];
+}
+
+interface CommandSectionDiff {
+  section: CommandDrilldownSection;
+  state: CommandSectionDiffState;
+  summary: string;
+  hasContent: boolean;
+  recommended: boolean;
 }
 
 interface CommandSequenceMeta {
@@ -161,12 +173,24 @@ function getRunDiffFocusTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-run-diff-focus-');
 }
 
+function getRunDiffOpenTestId(
+  testId: string | undefined,
+  section: CommandDrilldownSection
+): string | undefined {
+  const base = transformTestId(testId, 'doc-action-run-diff-open-');
+  return base ? `${base}-${section}` : undefined;
+}
+
 function getArtifactToggleTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-artifact-toggle-');
 }
 
 function getArtifactDrilldownTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-artifact-drilldown-');
+}
+
+function getArtifactDiffStateTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-artifact-diff-state-');
 }
 
 function getStdoutToggleTestId(testId?: string): string | undefined {
@@ -177,12 +201,20 @@ function getStdoutDrilldownTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-stdout-drilldown-');
 }
 
+function getStdoutDiffStateTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-stdout-diff-state-');
+}
+
 function getStderrToggleTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-stderr-toggle-');
 }
 
 function getStderrDrilldownTestId(testId?: string): string | undefined {
   return transformTestId(testId, 'doc-action-stderr-drilldown-');
+}
+
+function getStderrDiffStateTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-stderr-diff-state-');
 }
 
 async function copyCommandText(value: string): Promise<void> {
@@ -407,6 +439,120 @@ function runDiffVariant(state: CommandRunDiffState): 'keyword' | 'tag' | 'beta' 
   return 'tag';
 }
 
+function sectionDiffVariant(state: CommandSectionDiffState): 'keyword' | 'tag' | 'stable' | 'beta' | 'internal' {
+  if (state === 'changed') return 'beta';
+  if (state === 'stable' || state === 'baseline') return 'stable';
+  if (state === 'unavailable') return 'internal';
+  return 'tag';
+}
+
+function getSectionDiffLabel(state: CommandSectionDiffState): string {
+  if (state === 'changed') return 'Changed vs pinned success';
+  if (state === 'stable') return 'Matches pinned success';
+  if (state === 'baseline') return 'Pinned success selected';
+  if (state === 'empty') return 'No output in either run';
+  return 'Waiting for baseline';
+}
+
+function getSectionHeading(section: CommandDrilldownSection): string {
+  if (section === 'artifacts') return 'Artifacts';
+  if (section === 'stdout') return 'stdout';
+  return 'stderr';
+}
+
+interface CommandSectionComparable {
+  fingerprint: string;
+  hasContent: boolean;
+  summary: string;
+}
+
+function buildSectionComparable(
+  job: LocalJobRecord,
+  section: CommandDrilldownSection
+): CommandSectionComparable {
+  if (section === 'artifacts') {
+    const artifactCount = Object.keys(job.artifacts).length;
+    return {
+      fingerprint: JSON.stringify(job.artifacts),
+      hasContent: artifactCount > 0,
+      summary: artifactCount > 0 ? `${artifactCount} field(s)` : 'no artifact metadata',
+    };
+  }
+
+  const normalized = (section === 'stdout' ? job.stdout : job.stderr).trim();
+  return {
+    fingerprint: normalized,
+    hasContent: Boolean(normalized),
+    summary: normalized ? summarizeOutputForDiff(normalized) : 'no output',
+  };
+}
+
+function buildSectionDiff(
+  section: CommandDrilldownSection,
+  selectedJob: LocalJobRecord,
+  lastSuccess: LocalJobRecord | null,
+  recommended: boolean
+): CommandSectionDiff {
+  const heading = getSectionHeading(section);
+  const selectedComparable = buildSectionComparable(selectedJob, section);
+
+  if (!lastSuccess) {
+    return {
+      section,
+      state: 'unavailable',
+      summary: `Run a successful baseline first to compare ${heading}.`,
+      hasContent: selectedComparable.hasContent,
+      recommended,
+    };
+  }
+
+  if (selectedJob.job_id === lastSuccess.job_id) {
+    return {
+      section,
+      state: 'baseline',
+      summary: `You are reviewing the pinned success for ${heading}. Select a newer run to see section-level changes.`,
+      hasContent: selectedComparable.hasContent,
+      recommended,
+    };
+  }
+
+  const baselineComparable = buildSectionComparable(lastSuccess, section);
+
+  if (!selectedComparable.hasContent && !baselineComparable.hasContent) {
+    return {
+      section,
+      state: 'empty',
+      summary: `Neither the selected run nor the pinned success recorded ${heading}.`,
+      hasContent: false,
+      recommended,
+    };
+  }
+
+  if (selectedComparable.fingerprint !== baselineComparable.fingerprint) {
+    return {
+      section,
+      state: 'changed',
+      summary:
+        section === 'artifacts'
+          ? `Artifact metadata changed: ${selectedComparable.summary} now vs ${baselineComparable.summary} in the pinned success.`
+          : `${heading} changed: ${selectedComparable.summary} now vs ${baselineComparable.summary} in the pinned success.`,
+      hasContent: selectedComparable.hasContent,
+      recommended,
+    };
+  }
+
+  return {
+    section,
+    state: 'stable',
+    summary:
+      section === 'artifacts'
+        ? `Artifact metadata matches the pinned success: both runs recorded ${selectedComparable.summary}.`
+        : `${heading} matches the pinned success: both runs recorded ${selectedComparable.summary}.`,
+    hasContent: selectedComparable.hasContent,
+    recommended,
+  };
+}
+
 function buildRunDiffSummary(
   selectedJob: LocalJobRecord | null,
   lastSuccess: LocalJobRecord | null,
@@ -420,6 +566,7 @@ function buildRunDiffSummary(
       state: 'unavailable',
       summary: 'No passing baseline is recorded yet. Run this action successfully once to unlock selected-vs-baseline diffs.',
       focusHint: null,
+      focusSection: null,
       changedItems: [],
       stableItems: [],
     };
@@ -435,6 +582,7 @@ function buildRunDiffSummary(
         latestJob && latestJob.job_id !== lastSuccess.job_id
           ? 'Select the newer run to see how it diverged from this passing baseline.'
           : 'Run the action again to create a second snapshot for comparison.',
+      focusSection: null,
       changedItems: [],
       stableItems: [
         {
@@ -484,9 +632,11 @@ function buildRunDiffSummary(
     });
   }
 
-  const selectedStdoutSummary = summarizeOutputForDiff(selectedJob.stdout);
-  const lastSuccessStdoutSummary = summarizeOutputForDiff(lastSuccess.stdout);
-  if (selectedStdoutSummary !== lastSuccessStdoutSummary) {
+  const selectedStdout = selectedJob.stdout.trim();
+  const lastSuccessStdout = lastSuccess.stdout.trim();
+  const selectedStdoutSummary = summarizeOutputForDiff(selectedStdout);
+  const lastSuccessStdoutSummary = summarizeOutputForDiff(lastSuccessStdout);
+  if (selectedStdout !== lastSuccessStdout) {
     changedItems.push({
       label: 'stdout footprint',
       detail: `${selectedStdoutSummary} now vs ${lastSuccessStdoutSummary} in the pinned success.`,
@@ -498,9 +648,11 @@ function buildRunDiffSummary(
     });
   }
 
-  const selectedStderrSummary = summarizeOutputForDiff(selectedJob.stderr);
-  const lastSuccessStderrSummary = summarizeOutputForDiff(lastSuccess.stderr);
-  if (selectedStderrSummary !== lastSuccessStderrSummary) {
+  const selectedStderr = selectedJob.stderr.trim();
+  const lastSuccessStderr = lastSuccess.stderr.trim();
+  const selectedStderrSummary = summarizeOutputForDiff(selectedStderr);
+  const lastSuccessStderrSummary = summarizeOutputForDiff(lastSuccessStderr);
+  if (selectedStderr !== lastSuccessStderr) {
     changedItems.push({
       label: 'stderr footprint',
       detail: `${selectedStderrSummary} now vs ${lastSuccessStderrSummary} in the pinned success.`,
@@ -526,12 +678,23 @@ function buildRunDiffSummary(
     });
   }
 
-  const focusHint = changedItems.some((item) => item.label === 'stderr footprint' && selectedJob.stderr.trim())
+  const stderrChanged = selectedStderr !== lastSuccessStderr;
+  const stdoutChanged = selectedStdout !== lastSuccessStdout;
+  const artifactChanged = selectedArtifactFingerprint !== lastSuccessArtifactFingerprint;
+
+  const focusHint = stderrChanged && selectedStderr
     ? 'Start with stderr drilldown, then compare stdout if you still need more context.'
-    : changedItems.some((item) => item.label === 'stdout footprint' && selectedJob.stdout.trim())
+    : stdoutChanged && selectedStdout
       ? 'Start with stdout drilldown to inspect the changed command output.'
-      : changedItems.some((item) => item.label === 'Artifact metadata')
+      : artifactChanged && Object.keys(selectedJob.artifacts).length > 0
         ? 'Start with artifact drilldown to inspect the changed metadata.'
+        : null;
+  const focusSection = stderrChanged && selectedStderr
+    ? 'stderr'
+    : stdoutChanged && selectedStdout
+      ? 'stdout'
+      : artifactChanged && Object.keys(selectedJob.artifacts).length > 0
+        ? 'artifacts'
         : null;
 
   return {
@@ -541,6 +704,7 @@ function buildRunDiffSummary(
         ? `Comparing selected run ${selectedJob.job_id} against pinned success ${lastSuccess.job_id}.`
         : `Selected run ${selectedJob.job_id} matches the pinned success ${lastSuccess.job_id} across the tracked summary signals.`,
     focusHint,
+    focusSection,
     changedItems,
     stableItems,
   };
@@ -849,6 +1013,16 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
     }));
   }
 
+  function openDrilldownSection(historyKey: string, section: CommandDrilldownSection) {
+    setDrilldowns((currentDrilldowns) => ({
+      ...currentDrilldowns,
+      [historyKey]: {
+        ...getDrilldownState(currentDrilldowns, historyKey),
+        [section]: true,
+      },
+    }));
+  }
+
   function handleHistoryFilterChange(historyKey: string, filter: CommandHistoryFilter, jobs: LocalJobRecord[]) {
     setHistoryFilters((currentFilters) => ({
       ...currentFilters,
@@ -933,6 +1107,36 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
             : 'No recent runs recorded yet.';
           const compareHint = getCompareHint(selectedJob, latestJob, history?.lastSuccess ?? null);
           const runDiffSummary = buildRunDiffSummary(selectedJob, history?.lastSuccess ?? null, latestJob);
+          const artifactDiff =
+            selectedJob &&
+            buildSectionDiff(
+              'artifacts',
+              selectedJob,
+              history?.lastSuccess ?? null,
+              runDiffSummary?.focusSection === 'artifacts'
+            );
+          const stdoutDiff =
+            selectedJob &&
+            buildSectionDiff(
+              'stdout',
+              selectedJob,
+              history?.lastSuccess ?? null,
+              runDiffSummary?.focusSection === 'stdout'
+            );
+          const stderrDiff =
+            selectedJob &&
+            buildSectionDiff(
+              'stderr',
+              selectedJob,
+              history?.lastSuccess ?? null,
+              runDiffSummary?.focusSection === 'stderr'
+            );
+          const quickOpenSections = [artifactDiff, stdoutDiff, stderrDiff].filter(
+            (sectionDiff): sectionDiff is CommandSectionDiff =>
+              Boolean(sectionDiff) &&
+              sectionDiff.hasContent &&
+              (sectionDiff.state === 'changed' || sectionDiff.recommended)
+          );
           const summarySource =
             selectedJob?.job_id && commandState?.job?.job_id === selectedJob.job_id
               ? 'Viewing the latest in-page run.'
@@ -1147,6 +1351,24 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                           {runDiffSummary.focusHint}
                         </p>
                       )}
+                      {quickOpenSections.length > 0 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
+                          {quickOpenSections.map((sectionDiff) => (
+                            <Button
+                              key={sectionDiff.section}
+                              type="button"
+                              variant={sectionDiff.recommended ? 'primary' : 'ghost'}
+                              size="sm"
+                              data-testid={getRunDiffOpenTestId(command.testId, sectionDiff.section)}
+                              onClick={() => openDrilldownSection(historyKey, sectionDiff.section)}
+                            >
+                              {sectionDiff.recommended
+                                ? `Open ${getSectionHeading(sectionDiff.section)} first`
+                                : `Open ${getSectionHeading(sectionDiff.section)}`}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
                       {runDiffSummary.changedItems.length > 0 && (
                         <div className="mt-3" data-testid={getRunDiffChangedTestId(command.testId)}>
                           <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Changed from pinned success</p>
@@ -1186,11 +1408,30 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                     ))}
                   </dl>
                   <div className="mt-4 space-y-3">
-                    <div className="rounded-card border border-dashed border-line bg-paper/70 px-3 py-3">
+                    <div
+                      className={cn(
+                        'rounded-card border border-dashed px-3 py-3',
+                        artifactDiff?.state === 'changed'
+                          ? 'border-[#e8c9b8] bg-[#fff8ef]'
+                          : artifactDiff?.state === 'stable' || artifactDiff?.state === 'baseline'
+                            ? 'border-[#c8dbc9] bg-[#f4f8ef]'
+                            : 'border-line bg-paper/70',
+                        artifactDiff?.recommended && 'ring-1 ring-olive/40'
+                      )}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Artifacts</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Artifacts</p>
+                            {artifactDiff && (
+                              <Chip variant={sectionDiffVariant(artifactDiff.state)} data-testid={getArtifactDiffStateTestId(command.testId)}>
+                                {getSectionDiffLabel(artifactDiff.state)}
+                              </Chip>
+                            )}
+                            {artifactDiff?.recommended && <Chip variant="keyword">Review first</Chip>}
+                          </div>
                           <p className="mt-1 text-xs text-muted">{artifactSummary}</p>
+                          {artifactDiff && <p className="mt-1 text-xs text-muted">{artifactDiff.summary}</p>}
                         </div>
                         {artifactEntries.length > 0 && (
                           <Button
@@ -1220,11 +1461,30 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                       )}
                     </div>
 
-                    <div className="rounded-card border border-dashed border-line bg-paper/70 px-3 py-3">
+                    <div
+                      className={cn(
+                        'rounded-card border border-dashed px-3 py-3',
+                        stdoutDiff?.state === 'changed'
+                          ? 'border-[#e8c9b8] bg-[#fff8ef]'
+                          : stdoutDiff?.state === 'stable' || stdoutDiff?.state === 'baseline'
+                            ? 'border-[#c8dbc9] bg-[#f4f8ef]'
+                            : 'border-line bg-paper/70',
+                        stdoutDiff?.recommended && 'ring-1 ring-olive/40'
+                      )}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stdout</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stdout</p>
+                            {stdoutDiff && (
+                              <Chip variant={sectionDiffVariant(stdoutDiff.state)} data-testid={getStdoutDiffStateTestId(command.testId)}>
+                                {getSectionDiffLabel(stdoutDiff.state)}
+                              </Chip>
+                            )}
+                            {stdoutDiff?.recommended && <Chip variant="keyword">Review first</Chip>}
+                          </div>
                           <p className="mt-1 text-xs text-muted">{stdoutSummary}</p>
+                          {stdoutDiff && <p className="mt-1 text-xs text-muted">{stdoutDiff.summary}</p>}
                         </div>
                         {hasStdout && (
                           <Button
@@ -1248,11 +1508,30 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                       )}
                     </div>
 
-                    <div className="rounded-card border border-dashed border-line bg-paper/70 px-3 py-3">
+                    <div
+                      className={cn(
+                        'rounded-card border border-dashed px-3 py-3',
+                        stderrDiff?.state === 'changed'
+                          ? 'border-[#e8c9b8] bg-[#fff8ef]'
+                          : stderrDiff?.state === 'stable' || stderrDiff?.state === 'baseline'
+                            ? 'border-[#c8dbc9] bg-[#f4f8ef]'
+                            : 'border-line bg-paper/70',
+                        stderrDiff?.recommended && 'ring-1 ring-olive/40'
+                      )}
+                    >
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stderr</p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stderr</p>
+                            {stderrDiff && (
+                              <Chip variant={sectionDiffVariant(stderrDiff.state)} data-testid={getStderrDiffStateTestId(command.testId)}>
+                                {getSectionDiffLabel(stderrDiff.state)}
+                              </Chip>
+                            )}
+                            {stderrDiff?.recommended && <Chip variant="keyword">Review first</Chip>}
+                          </div>
                           <p className="mt-1 text-xs text-muted">{stderrSummary}</p>
+                          {stderrDiff && <p className="mt-1 text-xs text-muted">{stderrDiff.summary}</p>}
                         </div>
                         {hasStderr && (
                           <Button

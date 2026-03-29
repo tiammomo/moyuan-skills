@@ -526,6 +526,12 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-run-diff-stable-project-primary')).toContainText(
     'Baseline status'
   );
+  await expect(page.getByTestId('doc-action-artifact-diff-state-project-primary')).toContainText(
+    'Pinned success selected'
+  );
+  await expect(page.getByTestId('doc-action-stdout-diff-state-project-primary')).toContainText(
+    'Pinned success selected'
+  );
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the latest in-page run.'
   );
@@ -611,6 +617,34 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-run-diff-changed-project-primary')).toContainText(
     'Exit code: 1 now vs 0 in the pinned success.'
   );
+  const stderrQuickOpen = page.getByTestId('doc-action-run-diff-open-project-primary-stderr');
+  if ((await stderrQuickOpen.count()) > 0) {
+    await expect(page.getByTestId('doc-action-run-diff-focus-project-primary')).toContainText(
+      'Start with stderr drilldown'
+    );
+    await expect(stderrQuickOpen).toContainText('Open stderr first');
+    await stderrQuickOpen.click();
+    await expect(page.getByTestId('doc-action-stderr-drilldown-project-primary')).toContainText(
+      /SyntaxError|invalid syntax/
+    );
+    await expect(page.getByTestId('doc-action-stderr-diff-state-project-primary')).toContainText(
+      'Changed vs pinned success'
+    );
+  } else {
+    await expect(page.getByTestId('doc-action-run-diff-focus-project-primary')).toContainText(
+      'Start with stdout drilldown'
+    );
+    await expect(page.getByTestId('doc-action-run-diff-open-project-primary-stdout')).toContainText(
+      'Open stdout first'
+    );
+    await page.getByTestId('doc-action-run-diff-open-project-primary-stdout').click();
+    await expect(page.getByTestId('doc-action-stdout-drilldown-project-primary')).toContainText(
+      /SyntaxError|invalid syntax/
+    );
+    await expect(page.getByTestId('doc-action-stdout-diff-state-project-primary')).toContainText(
+      'Changed vs pinned success'
+    );
+  }
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
     'completed successfully'
   );
@@ -618,18 +652,6 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-history-summary-project-primary')).toContainText(
     'Showing 1 of 2 recent run(s). 1 failed, 1 succeeded.'
   );
-  const stderrToggle = page.getByTestId('doc-action-stderr-toggle-project-primary');
-  if ((await stderrToggle.count()) > 0) {
-    await stderrToggle.click();
-    await expect(page.getByTestId('doc-action-stderr-drilldown-project-primary')).toContainText(
-      /SyntaxError|invalid syntax/
-    );
-  } else {
-    await page.getByTestId('doc-action-stdout-toggle-project-primary').click();
-    await expect(page.getByTestId('doc-action-stdout-drilldown-project-primary')).toContainText(
-      /SyntaxError|invalid syntax/
-    );
-  }
   await page.getByTestId('doc-action-history-filter-project-primary-succeeded').click();
   await expect(page.getByTestId('doc-action-history-summary-project-primary')).toContainText(
     'Showing 1 of 2 recent run(s). 1 failed, 1 succeeded.'
@@ -640,6 +662,10 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-run-diff-summary-project-primary')).toContainText(
     'pinned passing baseline'
   );
+  const pinnedStderrDiffState = page.getByTestId('doc-action-stderr-diff-state-project-primary');
+  if ((await pinnedStderrDiffState.count()) > 0) {
+    await expect(pinnedStderrDiffState).toContainText('Pinned success selected');
+  }
   await page.getByTestId('doc-action-history-filter-project-primary-all').click();
   await page.getByTestId('doc-action-history-entry-project-primary-2').click();
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
