@@ -7,7 +7,7 @@
 ### 1. 浏览与教学
 
 - 首页、skills、bundles、docs 都已经走真实仓库产物
-- docs 页面已经有搜索、过滤、上下文、相关文章、action panel、allowlist backend action execution，以及 recent runs compare / filter、run diff summary、last-success 回看与 artifact / stdout / stderr drilldown
+- docs 页面已经有搜索、过滤、上下文、相关文章、action panel、allowlist backend action execution，以及 recent runs compare / filter、run diff summary、section diff 状态、quick-open handoff、last-success 回看与 artifact / stdout / stderr drilldown
 - 中文教学与业务案例文档已经接入
 
 ### 2. 本地 lifecycle
@@ -45,26 +45,26 @@ installed-state governance 这一层现在已经完成：
 
 ## 当前剩余缺口
 
-当前最大的缺口已经从“怎样把选中运行和基线运行的差异说明得更结构化”进一步转成了“怎样把差异继续往 drilldown 层做深”：
+当前最大的缺口已经从“怎样把差异提示带到 drilldown 入口”进一步转成了“怎样在不展开完整输出的情况下，先把最关键的差异摘录直接摆到 summary 层”：
 
-1. docs action 现在已经能输出 run diff summary，但 artifact / stdout / stderr 还缺少更细的差异钻取提示
+1. docs action 现在已经能把 diff summary 接到 drilldown，但 artifact / stdout / stderr 还缺少更直接的 inline excerpt / before-vs-baseline 摘录
 2. governance approval audit 目前还没有更细的 archive 检索、筛选与批量回看能力
 3. remote install 还可以继续增强 org policy / provenance 级别的组合解释
 
 ## 下一轮建议
 
-下一轮优先建议继续顺着 docs action 往下做 diff drilldown，而不是立刻回到更重的治理 UI。
+下一轮优先建议继续顺着 docs action 往下做 inline diff excerpts，而不是立刻回到更重的治理 UI。
 
 原因：
 
-- docs action execution、recent runs compare / filter、run diff summary 和 artifact drilldown 已经有了，现在最值得补的是“怎样把差异提示直接带到 drilldown 入口”
+- docs action execution、recent runs compare / filter、run diff summary、section diff 状态和 quick-open handoff 已经有了，现在最值得补的是“怎样先给出足够短的差异摘录，再决定要不要展开完整输出”
 - remote install 已经具备第一轮风控与恢复闭环
 - installed-state governance 已经补到 approval record、audit timeline 和 post-write evidence，主要闭环已经成型
 
 建议下一轮聚焦：
 
-- docs action artifact / stdout / stderr 的 diff drilldown 提示
-- run diff summary 与 drilldown 入口之间的高亮联动
-- Playwright 覆盖 docs action diff summary / drilldown handoff 的真实链路
+- docs action artifact / stdout / stderr 的 inline diff excerpt
+- selected run 与 pinned success 之间的摘要级 before / after 对照
+- Playwright 覆盖 docs action excerpt / drilldown 的真实切换链路
 
-下一轮规划文档见 [frontend-docs-action-diff-drilldown-iteration.md](./frontend-docs-action-diff-drilldown-iteration.md)。
+下一轮规划文档见 [frontend-docs-action-inline-diff-excerpts-iteration.md](./frontend-docs-action-inline-diff-excerpts-iteration.md)。
