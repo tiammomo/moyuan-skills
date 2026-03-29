@@ -526,6 +526,14 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-history-project-primary')).toContainText('Recent runs');
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText('Last success');
   await expect(page.getByTestId('doc-action-history-entry-project-primary-1')).toContainText('Succeeded');
+  await page.getByTestId('doc-action-artifact-toggle-project-primary').click();
+  await expect(page.getByTestId('doc-action-artifact-drilldown-project-primary')).toContainText(
+    'docs/frontend-backend-integration.md'
+  );
+  await page.getByTestId('doc-action-stdout-toggle-project-primary').click();
+  await expect(page.getByTestId('doc-action-stdout-drilldown-project-primary')).toContainText(
+    'Python market backend check passed'
+  );
   await page.reload();
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
     'completed successfully',
@@ -535,6 +543,10 @@ test('frontend works against the Python backend across core market flows', async
   );
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the last successful run saved in recent history.'
+  );
+  await page.getByTestId('doc-action-artifact-toggle-project-primary').click();
+  await expect(page.getByTestId('doc-action-artifact-drilldown-project-primary')).toContainText(
+    'docs/frontend-backend-integration.md'
   );
   await expect(page.getByTestId('doc-context-panel')).toBeVisible();
   await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/frontend-backend-integration.md');
@@ -573,6 +585,18 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-last-success-project-primary')).toContainText(
     'completed successfully'
   );
+  const stderrToggle = page.getByTestId('doc-action-stderr-toggle-project-primary');
+  if ((await stderrToggle.count()) > 0) {
+    await stderrToggle.click();
+    await expect(page.getByTestId('doc-action-stderr-drilldown-project-primary')).toContainText(
+      /SyntaxError|invalid syntax/
+    );
+  } else {
+    await page.getByTestId('doc-action-stdout-toggle-project-primary').click();
+    await expect(page.getByTestId('doc-action-stdout-drilldown-project-primary')).toContainText(
+      /SyntaxError|invalid syntax/
+    );
+  }
   await page.getByTestId('doc-action-history-entry-project-primary-2').click();
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the last successful run saved in recent history.'

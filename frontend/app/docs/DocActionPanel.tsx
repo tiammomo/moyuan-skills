@@ -30,6 +30,12 @@ interface CommandHistoryState {
   lastSuccess: LocalJobRecord | null;
 }
 
+interface CommandDrilldownState {
+  artifacts: boolean;
+  stdout: boolean;
+  stderr: boolean;
+}
+
 interface CommandSequenceMeta {
   badge: string;
   description: string;
@@ -110,6 +116,30 @@ function getHistoryEntryTestId(testId: string | undefined, index: number): strin
   return base ? `${base}-${index}` : undefined;
 }
 
+function getArtifactToggleTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-artifact-toggle-');
+}
+
+function getArtifactDrilldownTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-artifact-drilldown-');
+}
+
+function getStdoutToggleTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-stdout-toggle-');
+}
+
+function getStdoutDrilldownTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-stdout-drilldown-');
+}
+
+function getStderrToggleTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-stderr-toggle-');
+}
+
+function getStderrDrilldownTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-stderr-drilldown-');
+}
+
 async function copyCommandText(value: string): Promise<void> {
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
@@ -160,9 +190,9 @@ function getCommandSequenceMeta(index: number, total: number): CommandSequenceMe
   };
 }
 
-function truncateOutput(value: string): string {
+function truncateDetailedOutput(value: string): string {
   const normalized = value.trim();
-  return normalized.length <= 800 ? normalized : `...${normalized.slice(-800)}`;
+  return normalized.length <= 4000 ? normalized : `${normalized.slice(0, 4000)}\n... output truncated ...`;
 }
 
 function formatValue(value: unknown): string {
@@ -176,6 +206,25 @@ function formatValue(value: unknown): string {
     return '-';
   }
   return String(value);
+}
+
+function summarizeOutput(value: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    return 'No output captured.';
+  }
+  const lineCount = normalized.split(/\r?\n/).length;
+  return `${lineCount} line(s), ${normalized.length} char(s).`;
+}
+
+function formatDetailedValue(value: unknown): string {
+  if (typeof value === 'string') {
+    return value;
+  }
+  if (value === null || value === undefined) {
+    return '-';
+  }
+  return JSON.stringify(value, null, 2);
 }
 
 function formatRunState(status: DocActionRunState): string {
@@ -274,6 +323,17 @@ function sameHistory(left: CommandHistoryState | undefined, right: CommandHistor
   return left.recentRuns.every((job, index) => job.job_id === right.recentRuns[index]?.job_id);
 }
 
+function getDrilldownState(
+  current: Record<string, CommandDrilldownState>,
+  historyKey: string
+): CommandDrilldownState {
+  return current[historyKey] ?? {
+    artifacts: false,
+    stdout: false,
+    stderr: false,
+  };
+}
+
 export function DocActionPanel({ panel }: DocActionPanelProps) {
   const [availability, setAvailability] = useState<LocalBackendStatus | null>(null);
   const [copiedCommandKey, setCopiedCommandKey] = useState<string | null>(null);
@@ -281,6 +341,7 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
   const [commandStates, setCommandStates] = useState<Record<string, CommandExecutionState>>({});
   const [commandHistory, setCommandHistory] = useState<Record<string, CommandHistoryState>>({});
   const [selectedJobIds, setSelectedJobIds] = useState<Record<string, string>>({});
+  const [drilldowns, setDrilldowns] = useState<Record<string, CommandDrilldownState>>({});
 
   const hasBackendCommand = useMemo(
     () => panel.commands.some((command) => command.executionMode === 'backend-job' && command.actionId),
@@ -540,6 +601,16 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
     }
   }
 
+  function toggleDrilldown(historyKey: string, section: keyof CommandDrilldownState) {
+    setDrilldowns((currentDrilldowns) => ({
+      ...currentDrilldowns,
+      [historyKey]: {
+        ...getDrilldownState(currentDrilldowns, historyKey),
+        [section]: !getDrilldownState(currentDrilldowns, historyKey)[section],
+      },
+    }));
+  }
+
   return (
     <Card className="p-5" data-testid="doc-action-panel">
       <div className="mb-5">
@@ -582,7 +653,16 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
             ?? history?.recentRuns[0]
             ?? history?.lastSuccess
             ?? null;
-          const summaryEntries = selectedJob ? [...Object.entries(selectedJob.summary), ...Object.entries(selectedJob.artifacts)] : [];
+          const summaryEntries = selectedJob ? Object.entries(selectedJob.summary) : [];
+          const artifactEntries = selectedJob ? Object.entries(selectedJob.artifacts) : [];
+          const drilldownState = getDrilldownState(drilldowns, historyKey);
+          const hasStdout = Boolean(selectedJob?.stdout.trim());
+          const hasStderr = Boolean(selectedJob?.stderr.trim());
+          const artifactSummary = artifactEntries.length
+            ? `${artifactEntries.length} artifact field(s) captured for this run.`
+            : 'No artifact paths or output metadata were captured for this run.';
+          const stdoutSummary = selectedJob && hasStdout ? summarizeOutput(selectedJob.stdout) : 'No stdout captured.';
+          const stderrSummary = selectedJob && hasStderr ? summarizeOutput(selectedJob.stderr) : 'No stderr captured.';
           const summarySource =
             selectedJob?.job_id && commandState?.job?.job_id === selectedJob.job_id
               ? 'Viewing the latest in-page run.'
@@ -718,7 +798,7 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                               <span className="text-xs text-muted">{isSelected ? 'Currently reviewing this run' : 'Click to review'}</span>
                             </div>
                             <p className="mt-2 text-xs text-ink">
-                              <span className="font-mono">{job.job_id}</span> · {formatValue(job.summary.label)}
+                              <span className="font-mono">{job.job_id}</span> - {formatValue(job.summary.label)}
                             </p>
                           </button>
                         );
@@ -762,22 +842,97 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                       </div>
                     ))}
                   </dl>
-                  {selectedJob.stdout.trim() && (
-                    <div className="mt-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stdout snippet</p>
-                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs leading-6 text-ink">
-                        <code>{truncateOutput(selectedJob.stdout)}</code>
-                      </pre>
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-card border border-dashed border-line bg-paper/70 px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Artifacts</p>
+                          <p className="mt-1 text-xs text-muted">{artifactSummary}</p>
+                        </div>
+                        {artifactEntries.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid={getArtifactToggleTestId(command.testId)}
+                            onClick={() => toggleDrilldown(historyKey, 'artifacts')}
+                          >
+                            {drilldownState.artifacts ? 'Hide details' : 'Review details'}
+                          </Button>
+                        )}
+                      </div>
+                      {artifactEntries.length > 0 && drilldownState.artifacts && (
+                        <div className="mt-3 space-y-2" data-testid={getArtifactDrilldownTestId(command.testId)}>
+                          {artifactEntries.map(([key, value]) => (
+                            <div key={key} className="rounded-card border border-line bg-bg px-3 py-3">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                                {key.replace(/_/g, ' ')}
+                              </p>
+                              <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs leading-6 text-ink">
+                                <code>{formatDetailedValue(value)}</code>
+                              </pre>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {selectedJob.stderr.trim() && (
-                    <div className="mt-3">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stderr snippet</p>
-                      <pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-all text-xs leading-6 text-ink">
-                        <code>{truncateOutput(selectedJob.stderr)}</code>
-                      </pre>
+
+                    <div className="rounded-card border border-dashed border-line bg-paper/70 px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stdout</p>
+                          <p className="mt-1 text-xs text-muted">{stdoutSummary}</p>
+                        </div>
+                        {hasStdout && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid={getStdoutToggleTestId(command.testId)}
+                            onClick={() => toggleDrilldown(historyKey, 'stdout')}
+                          >
+                            {drilldownState.stdout ? 'Hide stdout' : 'Review stdout'}
+                          </Button>
+                        )}
+                      </div>
+                      {hasStdout && drilldownState.stdout && (
+                        <pre
+                          className="mt-3 overflow-x-auto rounded-card border border-line bg-bg px-3 py-3 whitespace-pre-wrap break-all text-xs leading-6 text-ink"
+                          data-testid={getStdoutDrilldownTestId(command.testId)}
+                        >
+                          <code>{truncateDetailedOutput(selectedJob.stdout)}</code>
+                        </pre>
+                      )}
                     </div>
-                  )}
+
+                    <div className="rounded-card border border-dashed border-line bg-paper/70 px-3 py-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">stderr</p>
+                          <p className="mt-1 text-xs text-muted">{stderrSummary}</p>
+                        </div>
+                        {hasStderr && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            data-testid={getStderrToggleTestId(command.testId)}
+                            onClick={() => toggleDrilldown(historyKey, 'stderr')}
+                          >
+                            {drilldownState.stderr ? 'Hide stderr' : 'Review stderr'}
+                          </Button>
+                        )}
+                      </div>
+                      {hasStderr && drilldownState.stderr && (
+                        <pre
+                          className="mt-3 overflow-x-auto rounded-card border border-line bg-bg px-3 py-3 whitespace-pre-wrap break-all text-xs leading-6 text-ink"
+                          data-testid={getStderrDrilldownTestId(command.testId)}
+                        >
+                          <code>{truncateDetailedOutput(selectedJob.stderr)}</code>
+                        </pre>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

@@ -12,7 +12,7 @@
 - waiver / apply handoff 的 `prepare / stage / verify`
 - governance write handoff 的 eligibility、approval record、audit timeline、evidence pack 与 review checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
-- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态、recent runs 与结果回看
+- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态、recent runs / last-success 回看，以及 artifact / stdout / stderr drilldown
 
 ## 当前分层
 
@@ -26,7 +26,7 @@
 它还负责把 skill / bundle / docs 数据整理成前端真正需要的结构，例如：
 
 - docs 上下文面板
-- action panel 的命令、执行模式、顺序、前置条件、预期产物、result summary、recent runs 与 last-success
+- action panel 的命令、执行模式、顺序、前置条件、预期产物、result summary、recent runs、last-success，以及 artifact / stdout / stderr 钻取状态
 - remote execution 的 trust summary、policy gate、approval 文案
 
 ### 2. Next.js API 代理层
