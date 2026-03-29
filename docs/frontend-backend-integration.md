@@ -12,7 +12,7 @@
 - waiver / apply handoff 的 `prepare / stage / verify`
 - governance write handoff 的 eligibility、approval record、audit timeline、evidence pack 与 review checklist
 - remote registry install 的 trust / approval / retry / cleanup / rollback
-- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态、recent runs compare / filter、run diff summary、section diff 状态、quick-open handoff、last-success 回看，以及 artifact / stdout / stderr drilldown
+- docs action panel 的 allowlist backend 执行、copy fallback、前置条件状态、recent runs compare / filter、run diff summary、inline diff excerpts、section diff 状态、quick-open handoff、last-success 回看，以及 artifact / stdout / stderr drilldown
 
 ## 当前分层
 
@@ -26,7 +26,7 @@
 它还负责把 skill / bundle / docs 数据整理成前端真正需要的结构，例如：
 
 - docs 上下文面板
-- action panel 的命令、执行模式、顺序、前置条件、预期产物、result summary、recent runs compare / filter、run diff summary、section diff 状态、quick-open handoff、last-success，以及 artifact / stdout / stderr 钻取状态
+- action panel 的命令、执行模式、顺序、前置条件、预期产物、result summary、recent runs compare / filter、run diff summary、inline diff excerpts、section diff 状态、quick-open handoff、last-success，以及 artifact / stdout / stderr 钻取状态
 - remote execution 的 trust summary、policy gate、approval 文案
 
 ### 2. Next.js API 代理层
@@ -105,7 +105,7 @@ GET /api/v1/local/jobs/{job_id}
 - waiver / apply `prepare -> stage -> verify`
 - `approval persisted -> audit trail visible -> restage invalidates old approval -> post-write evidence refreshed`
 - remote registry install 的 approval / retry / cleanup / rollback
-- docs 页面搜索、详情页 action panel、context panel、相关文档跳转、project doc allowlist action 真执行，以及 docs action history / last-success 回看
+- docs 页面搜索、详情页 action panel、context panel、相关文档跳转、project doc allowlist action 真执行，以及 docs action history / inline diff excerpts / quick-open / last-success 回看
 
 ## 本地联调
 

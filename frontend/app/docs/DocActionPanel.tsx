@@ -64,6 +64,13 @@ interface CommandSectionDiff {
   recommended: boolean;
 }
 
+interface CommandSectionExcerpt {
+  section: CommandDrilldownSection;
+  summary: string;
+  selectedExcerpt: string;
+  baselineExcerpt: string;
+}
+
 interface CommandSequenceMeta {
   badge: string;
   description: string;
@@ -178,6 +185,34 @@ function getRunDiffOpenTestId(
   section: CommandDrilldownSection
 ): string | undefined {
   const base = transformTestId(testId, 'doc-action-run-diff-open-');
+  return base ? `${base}-${section}` : undefined;
+}
+
+function getDiffExcerptsTestId(testId?: string): string | undefined {
+  return transformTestId(testId, 'doc-action-diff-excerpts-');
+}
+
+function getDiffExcerptTestId(
+  testId: string | undefined,
+  section: CommandDrilldownSection
+): string | undefined {
+  const base = transformTestId(testId, 'doc-action-diff-excerpt-');
+  return base ? `${base}-${section}` : undefined;
+}
+
+function getDiffExcerptSelectedTestId(
+  testId: string | undefined,
+  section: CommandDrilldownSection
+): string | undefined {
+  const base = transformTestId(testId, 'doc-action-diff-excerpt-selected-');
+  return base ? `${base}-${section}` : undefined;
+}
+
+function getDiffExcerptBaselineTestId(
+  testId: string | undefined,
+  section: CommandDrilldownSection
+): string | undefined {
+  const base = transformTestId(testId, 'doc-action-diff-excerpt-baseline-');
   return base ? `${base}-${section}` : undefined;
 }
 
@@ -458,6 +493,135 @@ function getSectionHeading(section: CommandDrilldownSection): string {
   if (section === 'artifacts') return 'Artifacts';
   if (section === 'stdout') return 'stdout';
   return 'stderr';
+}
+
+function truncateInlineExcerpt(value: string, maxLength = 220): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    return 'No output captured.';
+  }
+  return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength)}...`;
+}
+
+function findFirstChangedLineIndex(selectedLines: string[], baselineLines: string[]): number {
+  const maxLength = Math.max(selectedLines.length, baselineLines.length);
+  for (let index = 0; index < maxLength; index += 1) {
+    if ((selectedLines[index] ?? '') !== (baselineLines[index] ?? '')) {
+      return index;
+    }
+  }
+  return 0;
+}
+
+function findImportantLineIndex(lines: string[]): number {
+  const importantPattern = /(error|exception|traceback|syntaxerror|invalid|failed|failure)/i;
+  const matchedIndex = lines.findIndex((line) => importantPattern.test(line));
+  return matchedIndex >= 0 ? matchedIndex : 0;
+}
+
+function buildKeywordExcerpt(value: string): string | null {
+  const normalized = value.trim();
+  if (!normalized) {
+    return null;
+  }
+
+  const importantPattern = /(SyntaxError|invalid syntax|Traceback|Exception|Error|Failed|Failure)/i;
+  const match = importantPattern.exec(normalized);
+  if (!match || match.index === undefined) {
+    return null;
+  }
+
+  const start = Math.max(0, match.index - 80);
+  const end = Math.min(normalized.length, match.index + match[0].length + 80);
+  const prefix = start > 0 ? '...' : '';
+  const suffix = end < normalized.length ? '...' : '';
+  return truncateInlineExcerpt(`${prefix}${normalized.slice(start, end)}${suffix}`);
+}
+
+function buildOutputExcerptText(value: string, counterpart: string): string {
+  const keywordExcerpt = buildKeywordExcerpt(value);
+  if (keywordExcerpt) {
+    return keywordExcerpt;
+  }
+
+  const lines = value.trim().split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) {
+    return 'No output captured.';
+  }
+  const counterpartLines = counterpart.trim().split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const changedIndex = findFirstChangedLineIndex(lines, counterpartLines);
+  const importantIndex = findImportantLineIndex(lines);
+  const startIndex = Math.min(lines.length - 1, Math.max(changedIndex, importantIndex));
+  const excerptLines = lines.slice(startIndex, startIndex + 2);
+  const excerpt = excerptLines.join('\n');
+  const prefix = startIndex > 0 ? '...\n' : '';
+  const suffix = startIndex + excerptLines.length < lines.length ? '\n...' : '';
+  return truncateInlineExcerpt(`${prefix}${excerpt}${suffix}`);
+}
+
+function formatArtifactExcerptValue(value: unknown): string {
+  if (value === undefined) {
+    return '(missing)';
+  }
+  if (typeof value === 'string') {
+    return truncateInlineExcerpt(value);
+  }
+  return truncateInlineExcerpt(JSON.stringify(value));
+}
+
+function buildArtifactExcerpt(
+  selectedArtifacts: LocalJobRecord['artifacts'],
+  baselineArtifacts: LocalJobRecord['artifacts']
+): Pick<CommandSectionExcerpt, 'summary' | 'selectedExcerpt' | 'baselineExcerpt'> {
+  const changedKeys = Array.from(
+    new Set([...Object.keys(selectedArtifacts), ...Object.keys(baselineArtifacts)])
+  ).filter((key) => JSON.stringify(selectedArtifacts[key]) !== JSON.stringify(baselineArtifacts[key]));
+  const excerptKeys = changedKeys.slice(0, 2);
+  const extraKeyCount = Math.max(changedKeys.length - excerptKeys.length, 0);
+  return {
+    summary:
+      excerptKeys.length > 0
+        ? `Changed key${excerptKeys.length > 1 ? 's' : ''}: ${excerptKeys.join(', ')}${extraKeyCount > 0 ? ` (+${extraKeyCount} more)` : ''}.`
+        : 'Artifact metadata differs from the pinned success.',
+    selectedExcerpt: excerptKeys.length
+      ? excerptKeys.map((key) => `${key}: ${formatArtifactExcerptValue(selectedArtifacts[key])}`).join('\n')
+      : 'Artifact metadata changed in the selected run.',
+    baselineExcerpt: excerptKeys.length
+      ? excerptKeys.map((key) => `${key}: ${formatArtifactExcerptValue(baselineArtifacts[key])}`).join('\n')
+      : 'Pinned success recorded different artifact metadata.',
+  };
+}
+
+function buildSectionExcerpt(
+  diff: CommandSectionDiff | false | null,
+  selectedJob: LocalJobRecord | null,
+  lastSuccess: LocalJobRecord | null
+): CommandSectionExcerpt | null {
+  if (!diff || diff.state !== 'changed' || !selectedJob || !lastSuccess) {
+    return null;
+  }
+
+  if (diff.section === 'artifacts') {
+    const artifactExcerpt = buildArtifactExcerpt(selectedJob.artifacts, lastSuccess.artifacts);
+    return {
+      section: diff.section,
+      summary: artifactExcerpt.summary,
+      selectedExcerpt: artifactExcerpt.selectedExcerpt,
+      baselineExcerpt: artifactExcerpt.baselineExcerpt,
+    };
+  }
+
+  const selectedValue = diff.section === 'stdout' ? selectedJob.stdout : selectedJob.stderr;
+  const baselineValue = diff.section === 'stdout' ? lastSuccess.stdout : lastSuccess.stderr;
+  return {
+    section: diff.section,
+    summary:
+      diff.section === 'stdout'
+        ? 'Showing the first useful stdout delta before opening the full drilldown.'
+        : 'Showing the first useful stderr delta before opening the full drilldown.',
+    selectedExcerpt: buildOutputExcerptText(selectedValue, baselineValue),
+    baselineExcerpt: buildOutputExcerptText(baselineValue, selectedValue),
+  };
 }
 
 interface CommandSectionComparable {
@@ -1137,6 +1301,23 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
               sectionDiff.hasContent &&
               (sectionDiff.state === 'changed' || sectionDiff.recommended)
           );
+          const changedExcerpts = [artifactDiff, stdoutDiff, stderrDiff]
+            .map((sectionDiff) => buildSectionExcerpt(sectionDiff, selectedJob, history?.lastSuccess ?? null))
+            .filter((sectionExcerpt): sectionExcerpt is CommandSectionExcerpt => Boolean(sectionExcerpt))
+            .sort((left, right) => {
+              const leftRecommended =
+                (left.section === 'artifacts' && artifactDiff?.recommended) ||
+                (left.section === 'stdout' && stdoutDiff?.recommended) ||
+                (left.section === 'stderr' && stderrDiff?.recommended);
+              const rightRecommended =
+                (right.section === 'artifacts' && artifactDiff?.recommended) ||
+                (right.section === 'stdout' && stdoutDiff?.recommended) ||
+                (right.section === 'stderr' && stderrDiff?.recommended);
+              if (leftRecommended === rightRecommended) {
+                return ['stderr', 'stdout', 'artifacts'].indexOf(left.section) - ['stderr', 'stdout', 'artifacts'].indexOf(right.section);
+              }
+              return leftRecommended ? -1 : 1;
+            });
           const summarySource =
             selectedJob?.job_id && commandState?.job?.job_id === selectedJob.job_id
               ? 'Viewing the latest in-page run.'
@@ -1389,6 +1570,68 @@ export function DocActionPanel({ panel }: DocActionPanelProps) {
                           </ul>
                         </div>
                       )}
+                    </div>
+                  )}
+                  {changedExcerpts.length > 0 && (
+                    <div
+                      className="mt-3 rounded-card border border-dashed border-line bg-paper/70 px-3 py-3"
+                      data-testid={getDiffExcerptsTestId(command.testId)}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Diff excerpts</p>
+                        <span className="text-xs text-muted">Selected run vs pinned success</span>
+                      </div>
+                      <div className="mt-3 space-y-3">
+                        {changedExcerpts.map((excerpt) => {
+                          const recommended =
+                            (excerpt.section === 'artifacts' && artifactDiff?.recommended) ||
+                            (excerpt.section === 'stdout' && stdoutDiff?.recommended) ||
+                            (excerpt.section === 'stderr' && stderrDiff?.recommended);
+                          return (
+                            <div
+                              key={excerpt.section}
+                              className={cn(
+                                'rounded-card border px-3 py-3',
+                                recommended ? 'border-[#e8c9b8] bg-[#fff8ef]' : 'border-line bg-bg'
+                              )}
+                              data-testid={getDiffExcerptTestId(command.testId, excerpt.section)}
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                                  {getSectionHeading(excerpt.section)}
+                                </p>
+                                <Chip variant="beta">Changed</Chip>
+                                {recommended && <Chip variant="keyword">Review first</Chip>}
+                              </div>
+                              <p className="mt-2 text-xs text-muted">{excerpt.summary}</p>
+                              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                <div className="rounded-card border border-line bg-paper/70 px-3 py-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                                    Selected run
+                                  </p>
+                                  <pre
+                                    className="mt-2 whitespace-pre-wrap break-all text-xs leading-6 text-ink"
+                                    data-testid={getDiffExcerptSelectedTestId(command.testId, excerpt.section)}
+                                  >
+                                    <code>{excerpt.selectedExcerpt}</code>
+                                  </pre>
+                                </div>
+                                <div className="rounded-card border border-line bg-paper/70 px-3 py-3">
+                                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                                    Pinned success
+                                  </p>
+                                  <pre
+                                    className="mt-2 whitespace-pre-wrap break-all text-xs leading-6 text-ink"
+                                    data-testid={getDiffExcerptBaselineTestId(command.testId, excerpt.section)}
+                                  >
+                                    <code>{excerpt.baselineExcerpt}</code>
+                                  </pre>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                   <dl className="mt-2 space-y-2 text-xs text-ink">

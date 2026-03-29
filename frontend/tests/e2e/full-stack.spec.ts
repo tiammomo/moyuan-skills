@@ -532,6 +532,7 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-stdout-diff-state-project-primary')).toContainText(
     'Pinned success selected'
   );
+  await expect(page.getByTestId('doc-action-diff-excerpts-project-primary')).toHaveCount(0);
   await expect(page.getByTestId('doc-action-summary-source-project-primary')).toContainText(
     'Viewing the latest in-page run.'
   );
@@ -617,15 +618,23 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-run-diff-changed-project-primary')).toContainText(
     'Exit code: 1 now vs 0 in the pinned success.'
   );
+  await expect(page.getByTestId('doc-action-diff-excerpts-project-primary')).toBeVisible();
   const stderrQuickOpen = page.getByTestId('doc-action-run-diff-open-project-primary-stderr');
   if ((await stderrQuickOpen.count()) > 0) {
     await expect(page.getByTestId('doc-action-run-diff-focus-project-primary')).toContainText(
       'Start with stderr drilldown'
     );
+    await expect(page.getByTestId('doc-action-diff-excerpt-project-primary-stderr')).toContainText(
+      'Showing the first useful stderr delta'
+    );
+    await expect(page.getByTestId('doc-action-diff-excerpt-selected-project-primary-stderr')).toContainText(
+      /_doc_action_history_failure\.py|SyntaxError|invalid syntax/
+    );
+    await expect(page.getByTestId('doc-action-diff-excerpt-baseline-project-primary-stderr')).toBeVisible();
     await expect(stderrQuickOpen).toContainText('Open stderr first');
     await stderrQuickOpen.click();
     await expect(page.getByTestId('doc-action-stderr-drilldown-project-primary')).toContainText(
-      /SyntaxError|invalid syntax/
+      /_doc_action_history_failure\.py|SyntaxError|invalid syntax/
     );
     await expect(page.getByTestId('doc-action-stderr-diff-state-project-primary')).toContainText(
       'Changed vs pinned success'
@@ -634,12 +643,19 @@ test('frontend works against the Python backend across core market flows', async
     await expect(page.getByTestId('doc-action-run-diff-focus-project-primary')).toContainText(
       'Start with stdout drilldown'
     );
+    await expect(page.getByTestId('doc-action-diff-excerpt-project-primary-stdout')).toContainText(
+      'Showing the first useful stdout delta'
+    );
+    await expect(page.getByTestId('doc-action-diff-excerpt-selected-project-primary-stdout')).toContainText(
+      /_doc_action_history_failure\.py|SyntaxError|invalid syntax/
+    );
+    await expect(page.getByTestId('doc-action-diff-excerpt-baseline-project-primary-stdout')).toBeVisible();
     await expect(page.getByTestId('doc-action-run-diff-open-project-primary-stdout')).toContainText(
       'Open stdout first'
     );
     await page.getByTestId('doc-action-run-diff-open-project-primary-stdout').click();
     await expect(page.getByTestId('doc-action-stdout-drilldown-project-primary')).toContainText(
-      /SyntaxError|invalid syntax/
+      /_doc_action_history_failure\.py|SyntaxError|invalid syntax/
     );
     await expect(page.getByTestId('doc-action-stdout-diff-state-project-primary')).toContainText(
       'Changed vs pinned success'
@@ -662,6 +678,7 @@ test('frontend works against the Python backend across core market flows', async
   await expect(page.getByTestId('doc-action-run-diff-summary-project-primary')).toContainText(
     'pinned passing baseline'
   );
+  await expect(page.getByTestId('doc-action-diff-excerpts-project-primary')).toHaveCount(0);
   const pinnedStderrDiffState = page.getByTestId('doc-action-stderr-diff-state-project-primary');
   if ((await pinnedStderrDiffState.count()) > 0) {
     await expect(pinnedStderrDiffState).toContainText('Pinned success selected');

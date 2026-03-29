@@ -2,7 +2,7 @@
 
 这份文档汇总这个仓库最常用的开发与验证命令。
 
-现在 docs 详情页里的 action panel 已经能对 allowlist 命令直接发起 backend job，并保留 recent runs / last-success、recent runs compare / filter、run diff summary、section diff 状态、quick-open handoff，以及 artifact、stdout、stderr drilldown；但这里仍然是完整命令参考的权威来源，适合手动执行、排错和批量串联。
+现在 docs 详情页里的 action panel 已经能对 allowlist 命令直接发起 backend job，并保留 recent runs / last-success、recent runs compare / filter、run diff summary、inline diff excerpts、section diff 状态、quick-open handoff，以及 artifact、stdout、stderr drilldown；但这里仍然是完整命令参考的权威来源，适合手动执行、排错和批量串联。
 
 ## 新人先跑哪几条
 
