@@ -91,10 +91,15 @@ def ingest_submission(args: argparse.Namespace) -> int:
     uploaded_skill_dir = resolve_repo_path(Path(submission["source_dir"]))
     uploaded_docs_path = resolve_repo_path(Path(submission["docs_path"]))
     uploaded_manifest_path = resolve_repo_path(Path(submission["manifest_path"]))
+    uploaded_source_root = submission_path.parent / "source"
 
     canonical_skill_dir = skills_dir / submission["skill_name"]
     canonical_manifest_path = canonical_skill_dir / "market" / "skill.json"
-    canonical_docs_path = docs_dir / uploaded_docs_path.name
+    try:
+        relative_docs_path = uploaded_docs_path.relative_to(uploaded_source_root / "docs")
+    except ValueError:
+        relative_docs_path = Path(uploaded_docs_path.name)
+    canonical_docs_path = docs_dir / relative_docs_path
     canonical_skill_rel = repo_relative_path(canonical_skill_dir)
     canonical_docs_rel = repo_relative_path(canonical_docs_path)
     canonical_entrypoint_rel = f"{canonical_skill_rel}/SKILL.md"

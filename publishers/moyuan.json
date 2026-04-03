@@ -9,7 +9,7 @@
   "verification": {
     "issued_by": "moyuan-market-review-board",
     "issued_at": "2026-03-26",
-    "policy_url": "https://github.com/tiammomo/moyuan-skills/blob/master/docs/market-governance.md",
+    "policy_url": "https://github.com/tiammomo/moyuan-skills/blob/master/docs/market/market-governance.md",
     "method": "manual-review-plus-ci"
   }
 }

@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/api-change-risk-review",
     "entrypoint": "skills/api-change-risk-review/SKILL.md",
-    "docs": "docs/api-change-risk-review.md"
+    "docs": "docs/skills/api-change-risk-review.md"
   },
   "search": {
     "keywords": ["api review", "schema diff", "compatibility", "rollout risk"],

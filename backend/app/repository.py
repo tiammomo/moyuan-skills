@@ -901,15 +901,73 @@ class MarketRepository:
             return None
         return _read_json(spec_path)
 
+    def _resolve_repo_doc_path(self, raw_path: str) -> Path | None:
+        normalized = str(raw_path).strip()
+        if not normalized:
+            return None
+        candidate = Path(normalized)
+        candidate = candidate if candidate.is_absolute() else (self.repo_root / candidate)
+        candidate = candidate.resolve()
+        try:
+            candidate.relative_to(self.repo_root)
+        except ValueError:
+            return None
+        return candidate
+
+    def _get_skill_doc_path(self, name: str, manifest: dict[str, Any] | None = None) -> Path | None:
+        resolved_manifest = manifest or self.get_skill_manifest(name)
+        artifacts = resolved_manifest.get("artifacts", {}) if isinstance(resolved_manifest, dict) else {}
+        raw_docs_path = str(artifacts.get("docs", "")).strip()
+        manifest_doc_path = self._resolve_repo_doc_path(raw_docs_path)
+        if manifest_doc_path and manifest_doc_path.is_file():
+            return manifest_doc_path
+
+        fallback = self.settings.docs_root / f"{name}.md"
+        if fallback.is_file():
+            return fallback
+        return None
+
+    def get_skill_doc_path(self, name: str) -> str | None:
+        doc_path = self._get_skill_doc_path(name)
+        if not doc_path:
+            return None
+        return _display_repo_path(doc_path, self.repo_root)
+
+    def _iter_teaching_doc_paths(self) -> list[Path]:
+        return sorted(path for path in self.settings.teaching_root.rglob("*.md") if path.is_file())
+
+    def _iter_project_doc_paths(self) -> list[Path]:
+        skill_doc_paths = {
+            path.resolve()
+            for skill in self.get_all_skills()
+            if (path := self._get_skill_doc_path(str(skill.get("name", "")).strip()))
+        }
+        project_docs: list[Path] = []
+        for path in sorted(self.settings.docs_root.rglob("*.md")):
+            if not path.is_file():
+                continue
+            if path.name == "README.md":
+                continue
+            if self.settings.teaching_root in path.parents:
+                continue
+            if "assets" in path.parts:
+                continue
+            if path.resolve() in skill_doc_paths:
+                continue
+            if _is_internal_iteration_doc(path):
+                continue
+            project_docs.append(path)
+        return project_docs
+
     def get_skill_doc(self, name: str) -> str | None:
-        doc_path = self.settings.docs_root / f"{name}.md"
-        if not doc_path.is_file():
+        doc_path = self._get_skill_doc_path(name)
+        if doc_path is None or not doc_path.is_file():
             return None
         return _read_text(doc_path)
 
     def get_teaching_doc(self, doc_id: str) -> dict[str, Any] | None:
-        path = self.settings.teaching_root / f"{doc_id}.md"
-        if not path.is_file():
+        path = next((candidate for candidate in self._iter_teaching_doc_paths() if candidate.stem == doc_id), None)
+        if path is None or not path.is_file():
             return None
         markdown = _read_text(path)
         return {
@@ -922,8 +980,8 @@ class MarketRepository:
         }
 
     def get_project_doc(self, doc_id: str) -> dict[str, Any] | None:
-        path = self.settings.docs_root / f"{doc_id}.md"
-        if not path.is_file() or _is_internal_iteration_doc(path):
+        path = next((candidate for candidate in self._iter_project_doc_paths() if candidate.stem == doc_id), None)
+        if path is None or not path.is_file():
             return None
         markdown = _read_text(path)
         return {
@@ -1027,6 +1085,9 @@ class MarketRepository:
             name = str(skill.get("name", "")).strip()
             if not name:
                 continue
+            doc_path = self._get_skill_doc_path(name)
+            if not doc_path:
+                continue
             markdown = self.get_skill_doc(name)
             if not markdown:
                 continue
@@ -1036,12 +1097,12 @@ class MarketRepository:
                     "kind": "skill",
                     "title": _first_heading(markdown, str(skill.get("title", name))),
                     "summary": _first_paragraph(markdown) or str(skill.get("summary", "")),
-                    "path": f"docs/{name}.md",
+                    "path": _display_repo_path(doc_path, self.repo_root),
                 }
             )
 
         teaching_docs: list[dict[str, Any]] = []
-        for path in sorted(self.settings.teaching_root.glob("*.md")):
+        for path in self._iter_teaching_doc_paths():
             markdown = _read_text(path)
             teaching_docs.append(
                 {
@@ -1054,10 +1115,7 @@ class MarketRepository:
             )
 
         root_docs: list[dict[str, Any]] = []
-        skill_doc_names = {f"{skill['name']}.md" for skill in self.get_all_skills() if skill.get("name")}
-        for path in sorted(self.settings.docs_root.glob("*.md")):
-            if path.name == "README.md" or path.name in skill_doc_names or _is_internal_iteration_doc(path):
-                continue
+        for path in self._iter_project_doc_paths():
             markdown = _read_text(path)
             root_docs.append(
                 {
@@ -1129,11 +1187,12 @@ class MarketRepository:
         raw_command = str(quality.get("checker", "")).strip() or (
             f"python skills/{doc_id}/scripts/check_{doc_id.replace('-', '_')}.py"
         )
+        doc_path = self.get_skill_doc_path(doc_id) or f"docs/skills/{doc_id}.md"
         return self._build_doc_action_payload(
             doc_kind="skill",
             doc_id=doc_id,
             doc_title=str(manifest.get("title", doc_id)).strip() or doc_id,
-            doc_path=f"docs/{doc_id}.md",
+            doc_path=doc_path,
             action_id=action_id,
             label="Run checker",
             command=self._split_doc_action_command(raw_command),

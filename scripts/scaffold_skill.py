@@ -113,7 +113,7 @@ def build_replacements(args: argparse.Namespace, skill_dir: Path) -> dict[str, s
     categories = args.category or ["workflow"]
     tags = args.tag or [skill_name, "template", "draft"]
     keywords = args.keyword or [skill_title.lower(), f"{skill_name} workflow", f"{skill_title.lower()} skill"]
-    docs_path = ROOT / "docs" / f"{skill_name}.md"
+    docs_path = ROOT / "docs" / "skills" / f"{skill_name}.md"
     source_dir = repo_relative_path(skill_dir)
     checker_command = f"python {source_dir}/scripts/check_{skill_name_py}.py"
     eval_command = checker_command
@@ -186,7 +186,7 @@ def destination_for_template(
     filename = parts[-1]
 
     if parts[0] == "docs":
-        return ROOT / "docs" / f"{skill_name}.md"
+        return ROOT / "docs" / "skills" / f"{skill_name}.md"
 
     if filename == "agents.openai.yaml.template":
         return skill_dir / "agents" / "openai.yaml"
@@ -210,7 +210,7 @@ def scaffold_skill(args: argparse.Namespace) -> int:
 
     parent_dir = ensure_repo_relative(args.path)
     skill_dir = parent_dir / args.skill_name
-    docs_path = ROOT / "docs" / f"{args.skill_name}.md"
+    docs_path = ROOT / "docs" / "skills" / f"{args.skill_name}.md"
 
     if skill_dir.exists():
         print(f"ERROR: skill directory already exists: {repo_relative_path(skill_dir)}")

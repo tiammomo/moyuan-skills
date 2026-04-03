@@ -352,7 +352,7 @@ def main() -> int:
     if not author_ingest_manifest.is_file():
         print(f"ERROR: expected ingested staged manifest is missing: {author_ingest_manifest}")
         return 1
-    if not (author_stage_docs_root / "release-note-writer.md").is_file():
+    if not (author_stage_docs_root / "skills" / "release-note-writer.md").is_file():
         print("ERROR: expected ingested staged doc is missing")
         return 1
 

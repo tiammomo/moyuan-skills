@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/issue-triage-report",
     "entrypoint": "skills/issue-triage-report/SKILL.md",
-    "docs": "docs/issue-triage-report.md"
+    "docs": "docs/skills/issue-triage-report.md"
   },
   "search": {
     "keywords": ["issue triage", "weekly report", "csv issues", "ops review"],

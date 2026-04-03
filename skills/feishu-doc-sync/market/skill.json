@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/feishu-doc-sync",
     "entrypoint": "skills/feishu-doc-sync/SKILL.md",
-    "docs": "docs/feishu-doc-sync.md"
+    "docs": "docs/skills/feishu-doc-sync.md"
   },
   "search": {
     "keywords": ["feishu sync", "markdown doc sync", "docx collaboration", "tenant user auth"],

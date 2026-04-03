@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/incident-postmortem-writer",
     "entrypoint": "skills/incident-postmortem-writer/SKILL.md",
-    "docs": "docs/incident-postmortem-writer.md"
+    "docs": "docs/skills/incident-postmortem-writer.md"
   },
   "search": {
     "keywords": ["incident report", "postmortem", "safety review", "ops writeup"],

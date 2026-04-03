@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/harness-engineering",
     "entrypoint": "skills/harness-engineering/SKILL.md",
-    "docs": "docs/harness-engineering.md"
+    "docs": "docs/harness/harness-engineering.md"
   },
   "search": {
     "keywords": ["harness engineering", "tool contract", "runtime", "eval"],

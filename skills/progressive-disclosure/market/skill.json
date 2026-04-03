@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/progressive-disclosure",
     "entrypoint": "skills/progressive-disclosure/SKILL.md",
-    "docs": "docs/progressive-disclosure.md"
+    "docs": "docs/harness/progressive-disclosure.md"
   },
   "search": {
     "keywords": ["context splitting", "routing", "reference design", "progressive loading"],

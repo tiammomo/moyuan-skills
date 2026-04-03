@@ -384,7 +384,7 @@ def skill_doc(name: str) -> dict:
     return {
         "name": name,
         "markdown": markdown,
-        "path": f"docs/{name}.md",
+        "path": repository.get_skill_doc_path(name) or f"docs/skills/{name}.md",
     }
 
 

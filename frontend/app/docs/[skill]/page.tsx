@@ -56,7 +56,7 @@ export default async function SkillDocPage({ params }: Props) {
       kind: 'skill' as const,
       title,
       summary: `${title} documentation`,
-      path: `docs/${skill}.md`,
+      path: detail?.manifest.artifacts.docs ?? `docs/skills/${skill}.md`,
     };
   const skillNeighbors = getDocNeighbors(currentDoc, docsCatalog);
   const relatedDocs = await getRelatedDocs(currentDoc, {

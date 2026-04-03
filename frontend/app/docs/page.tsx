@@ -8,6 +8,21 @@ export const revalidate = 300;
 
 export default async function DocsPage() {
   const docsCatalog = await getDocsCatalog();
+  const featuredProjectDocIds = [
+    'frontend-backend-integration',
+    'dev-setup',
+    'repo-commands',
+    'market-spec',
+    'market-governance',
+    'market-pull-author-publish-plan',
+  ];
+  const projectDocs = [
+    ...featuredProjectDocIds.flatMap((id) => {
+      const doc = docsCatalog.project_docs.find((entry) => entry.id === id);
+      return doc ? [doc] : [];
+    }),
+    ...docsCatalog.project_docs.filter((doc) => !featuredProjectDocIds.includes(doc.id)),
+  ].slice(0, 6);
 
   return (
     <Shell maxWidth="2xl" className="py-8">
@@ -76,7 +91,7 @@ export default async function DocsPage() {
       <section className="animate-fade-in-delay-3">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-olive mb-4">Project references</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {docsCatalog.project_docs.slice(0, 6).map((doc) => (
+          {projectDocs.map((doc) => (
             <Link
               key={doc.id}
               href={`/docs/project/${doc.id}`}

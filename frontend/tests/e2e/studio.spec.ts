@@ -88,7 +88,9 @@ test('studio author flow works against isolated submission roots', async ({ page
     timeout: 20_000,
   });
   await expect(fs.stat(path.join(stagedSkillsRoot, 'release-note-writer', 'market', 'skill.json'))).resolves.toBeTruthy();
-  await expect(fs.stat(path.join(stagedDocsRoot, 'release-note-writer.md'))).resolves.toBeTruthy();
+  await expect(
+    fs.stat(path.join(stagedDocsRoot, 'skills', 'release-note-writer.md'))
+  ).resolves.toBeTruthy();
 
   await page.goto(`/studio/submissions?${workspaceQuery}`);
   await expect(page.getByTestId('studio-submissions-count-inbox')).toContainText('1');

@@ -1,45 +1,30 @@
 # Moyuan Skills Python Backend
 
-这个后端把当前仓库里的真实 `market / docs / bundles / installed-state` 产物暴露成前端可直接消费的 API。
+这个后端把仓库里的真实 `market / docs / bundles / installed-state` 产物暴露成前端可消费的 API，并复用 `scripts/` 里的真实逻辑。
 
-它服务于 `frontend/` 下的 Next.js 页面，也复用仓库现有的脚本和产物目录，例如：
+它直接服务于 `frontend/` 页面，读取的主要目录包括：
 
 - `dist/market/index.json`
 - `dist/market/channels/*.json`
 - `dist/market/install/*.json`
 - `skills/*/market/skill.json`
-- `docs/*.md`
-- `docs/teaching/*.md`
+- `docs/skills/*.md`
+- `docs/teaching/**/*.md`
+- `docs/{setup,authoring,harness,market,integration,roadmap}/*.md`
 - `bundles/*.json`
-
-## 为什么需要这个后端
-
-前端现在已经不只是静态浏览页，而是要承接这些真实动作：
-
-- skills / bundles / docs 的 repo-backed 浏览
-- skill / bundle 的本地 `install / update / remove`
-- installed-state 的 `doctor / repair / baseline / governance`
-- waiver / apply handoff 的 `prepare / stage / verify`
-- governance write handoff 的 eligibility、approval guidance、audit trail、evidence pack 与工件交接
-- remote registry browse 的 `index / channel / skill / bundle` 查询
-- remote registry install 的 trust / approval / retry / cleanup / rollback
-
-这些能力都应该直接复用 `scripts/` 里的真实逻辑，而不是在前端重写一套。
 
 ## 启动
 
-```text
-pip install -r backend/requirements.txt
-uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 38083
-```
-
-开发辅助依赖单独放在：
+推荐先按 [../docs/setup/dev-setup.md](../docs/setup/dev-setup.md) 建好 `.venv` 和前端依赖。
 
 ```text
-pip install -r backend/requirements-dev.txt
+uv venv .venv
+uv pip install --python .venv/bin/python -r backend/requirements.txt -r backend/requirements-dev.txt
+PATH="$(pwd)/.venv/bin:$PATH"
+python -m uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 38083
 ```
 
-如果当前工作目录不是仓库根目录，可以先设置：
+如果当前工作目录不是仓库根目录，可以设置：
 
 ```text
 set MOYUAN_SKILLS_REPO_ROOT=D:\moyuan\moyuan-skills
@@ -108,16 +93,12 @@ GET /api/v1/docs/project/{doc_id}
 
 ## 当前闭环
 
-后端现在已经稳定支撑这些页面动作：
-
-- author studio 的 `build / upload / review / ingest` submission 流程
+- author studio 的 `build / upload / review / ingest`
 - 本地 skill / bundle lifecycle
-- installed-state doctor、低风险 repair、baseline history、governance summary
-- waiver / apply handoff 的 `prepare / safe stage / refresh verify`
-- governance write handoff 的状态说明、阻断原因、命令包、approval guidance、approval audit、evidence pack 与 checklist
-- remote registry browse 的 `index / channel / skill / bundle` 查询
-- remote registry install 的审批、失败恢复、staged cache cleanup、限定目标 rollback
-- docs action panel 的 allowlist `run / copy / prerequisite state / result summary / recent runs / last-success`
+- installed-state 的 doctor、repair、baseline、governance
+- waiver / apply handoff 的 `prepare / stage / verify`
+- remote registry browse 与 install
+- docs action panel 的 allowlist 执行、recent runs 和 last-success
 
 其中 waiver / apply 当前语义是：
 
@@ -136,7 +117,9 @@ GET /api/v1/docs/project/{doc_id}
 - mutation 返回 `job_id`
 - 页面通过 `GET /api/v1/local/jobs/{job_id}` 轮询 job 完成状态
 - `/studio`、`/studio/new`、`/studio/submissions` 通过 author API 暴露 submission workflow，并默认把 ingest 指向 `dist/backend-author-ingested/*` staging 目录
-- docs catalog 同时返回按类型分组的数组和统一的 `all_docs`
+- `GET /api/v1/author/overview` 和 `GET /api/v1/author/submissions` 额外支持 `submissions_root` / `inbox_root`，用于隔离 author workspace 或测试目录
+- `GET /api/v1/registry/remote/*` 当前主要供 CLI、Next.js 代理层和后续 `/registries/*` 页面复用；远端 browse 页面本身还没有落地
+- docs catalog 同时返回按类型分组的数组和统一的 `all_docs`，并支持递归扫描 `docs/**`
 - docs 详情页通过 `POST /api/v1/local/docs/actions/run` 触发安全 allowlist 命令，而不是把任意命令字符串直接交给后端
 - docs 详情页通过 `GET /api/v1/local/docs/actions/history` 回看当前 backend 会话里的 recent runs 与 last-success
 
@@ -150,7 +133,8 @@ GET /api/v1/docs/project/{doc_id}
 前端 API 模式：
 
 ```text
-set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
+npm ci --prefix frontend
+SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083 \
 npm run dev:local --prefix frontend
 ```
 
@@ -158,7 +142,10 @@ npm run dev:local --prefix frontend
 
 ```text
 python scripts/check_python_market_backend.py
+python scripts/check_market_pipeline.py --output-root dist/market-smoke-backend-readme
 python scripts/check_docs_links.py
 npm run build --prefix frontend
 npm run e2e --prefix frontend
 ```
+
+其中 `npm run e2e --prefix frontend` 依赖已有 `.next` 构建产物，并会优先使用仓库 `.venv` 里的 Python 启动 backend 和 registry fixture。

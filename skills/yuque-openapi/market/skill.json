@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/yuque-openapi",
     "entrypoint": "skills/yuque-openapi/SKILL.md",
-    "docs": "docs/yuque-openapi.md"
+    "docs": "docs/skills/yuque-openapi.md"
   },
   "search": {
     "keywords": ["yuque api", "markdown sync", "toc sync", "knowledge base export"],

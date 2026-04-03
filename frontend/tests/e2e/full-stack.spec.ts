@@ -558,7 +558,7 @@ test('frontend works against the Python backend across core market flows', async
   );
   await page.getByTestId('doc-action-artifact-toggle-project-primary').click();
   await expect(page.getByTestId('doc-action-artifact-drilldown-project-primary')).toContainText(
-    'docs/frontend-backend-integration.md'
+    'docs/integration/frontend-backend-integration.md'
   );
   await page.getByTestId('doc-action-stdout-toggle-project-primary').click();
   await expect(page.getByTestId('doc-action-stdout-drilldown-project-primary')).toContainText(
@@ -576,10 +576,10 @@ test('frontend works against the Python backend across core market flows', async
   );
   await page.getByTestId('doc-action-artifact-toggle-project-primary').click();
   await expect(page.getByTestId('doc-action-artifact-drilldown-project-primary')).toContainText(
-    'docs/frontend-backend-integration.md'
+    'docs/integration/frontend-backend-integration.md'
   );
   await expect(page.getByTestId('doc-context-panel')).toBeVisible();
-  await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/frontend-backend-integration.md');
+  await expect(page.getByTestId('doc-context-project-path')).toContainText('docs/integration/frontend-backend-integration.md');
   const firstRelatedDoc = page.locator('[data-testid^="related-doc-link-"]').first();
   await expect(firstRelatedDoc).toBeVisible();
   const relatedHref = await firstRelatedDoc.getAttribute('href');

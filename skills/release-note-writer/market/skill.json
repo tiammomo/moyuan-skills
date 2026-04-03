@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/release-note-writer",
     "entrypoint": "skills/release-note-writer/SKILL.md",
-    "docs": "docs/release-note-writer.md"
+    "docs": "docs/skills/release-note-writer.md"
   },
   "search": {
     "keywords": ["release notes", "changelog", "publication draft", "release docs"],

@@ -449,9 +449,12 @@ def validate_teaching_docs() -> list[str]:
     if not TEACHING_DIR.is_dir():
         return ["docs: missing docs/teaching directory"]
 
+    teaching_files = sorted(path for path in TEACHING_DIR.rglob("*.md") if path.is_file())
+    teaching_by_name = {path.name: path for path in teaching_files}
+
     for filename in REQUIRED_TEACHING_FILES:
-        path = TEACHING_DIR / filename
-        if not path.is_file():
+        path = teaching_by_name.get(filename)
+        if path is None or not path.is_file():
             errors.append(f"docs: missing teaching file '{filename}'")
 
     teaching_readme = TEACHING_DIR / "README.md"
@@ -462,20 +465,15 @@ def validate_teaching_docs() -> list[str]:
         for filename in REQUIRED_TEACHING_FILES:
             if filename == "README.md":
                 continue
-            if f"./{filename}" not in teaching_text:
+            if filename not in teaching_text:
                 errors.append(f"docs: teaching README should link to '{filename}'")
 
     if docs_readme.is_file():
         docs_text = docs_readme.read_text(encoding="utf-8")
-        if "teaching/" not in docs_text:
+        if "./teaching/README.md" not in docs_text:
             errors.append("docs: docs/README.md should expose the teaching directory")
-        for filename in REQUIRED_TEACHING_FILES:
-            if filename == "README.md":
-                continue
-            if f"./teaching/{filename}" not in docs_text:
-                errors.append(f"docs: docs/README.md should link to teaching file '{filename}'")
 
-    for path in TEACHING_DIR.glob("*.md"):
+    for path in teaching_files:
         text = path.read_text(encoding="utf-8")
         if "[TODO" in text or "TODO:" in text:
             errors.append(f"docs: teaching file '{path.name}' still contains TODO placeholders")

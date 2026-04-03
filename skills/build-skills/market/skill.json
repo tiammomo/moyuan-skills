@@ -35,7 +35,7 @@
   "artifacts": {
     "source_dir": "skills/build-skills",
     "entrypoint": "skills/build-skills/SKILL.md",
-    "docs": "docs/skill-authoring.md"
+    "docs": "docs/authoring/skill-authoring.md"
   },
   "search": {
     "keywords": ["skill design", "skill scaffolding", "authoring", "skill validation"],

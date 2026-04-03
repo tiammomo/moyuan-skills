@@ -125,6 +125,69 @@ function displayRepoOrAbsolutePath(filePath: string): string {
   return filePath.replace(/\\/g, '/');
 }
 
+function isWithinDir(filePath: string, rootDir: string): boolean {
+  const relative = path.relative(rootDir, filePath);
+  return Boolean(relative) && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+function toRepoDisplayPath(filePath: string): string {
+  return path.relative(DATA_ROOT, filePath).replace(/\\/g, '/');
+}
+
+function resolveSkillDocRepoPath(skillName: string, manifest?: SkillManifest | null): string {
+  const docsPath = String(manifest?.artifacts?.docs ?? '').trim();
+  return docsPath || `docs/skills/${skillName}.md`;
+}
+
+async function listMarkdownFiles(rootDir: string): Promise<string[]> {
+  const entries = await fs.readdir(rootDir, { withFileTypes: true }).catch(() => [] as Dirent[]);
+  const files: string[] = [];
+  for (const entry of entries) {
+    const entryPath = path.join(rootDir, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...(await listMarkdownFiles(entryPath)));
+      continue;
+    }
+    if (entry.isFile() && entry.name.endsWith('.md')) {
+      files.push(entryPath);
+    }
+  }
+  return files.sort((a, b) => a.localeCompare(b));
+}
+
+async function listProjectDocFiles(skills: SkillSummary[]): Promise<string[]> {
+  const docsRoot = path.join(DATA_ROOT, 'docs');
+  const teachingRoot = path.join(docsRoot, 'teaching');
+  const assetRoot = path.join(docsRoot, 'assets');
+  const skillDocPaths = new Set(
+    (
+      await Promise.all(
+        skills.map(async (skill) => {
+          const manifest = await getSkillManifest(skill.name);
+          return path.join(DATA_ROOT, resolveSkillDocRepoPath(skill.name, manifest));
+        })
+      )
+    ).map((filePath) => path.resolve(filePath))
+  );
+
+  const files = await listMarkdownFiles(docsRoot);
+  return files.filter((filePath) => {
+    const resolved = path.resolve(filePath);
+    const baseName = path.basename(filePath);
+    const stem = path.basename(filePath, '.md');
+    if (baseName === 'README.md') {
+      return false;
+    }
+    if (isWithinDir(filePath, teachingRoot) || isWithinDir(filePath, assetRoot)) {
+      return false;
+    }
+    if (skillDocPaths.has(resolved)) {
+      return false;
+    }
+    return !isInternalIterationDoc(stem);
+  });
+}
+
 export async function readJson<T>(filePath: string): Promise<T> {
   const content = await fs.readFile(filePath, 'utf-8');
   return JSON.parse(content) as T;
@@ -972,7 +1035,8 @@ export async function getSkillDoc(skillName: string): Promise<string | null> {
     }
   }
 
-  const filePath = path.join(DATA_ROOT, `docs/${skillName}.md`);
+  const manifest = await getSkillManifest(skillName);
+  const filePath = path.join(DATA_ROOT, resolveSkillDocRepoPath(skillName, manifest));
   try {
     return await fs.readFile(filePath, 'utf-8');
   } catch {
@@ -1165,7 +1229,9 @@ export async function getDocsCatalog(): Promise<DocsCatalog> {
   const skillDocs: DocsCatalogEntry[] = [];
 
   for (const skill of skills) {
-    const markdown = await getSkillDoc(skill.name);
+    const manifest = await getSkillManifest(skill.name);
+    const filePath = path.join(DATA_ROOT, resolveSkillDocRepoPath(skill.name, manifest));
+    const markdown = await fs.readFile(filePath, 'utf-8').catch(() => '');
     if (!markdown) {
       continue;
     }
@@ -1175,38 +1241,34 @@ export async function getDocsCatalog(): Promise<DocsCatalog> {
       kind: 'skill',
       title: firstHeading(markdown, skill.title),
       summary: firstParagraph(markdown) || skill.summary,
-      path: `docs/${skill.name}.md`,
+      path: toRepoDisplayPath(filePath),
     });
   }
 
   const teachingRoot = path.join(DATA_ROOT, 'docs', 'teaching');
   const teachingDocs: DocsCatalogEntry[] = [];
-  for (const fileName of (await fs.readdir(teachingRoot)).filter((file) => file.endsWith('.md')).sort()) {
-    const markdown = await fs.readFile(path.join(teachingRoot, fileName), 'utf-8');
+  for (const filePath of await listMarkdownFiles(teachingRoot)) {
+    const markdown = await fs.readFile(filePath, 'utf-8');
+    const fileName = path.basename(filePath);
     teachingDocs.push({
       id: fileName.replace(/\.md$/, ''),
       kind: 'teaching',
       title: firstHeading(markdown, fileName.replace(/\.md$/, '')),
       summary: firstParagraph(markdown),
-      path: `docs/teaching/${fileName}`,
+      path: toRepoDisplayPath(filePath),
     });
   }
 
-  const skillDocFileNames = new Set(skills.map((skill) => `${skill.name}.md`));
-  const docsRoot = path.join(DATA_ROOT, 'docs');
   const projectDocs: DocsCatalogEntry[] = [];
-  for (const fileName of (await fs.readdir(docsRoot)).filter((file) => file.endsWith('.md')).sort()) {
-    if (fileName === 'README.md' || skillDocFileNames.has(fileName) || isInternalIterationDoc(fileName.replace(/\.md$/, ''))) {
-      continue;
-    }
-
-    const markdown = await fs.readFile(path.join(docsRoot, fileName), 'utf-8');
+  for (const filePath of await listProjectDocFiles(skills)) {
+    const markdown = await fs.readFile(filePath, 'utf-8');
+    const fileName = path.basename(filePath);
     projectDocs.push({
       id: fileName.replace(/\.md$/, ''),
       kind: 'project',
       title: firstHeading(markdown, fileName.replace(/\.md$/, '')),
       summary: firstParagraph(markdown),
-      path: `docs/${fileName}`,
+      path: toRepoDisplayPath(filePath),
     });
   }
 
@@ -1229,8 +1291,12 @@ export async function getTeachingDoc(docId: string): Promise<TeachingDocPayload 
     }
   }
 
-  const filePath = path.join(DATA_ROOT, 'docs', 'teaching', `${docId}.md`);
+  const teachingRoot = path.join(DATA_ROOT, 'docs', 'teaching');
+  const filePath = (await listMarkdownFiles(teachingRoot)).find((candidate) => path.basename(candidate, '.md') === docId);
   try {
+    if (!filePath) {
+      return null;
+    }
     const markdown = await fs.readFile(filePath, 'utf-8');
     return {
       id: docId,
@@ -1238,7 +1304,7 @@ export async function getTeachingDoc(docId: string): Promise<TeachingDocPayload 
       title: firstHeading(markdown, docId),
       summary: firstParagraph(markdown),
       markdown,
-      path: `docs/teaching/${docId}.md`,
+      path: toRepoDisplayPath(filePath),
     };
   } catch {
     return null;
@@ -1258,8 +1324,12 @@ export async function getProjectDoc(docId: string): Promise<ProjectDocPayload | 
     }
   }
 
-  const filePath = path.join(DATA_ROOT, 'docs', `${docId}.md`);
+  const allSkills = await getAllSkills();
+  const filePath = (await listProjectDocFiles(allSkills)).find((candidate) => path.basename(candidate, '.md') === docId);
   try {
+    if (!filePath) {
+      return null;
+    }
     const markdown = await fs.readFile(filePath, 'utf-8');
     return {
       id: docId,
@@ -1267,7 +1337,7 @@ export async function getProjectDoc(docId: string): Promise<ProjectDocPayload | 
       title: firstHeading(markdown, docId),
       summary: firstParagraph(markdown),
       markdown,
-      path: `docs/${docId}.md`,
+      path: toRepoDisplayPath(filePath),
     };
   } catch {
     return null;
