@@ -28,6 +28,7 @@ from market_utils import (
 DEFAULT_REMOTE_CACHE = ROOT / "dist" / "remote-registry-cache"
 USER_AGENT = "moyuan-skills-remote-installer/0.1"
 DEFAULT_TIMEOUT_SECONDS = 20.0
+REMOTE_CHANNEL_ORDER = ("stable", "beta", "internal")
 
 
 class RemoteRegistryError(RuntimeError):
@@ -101,7 +102,11 @@ class RemoteRegistryClient:
         self.base_url = self.registry_url
         self.registry_metadata: dict | None = None
         self._index_payload: dict | None = None
+        self._index_url: str | None = None
         self._channel_cache: dict[str, dict] = {}
+        self._channel_urls: dict[str, str] = {}
+        self._bundles_payload: dict | None = None
+        self._bundles_url: str | None = None
         self._load_registry_metadata()
 
     def _load_registry_metadata(self) -> None:
@@ -164,15 +169,18 @@ class RemoteRegistryClient:
         joined = "; ".join(attempts) if attempts else "no remote candidates were available"
         raise RemoteRegistryError(f"unable to download remote artifact ({joined})")
 
-    def load_index(self) -> dict:
-        if self._index_payload is None:
+    def load_index_document(self) -> tuple[dict, str]:
+        if self._index_payload is None or self._index_url is None:
             index_reference = self._public_reference("index", "index.json")
-            self._index_payload, _ = self._fetch_json_candidates([index_reference, "index.json"])
-        return self._index_payload
+            self._index_payload, self._index_url = self._fetch_json_candidates([index_reference, "index.json"])
+        return self._index_payload, self._index_url
 
-    def load_channel_index(self, channel: str) -> dict:
-        if channel in self._channel_cache:
-            return self._channel_cache[channel]
+    def load_index(self) -> dict:
+        return self.load_index_document()[0]
+
+    def load_channel_index_document(self, channel: str) -> tuple[dict, str]:
+        if channel in self._channel_cache and channel in self._channel_urls:
+            return self._channel_cache[channel], self._channel_urls[channel]
         index_payload = self.load_index()
         channel_payload = index_payload.get("channels", {}).get(channel, {})
         references = []
@@ -181,14 +189,22 @@ class RemoteRegistryClient:
             if isinstance(candidate, str) and candidate.strip():
                 references.append(candidate)
         references.append(f"channels/{channel}.json")
-        payload, _ = self._fetch_json_candidates(references)
+        payload, url = self._fetch_json_candidates(references)
         self._channel_cache[channel] = payload
-        return payload
+        self._channel_urls[channel] = url
+        return payload, url
+
+    def load_channel_index(self, channel: str) -> dict:
+        return self.load_channel_index_document(channel)[0]
+
+    def load_bundles_document(self) -> tuple[dict, str]:
+        if self._bundles_payload is None or self._bundles_url is None:
+            bundles_reference = self._public_reference("bundles", "recommendations/bundles.json")
+            self._bundles_payload, self._bundles_url = self._fetch_json_candidates([bundles_reference, "recommendations/bundles.json"])
+        return self._bundles_payload, self._bundles_url
 
     def load_bundles(self) -> dict:
-        bundles_reference = self._public_reference("bundles", "recommendations/bundles.json")
-        payload, _ = self._fetch_json_candidates([bundles_reference, "recommendations/bundles.json"])
-        return payload
+        return self.load_bundles_document()[0]
 
     def install_dir_reference(self) -> str:
         return self._public_reference("install_dir", "install")
@@ -205,6 +221,108 @@ def _match_skill_summary(summary: dict, token: str) -> bool:
     return lowered in {
         str(summary.get("id", "")).strip().lower(),
         str(summary.get("name", "")).strip().lower(),
+    }
+
+
+def _channel_sort_key(channel: str) -> tuple[int, str]:
+    try:
+        return REMOTE_CHANNEL_ORDER.index(channel), channel
+    except ValueError:
+        return len(REMOTE_CHANNEL_ORDER), channel
+
+
+def ordered_remote_channels(index_payload: dict) -> list[str]:
+    raw_channels = index_payload.get("channels", {})
+    if not isinstance(raw_channels, dict):
+        return []
+    channels = [
+        str(channel).strip()
+        for channel in raw_channels.keys()
+        if str(channel).strip()
+    ]
+    return sorted(dict.fromkeys(channels), key=_channel_sort_key)
+
+
+def build_remote_registry_profile(client: RemoteRegistryClient) -> dict:
+    metadata = client.registry_metadata if isinstance(client.registry_metadata, dict) else {}
+    public = metadata.get("public", {}) if isinstance(metadata.get("public", {}), dict) else {}
+    orgs = metadata.get("orgs", []) if isinstance(metadata.get("orgs", []), list) else []
+    return {
+        "registry_url": client.registry_url,
+        "registry_base_url": client.base_url,
+        "has_registry_metadata": bool(metadata),
+        "format": str(metadata.get("format", "")).strip(),
+        "generated_at": str(metadata.get("generated_at", "")).strip(),
+        "public": public,
+        "org_count": len(orgs),
+        "orgs": orgs,
+    }
+
+
+def load_remote_registry_catalog(client: RemoteRegistryClient) -> dict:
+    index_payload, index_url = client.load_index_document()
+    bundles_payload, bundles_url = client.load_bundles_document()
+    channels_payload = index_payload.get("channels", {}) if isinstance(index_payload.get("channels", {}), dict) else {}
+    bundles = bundles_payload.get("bundles", []) if isinstance(bundles_payload.get("bundles", []), list) else []
+
+    return {
+        "registry": build_remote_registry_profile(client),
+        "index_url": index_url,
+        "index": index_payload,
+        "channels": [
+            {
+                "channel": channel,
+                "count": int(channels_payload.get(channel, {}).get("count", 0))
+                if isinstance(channels_payload.get(channel, {}), dict)
+                else 0,
+                "path": str(channels_payload.get(channel, {}).get("path", "")).strip()
+                if isinstance(channels_payload.get(channel, {}), dict)
+                else "",
+            }
+            for channel in ordered_remote_channels(index_payload)
+        ],
+        "bundles_url": bundles_url,
+        "bundle_count": len(bundles),
+        "bundles": bundles,
+    }
+
+
+def inspect_remote_skill_payload(
+    client: RemoteRegistryClient,
+    token: str,
+    *,
+    channel: str = "",
+    channels: list[str] | None = None,
+) -> dict:
+    index_payload = client.load_index()
+    candidate_channels = [item.strip() for item in (channels or []) if str(item).strip()]
+    if channel.strip():
+        candidate_channels.insert(0, channel.strip())
+    if not candidate_channels:
+        candidate_channels = ordered_remote_channels(index_payload)
+    summary, resolved_channel = resolve_remote_skill_summary(client, token, candidate_channels)
+    install_spec, install_spec_url = client._fetch_json_candidates(_build_install_spec_references(client, summary))
+    provenance, provenance_url = client._fetch_json_candidates(_build_provenance_references(client, install_spec, summary))
+    package_path = str(install_spec.get("package_path", "")).strip()
+    return {
+        "registry": build_remote_registry_profile(client),
+        "resolved_channel": resolved_channel,
+        "skill": summary,
+        "install_spec": install_spec,
+        "install_spec_url": install_spec_url,
+        "provenance": provenance,
+        "provenance_url": provenance_url,
+        "package_url": _url_for(client.base_url, package_path) if package_path else "",
+    }
+
+
+def inspect_remote_bundle_payload(client: RemoteRegistryClient, token: str) -> dict:
+    bundle = resolve_remote_bundle_payload(client, token)
+    _, bundles_url = client.load_bundles_document()
+    return {
+        "registry": build_remote_registry_profile(client),
+        "bundle": bundle,
+        "bundles_url": bundles_url,
     }
 
 

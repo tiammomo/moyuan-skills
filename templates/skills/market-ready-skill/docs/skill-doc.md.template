@@ -1,0 +1,24 @@
+# {{skill_title}}
+
+## What This Skill Does
+
+{{skill_title}} is a starter market-ready skill scaffold. Replace this section with the business goal, the expected input shape, and the exact output that the skill should produce.
+
+## Inputs
+
+- Describe the canonical source input.
+- Describe required fields or document sources.
+- Describe what should remain out of scope.
+
+## Outputs
+
+- Describe the draft or artifact the skill should produce.
+- Describe the review boundary before publication or distribution.
+
+## Local Validation
+
+```text
+python scripts/skills_market.py doctor-skill {{source_dir}}
+python {{source_dir}}/scripts/check_{{skill_name_py}}.py
+python scripts/skills_market.py validate {{source_dir}}/market/skill.json
+```

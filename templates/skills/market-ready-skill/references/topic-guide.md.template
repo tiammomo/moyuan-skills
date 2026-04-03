@@ -1,0 +1,19 @@
+# {{skill_title}} Guide
+
+## Contents
+
+- [Workflow Contract](#workflow-contract)
+- [Source Rules](#source-rules)
+- [Review Risks](#review-risks)
+
+## Workflow Contract
+
+Describe the stable input shape, required sections, and allowed output moves for this skill.
+
+## Source Rules
+
+List what the skill must read before it drafts anything, what it can infer, and what it must never invent.
+
+## Review Risks
+
+List the risky outputs, handoff boundaries, and approval points that should stay explicit.

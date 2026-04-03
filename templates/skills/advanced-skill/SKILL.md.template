@@ -1,9 +1,9 @@
 ---
-name: your-advanced-skill
+name: {{skill_name}}
 description: Explain the business task, the structured input or workflow shape, and the exact situations where the skill should trigger. Use when Codex needs to route between references, scripts, assets, and local verification for a repeatable task family.
 ---
 
-# Your Advanced Skill
+# {{skill_title}}
 
 Use this skill to turn structured input or a stable workflow into a reviewable output.
 
@@ -47,5 +47,5 @@ Use this skill to turn structured input or a stable workflow into a reviewable o
 
 ## Bundled Resources
 
-- `scripts/check_your_skill.py`: local smoke checker.
+- `scripts/check_{{skill_name_py}}.py`: local smoke checker.
 - `assets/output-template.md`: reusable output template.

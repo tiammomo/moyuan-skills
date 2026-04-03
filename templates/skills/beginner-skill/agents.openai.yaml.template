@@ -1,4 +1,4 @@
 interface:
-  display_name: "Your Skill Title"
+  display_name: "{{skill_title}}"
   short_description: "Explain the skill in one UI-facing sentence."
-  default_prompt: "Use $your-skill-name to solve the narrow task family described by this skill."
+  default_prompt: "Use ${{skill_name}} to solve the narrow task family described by this skill."

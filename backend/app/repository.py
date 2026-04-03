@@ -1437,6 +1437,130 @@ class MarketRepository:
             return self._get_project_doc_action_execution(normalized_id, normalized_action_id)
         return None
 
+    def _iter_submission_records(self, root: Path, *, stage: str) -> list[dict[str, Any]]:
+        if not root.is_dir():
+            return []
+
+        records: list[dict[str, Any]] = []
+        for submission_path in root.glob("*/*/*/submission.json"):
+            try:
+                payload = _read_json(submission_path)
+            except Exception:
+                continue
+            if not isinstance(payload, dict):
+                continue
+
+            review_path = submission_path.with_name("review.json")
+            ingest_path = submission_path.with_name("ingest.json")
+            review_payload = _read_json(review_path) if review_path.is_file() else None
+            ingest_payload = _read_json(ingest_path) if ingest_path.is_file() else None
+
+            findings = review_payload.get("findings", []) if isinstance(review_payload, dict) else []
+            record = {
+                "submission_id": str(payload.get("submission_id", "")).strip(),
+                "publisher": str(payload.get("publisher", "")).strip(),
+                "skill_id": str(payload.get("skill_id", "")).strip(),
+                "skill_name": str(payload.get("skill_name", "")).strip(),
+                "version": str(payload.get("version", "")).strip(),
+                "channel": str(payload.get("channel", "")).strip(),
+                "created_at": str(payload.get("created_at", "")).strip(),
+                "stage": stage,
+                "submission_path": _display_repo_path(submission_path, self.repo_root),
+                "payload_archive_path": str(payload.get("payload_archive_path", "")).strip(),
+                "source_dir": str(payload.get("source_dir", "")).strip(),
+                "docs_path": str(payload.get("docs_path", "")).strip(),
+                "manifest_path": str(payload.get("manifest_path", "")).strip(),
+                "install_spec_path": str(payload.get("install_spec_path", "")).strip(),
+                "provenance_path": str(payload.get("provenance_path", "")).strip(),
+                "package_path": str(payload.get("package_path", "")).strip(),
+                "release_notes": str(payload.get("release_notes", "")).strip(),
+                "review": (
+                    {
+                        "path": _display_repo_path(review_path, self.repo_root),
+                        "review_status": str(review_payload.get("review_status", "")).strip(),
+                        "reviewer": str(review_payload.get("reviewer", "")).strip(),
+                        "reviewed_at": str(review_payload.get("reviewed_at", "")).strip(),
+                        "summary": str(review_payload.get("summary", "")).strip(),
+                        "findings_count": len(findings) if isinstance(findings, list) else 0,
+                    }
+                    if isinstance(review_payload, dict)
+                    else None
+                ),
+                "ingest": (
+                    {
+                        "path": _display_repo_path(ingest_path, self.repo_root),
+                        "status": str(ingest_payload.get("status", "")).strip(),
+                        "ingested_at": str(ingest_payload.get("ingested_at", "")).strip(),
+                        "ingested_by": str(ingest_payload.get("ingested_by", "")).strip(),
+                        "target_source_dir": str(ingest_payload.get("target_source_dir", "")).strip(),
+                        "target_docs_path": str(ingest_payload.get("target_docs_path", "")).strip(),
+                        "target_manifest_path": str(ingest_payload.get("target_manifest_path", "")).strip(),
+                    }
+                    if isinstance(ingest_payload, dict)
+                    else None
+                ),
+            }
+            records.append(record)
+
+        records.sort(
+            key=lambda item: (
+                _timestamp_sort_key(str(item.get("created_at", ""))),
+                str(item.get("submission_id", "")).lower(),
+            ),
+            reverse=True,
+        )
+        return records
+
+    def get_author_submissions(
+        self,
+        *,
+        built_root: Path | None = None,
+        inbox_root: Path | None = None,
+    ) -> dict[str, Any]:
+        built_root = (built_root or (self.repo_root / "dist" / "submissions")).resolve()
+        inbox_root = (inbox_root or (self.repo_root / "incoming" / "submissions")).resolve()
+        built = self._iter_submission_records(built_root, stage="built")
+        inbox = self._iter_submission_records(inbox_root, stage="inbox")
+        return {
+            "workspace": {
+                "submissions_root": _display_repo_path(built_root, self.repo_root),
+                "inbox_root": _display_repo_path(inbox_root, self.repo_root),
+                "skills_root": _display_repo_path(self.settings.skills_root, self.repo_root),
+                "docs_root": _display_repo_path(self.settings.docs_root, self.repo_root),
+            },
+            "counts": {
+                "built": len(built),
+                "inbox": len(inbox),
+                "reviewed": sum(1 for item in inbox if item.get("review")),
+                "approved": sum(
+                    1
+                    for item in inbox
+                    if isinstance(item.get("review"), dict) and item["review"].get("review_status") == "approved"
+                ),
+                "ingested": sum(1 for item in inbox if item.get("ingest")),
+            },
+            "built": built,
+            "inbox": inbox,
+        }
+
+    def get_author_overview(
+        self,
+        *,
+        built_root: Path | None = None,
+        inbox_root: Path | None = None,
+    ) -> dict[str, Any]:
+        submissions = self.get_author_submissions(built_root=built_root, inbox_root=inbox_root)
+        skill_manifest_count = len(list(self.settings.skills_root.glob("*/market/skill.json")))
+        return {
+            "workspace": submissions["workspace"],
+            "counts": {
+                **dict(submissions["counts"]),
+                "skill_manifests": skill_manifest_count,
+            },
+            "recent_built": list(submissions["built"])[:5],
+            "recent_inbox": list(submissions["inbox"])[:5],
+        }
+
     def get_repo_snapshot(self) -> dict[str, Any]:
         index = self.get_market_index()
         return {

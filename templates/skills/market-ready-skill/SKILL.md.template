@@ -1,0 +1,49 @@
+---
+name: {{skill_name}}
+description: {{skill_frontmatter_description}}
+---
+
+# {{skill_title}}
+
+Use this skill to turn a repeatable {{skill_title_lower}} workflow into a reviewable output that is ready for local market validation.
+
+## Safety First
+
+- State the source-of-truth input before drafting anything.
+- Keep risky edits, publication steps, and externally visible actions behind explicit review.
+- Do not widen the workflow beyond the bundled references, scripts, and manifest permissions.
+
+## Task Router
+
+- Draft or update the core workflow output:
+  Read [references/topic-guide.md](./references/topic-guide.md), then use the bundled output template.
+- Review the local structure and metadata:
+  Run `python scripts/check_{{skill_name_py}}.py`.
+- Prepare the skill for market packaging:
+  Open `market/skill.json`, confirm permissions and distribution fields, then run the local doctor command.
+
+## Progressive Loading
+
+- Stay in this file for routing, safety rules, and command selection.
+- Read only the single `references/*.md` file that matches the current subtask.
+- Load only the checker or other scripts when execution is required.
+- Open assets only when generating or reviewing concrete output.
+- Do not preload every resource just because this skill triggered.
+
+## Default Workflow
+
+1. Confirm the task boundary, input contract, and review owner.
+2. Read the single reference file that matches the current task.
+3. Draft or update the output from the bundled template.
+4. Run the local checker and fix the smallest failing issue first.
+5. Re-check `market/skill.json` before packaging or publishing.
+
+## Reference Files
+
+- [references/topic-guide.md](./references/topic-guide.md): task contract, workflow rules, and review risks.
+
+## Bundled Resources
+
+- `scripts/check_{{skill_name_py}}.py`: local market-ready smoke checker.
+- `assets/output-template.md`: reusable workflow output scaffold.
+- `market/skill.json`: market metadata, permissions, lifecycle, and distribution record.

@@ -106,6 +106,83 @@ export interface LocalJobRecord {
   error: string | null;
 }
 
+export interface AuthorSubmissionReviewSummary {
+  path: string;
+  review_status: string;
+  reviewer: string;
+  reviewed_at: string;
+  summary: string;
+  findings_count: number;
+}
+
+export interface AuthorSubmissionIngestSummary {
+  path: string;
+  status: string;
+  ingested_at: string;
+  ingested_by: string;
+  target_source_dir: string;
+  target_docs_path: string;
+  target_manifest_path: string;
+}
+
+export interface AuthorSubmissionRecord {
+  submission_id: string;
+  publisher: string;
+  skill_id: string;
+  skill_name: string;
+  version: string;
+  channel: Channel;
+  created_at: string;
+  stage: 'built' | 'inbox';
+  submission_path: string;
+  payload_archive_path: string;
+  source_dir: string;
+  docs_path: string;
+  manifest_path: string;
+  install_spec_path: string;
+  provenance_path: string;
+  package_path: string;
+  release_notes: string;
+  review: AuthorSubmissionReviewSummary | null;
+  ingest: AuthorSubmissionIngestSummary | null;
+}
+
+export interface AuthorStudioWorkspace {
+  submissions_root: string;
+  inbox_root: string;
+  skills_root: string;
+  docs_root: string;
+}
+
+export interface AuthorSubmissionsPayload {
+  workspace: AuthorStudioWorkspace;
+  counts: {
+    built: number;
+    inbox: number;
+    reviewed: number;
+    approved: number;
+    ingested: number;
+  };
+  built: AuthorSubmissionRecord[];
+  inbox: AuthorSubmissionRecord[];
+  recent_jobs?: LocalJobRecord[];
+}
+
+export interface AuthorStudioOverview {
+  workspace: AuthorStudioWorkspace;
+  counts: {
+    built: number;
+    inbox: number;
+    reviewed: number;
+    approved: number;
+    ingested: number;
+    skill_manifests: number;
+  };
+  recent_built: AuthorSubmissionRecord[];
+  recent_inbox: AuthorSubmissionRecord[];
+  recent_jobs: LocalJobRecord[];
+}
+
 export interface LocalDocsActionHistoryEntry {
   action_id: string;
   label: string;

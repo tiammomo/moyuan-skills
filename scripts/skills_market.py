@@ -8,6 +8,8 @@ import argparse
 import audit_installed_baseline_history_waivers
 import audit_installed_baseline_history_waiver_source_reconcile_waivers
 import audit_source_reconcile_gate_waiver_apply_waivers
+import build_skill_submission
+import catalog_remote_registry
 import build_federation_feed
 import build_market_catalog
 import build_market_index
@@ -21,6 +23,7 @@ import check_source_reconcile_gate_waiver_apply_gate
 import check_market_governance
 import check_installed_market_state
 import check_market_pipeline
+import doctor_skill
 import diff_installed_history_baselines
 import diff_installed_market_snapshots
 import draft_installed_baseline_history_waiver_execution
@@ -31,6 +34,7 @@ import install_skill_bundle
 import install_skill
 import install_remote_skill
 import install_remote_bundle
+import inspect_remote_skill
 import list_installed_baseline_history
 import list_installed_baseline_history_policies
 import list_installed_baseline_history_waivers
@@ -57,18 +61,23 @@ import repair_installed_market_state
 import reconcile_installed_baseline_history_waiver_sources
 import remediate_installed_baseline_history_waivers
 import remediate_installed_baseline_history_waiver_source_reconcile_waivers
+import review_skill_submission
 import remove_skill_bundle
 import remove_skill
 import restore_installed_market_baseline
 import search_skills
 import snapshot_installed_market_state
+import scaffold_skill
+import ingest_skill_submission
 import update_skill_bundle
 import update_installed_skill
+import upload_skill_submission
 import verify_installed_history_baseline
 import verify_installed_baseline_history_waiver_source_reconcile
 import validate_market_manifest
 import verify_installed_market_baseline
 import verify_market_provenance
+import validate_skill_submission
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -81,9 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
     index_parser = subparsers.add_parser("index", help="Build market index files.")
     index_parser.add_argument("--output-dir", help="Output directory for generated market index files.")
 
-    catalog_parser = subparsers.add_parser("catalog", help="Build static HTML market catalog pages.")
+    catalog_parser = subparsers.add_parser("catalog", help="Build local catalog pages or browse a hosted remote registry.")
     catalog_parser.add_argument("--output-dir", help="Output directory containing market artifacts.")
     catalog_parser.add_argument("--org-policy", help="Optional org market policy file.")
+    catalog_parser.add_argument("--registry", help="Hosted registry base URL or registry.json URL.")
+    catalog_parser.add_argument("--json", action="store_true", help="Print JSON output when --registry is provided.")
 
     recommend_parser = subparsers.add_parser("recommend", help="Build recommendation and starter-bundle outputs.")
     recommend_parser.add_argument("--output-dir", help="Output directory containing market artifacts.")
@@ -99,21 +110,85 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("governance-check", help="Validate publisher profiles and org market policies.")
 
-    search_parser = subparsers.add_parser("search", help="Search manifests or a generated index.")
+    search_parser = subparsers.add_parser("search", help="Search local manifests, a generated index, or a hosted remote registry.")
     search_parser.add_argument("--query", default="", help="Free-text query.")
     search_parser.add_argument("--category", default="", help="Filter by category.")
     search_parser.add_argument("--tag", default="", help="Filter by tag.")
     search_parser.add_argument("--channel", default="", help="Filter by channel.")
     search_parser.add_argument("--index", default=None, help="Optional channel index JSON file.")
+    search_parser.add_argument("--registry", default=None, help="Hosted registry base URL or registry.json URL.")
+    search_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     bundle_list_parser = subparsers.add_parser("list-bundles", help="List starter bundles available in the market.")
     bundle_list_parser.add_argument("--org-policy", help="Optional org market policy file.")
     bundle_list_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     package_parser = subparsers.add_parser("package", help="Package one skill or every skill.")
-    package_parser.add_argument("skill", nargs="?", help="Skill directory name.")
+    package_parser.add_argument("skill", nargs="?", help="Skill directory name or path.")
     package_parser.add_argument("--all", action="store_true", help="Package every skill that has a market manifest.")
     package_parser.add_argument("--output-dir", help="Output directory for package and install artifacts.")
+
+    build_submission_parser = subparsers.add_parser("build-submission", help="Build a repo-compatible skill submission artifact.")
+    build_submission_parser.add_argument("skill", help="Skill directory name or path.")
+    build_submission_parser.add_argument("--output-dir", help="Output directory for submission artifacts.")
+    build_submission_parser.add_argument("--market-dir", help="Market artifact directory used for package/install/provenance artifacts.")
+    build_submission_parser.add_argument("--release-notes", help="Inline release notes text for the submission.")
+    build_submission_parser.add_argument("--release-notes-file", help="Optional file whose contents become the submission release notes.")
+
+    validate_submission_parser = subparsers.add_parser("validate-submission", help="Validate a skill submission artifact.")
+    validate_submission_parser.add_argument("path", help="Path to submission.json.")
+
+    upload_submission_parser = subparsers.add_parser("upload-submission", help="Upload a skill submission into a local inbox.")
+    upload_submission_parser.add_argument("path", help="Path to submission.json.")
+    upload_submission_parser.add_argument("--inbox-dir", help="Inbox directory receiving uploaded submissions.")
+    upload_submission_parser.add_argument("--force", action="store_true", help="Replace an existing uploaded submission directory.")
+
+    review_submission_parser = subparsers.add_parser("review-submission", help="Review an uploaded skill submission.")
+    review_submission_parser.add_argument("path", help="Path to an uploaded submission.json file.")
+    review_submission_parser.add_argument(
+        "--status",
+        "--review-status",
+        dest="review_status",
+        choices=["pending", "approved", "rejected", "needs-changes"],
+        default="approved",
+        help="Review decision to record.",
+    )
+    review_submission_parser.add_argument("--reviewer", help="Reviewer id.")
+    review_submission_parser.add_argument("--summary", help="Short review summary.")
+    review_submission_parser.add_argument("--finding", action="append", help="Optional finding entry.")
+    review_submission_parser.add_argument("--run-checker", action="store_true", help="Run the uploaded checker command before writing review.json.")
+    review_submission_parser.add_argument("--review-path", help="Optional path for review.json.")
+    review_submission_parser.add_argument("--force", action="store_true", help="Replace an existing review.json file.")
+
+    ingest_submission_parser = subparsers.add_parser("ingest-submission", help="Ingest an approved uploaded skill submission.")
+    ingest_submission_parser.add_argument("path", help="Path to an uploaded submission.json file.")
+    ingest_submission_parser.add_argument("--review-path", help="Optional path to review.json.")
+    ingest_submission_parser.add_argument("--skills-dir", help="Destination root for ingested skills.")
+    ingest_submission_parser.add_argument("--docs-dir", help="Destination root for ingested docs.")
+    ingest_submission_parser.add_argument("--force", action="store_true", help="Replace existing canonical skill/docs targets when needed.")
+
+    scaffold_parser = subparsers.add_parser("scaffold-skill", help="Scaffold a new skill from a bundled template pack.")
+    scaffold_parser.add_argument("skill_name", help="Skill directory name, for example release-note-writer.")
+    scaffold_parser.add_argument(
+        "--template",
+        choices=["beginner", "advanced", "market-ready"],
+        help="Template pack to scaffold. Defaults to market-ready.",
+    )
+    scaffold_parser.add_argument("--path", help="Repo-relative parent directory for the generated skill.")
+    scaffold_parser.add_argument("--title", help="Optional display title.")
+    scaffold_parser.add_argument("--publisher", help="Publisher id used by market-ready manifests.")
+    scaffold_parser.add_argument("--channel", help="Release channel for market-ready manifests.")
+    scaffold_parser.add_argument("--version", help="Initial version for market-ready manifests.")
+    scaffold_parser.add_argument("--summary", help="Optional market summary for market-ready scaffolds.")
+    scaffold_parser.add_argument("--description", help="Optional market description for market-ready scaffolds.")
+    scaffold_parser.add_argument("--category", action="append", help="Category value for market-ready manifests.")
+    scaffold_parser.add_argument("--tag", action="append", help="Tag value for market-ready manifests.")
+    scaffold_parser.add_argument("--keyword", action="append", help="Search keyword value for market-ready manifests.")
+
+    doctor_skill_parser = subparsers.add_parser("doctor-skill", help="Inspect a skill for authoring and market-readiness gaps.")
+    doctor_skill_parser.add_argument("skill", help="Skill directory name or path.")
+    doctor_skill_parser.add_argument("--run-checker", action="store_true", help="Execute the checker command when available.")
+    doctor_skill_parser.add_argument("--json", action="store_true", help="Print JSON output.")
 
     install_parser = subparsers.add_parser("install", help="Install a skill from a local install spec or remote registry.")
     install_parser.add_argument("install_spec", help="Local install spec path, or a remote skill id/name when --registry is provided.")
@@ -839,6 +914,12 @@ def build_parser() -> argparse.ArgumentParser:
     registry_parser = subparsers.add_parser("registry", help="Build a hosted-friendly public/private registry output.")
     registry_parser.add_argument("--output-dir", help="Output directory for the registry build.")
 
+    inspect_remote_parser = subparsers.add_parser("inspect-remote-skill", help="Inspect one remote skill from a hosted registry.")
+    inspect_remote_parser.add_argument("skill", help="Remote skill id or skill name.")
+    inspect_remote_parser.add_argument("--registry", required=True, help="Hosted registry base URL or registry.json URL.")
+    inspect_remote_parser.add_argument("--channel", default="", help="Optional preferred channel when resolving the remote skill.")
+    inspect_remote_parser.add_argument("--json", action="store_true", help="Print JSON output.")
+
     smoke_parser = subparsers.add_parser("smoke", help="Run the end-to-end market smoke pipeline.")
     smoke_parser.add_argument("--output-root", help="Workspace for generated smoke-test artifacts.")
 
@@ -852,6 +933,43 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "validate":
         return validate_market_manifest.main(args.paths)
 
+    if args.command == "scaffold-skill":
+        forwarded_args = [args.skill_name]
+        if args.template:
+            forwarded_args.extend(["--template", args.template])
+        if args.path:
+            forwarded_args.extend(["--path", args.path])
+        if args.title:
+            forwarded_args.extend(["--title", args.title])
+        if args.publisher:
+            forwarded_args.extend(["--publisher", args.publisher])
+        if args.channel:
+            forwarded_args.extend(["--channel", args.channel])
+        if args.version:
+            forwarded_args.extend(["--version", args.version])
+        if args.summary:
+            forwarded_args.extend(["--summary", args.summary])
+        if args.description:
+            forwarded_args.extend(["--description", args.description])
+        if args.category:
+            for item in args.category:
+                forwarded_args.extend(["--category", item])
+        if args.tag:
+            for item in args.tag:
+                forwarded_args.extend(["--tag", item])
+        if args.keyword:
+            for item in args.keyword:
+                forwarded_args.extend(["--keyword", item])
+        return scaffold_skill.main(forwarded_args)
+
+    if args.command == "doctor-skill":
+        forwarded_args = [args.skill]
+        if args.run_checker:
+            forwarded_args.append("--run-checker")
+        if args.json:
+            forwarded_args.append("--json")
+        return doctor_skill.main(forwarded_args)
+
     if args.command == "index":
         forwarded_args: list[str] = []
         if args.output_dir:
@@ -859,6 +977,11 @@ def main(argv: list[str] | None = None) -> int:
         return build_market_index.main(forwarded_args)
 
     if args.command == "catalog":
+        if args.registry:
+            forwarded_args = ["--registry", args.registry]
+            if args.json:
+                forwarded_args.append("--json")
+            return catalog_remote_registry.main(forwarded_args)
         forwarded_args: list[str] = []
         if args.output_dir:
             forwarded_args.extend(["--output-dir", args.output_dir])
@@ -905,6 +1028,10 @@ def main(argv: list[str] | None = None) -> int:
             forwarded_args.extend(["--channel", args.channel])
         if args.index:
             forwarded_args.extend(["--index", args.index])
+        if args.registry:
+            forwarded_args.extend(["--registry", args.registry])
+        if args.json:
+            forwarded_args.append("--json")
         return search_skills.main(forwarded_args)
 
     if args.command == "list-bundles":
@@ -924,6 +1051,60 @@ def main(argv: list[str] | None = None) -> int:
         if args.output_dir:
             forwarded_args.extend(["--output-dir", args.output_dir])
         return package_skill.main(forwarded_args)
+
+    if args.command == "build-submission":
+        forwarded_args = [args.skill]
+        if args.output_dir:
+            forwarded_args.extend(["--output-dir", args.output_dir])
+        if args.market_dir:
+            forwarded_args.extend(["--market-dir", args.market_dir])
+        if args.release_notes:
+            forwarded_args.extend(["--release-notes", args.release_notes])
+        if args.release_notes_file:
+            forwarded_args.extend(["--release-notes-file", args.release_notes_file])
+        return build_skill_submission.main(forwarded_args)
+
+    if args.command == "validate-submission":
+        return validate_skill_submission.main([args.path])
+
+    if args.command == "upload-submission":
+        forwarded_args = [args.path]
+        if args.inbox_dir:
+            forwarded_args.extend(["--inbox-dir", args.inbox_dir])
+        if args.force:
+            forwarded_args.append("--force")
+        return upload_skill_submission.main(forwarded_args)
+
+    if args.command == "review-submission":
+        forwarded_args = [args.path]
+        if args.review_status:
+            forwarded_args.extend(["--review-status", args.review_status])
+        if args.reviewer:
+            forwarded_args.extend(["--reviewer", args.reviewer])
+        if args.summary:
+            forwarded_args.extend(["--summary", args.summary])
+        if args.finding:
+            for finding in args.finding:
+                forwarded_args.extend(["--finding", finding])
+        if args.run_checker:
+            forwarded_args.append("--run-checker")
+        if args.review_path:
+            forwarded_args.extend(["--review-path", args.review_path])
+        if args.force:
+            forwarded_args.append("--force")
+        return review_skill_submission.main(forwarded_args)
+
+    if args.command == "ingest-submission":
+        forwarded_args = [args.path]
+        if args.review_path:
+            forwarded_args.extend(["--review-path", args.review_path])
+        if args.skills_dir:
+            forwarded_args.extend(["--skills-dir", args.skills_dir])
+        if args.docs_dir:
+            forwarded_args.extend(["--docs-dir", args.docs_dir])
+        if args.force:
+            forwarded_args.append("--force")
+        return ingest_skill_submission.main(forwarded_args)
 
     if args.command == "install":
         forwarded_args = [args.install_spec]
@@ -1716,6 +1897,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.output_dir:
             forwarded_args.extend(["--output-dir", args.output_dir])
         return build_market_registry.main(forwarded_args)
+
+    if args.command == "inspect-remote-skill":
+        forwarded_args = [args.skill, "--registry", args.registry]
+        if args.channel:
+            forwarded_args.extend(["--channel", args.channel])
+        if args.json:
+            forwarded_args.append("--json")
+        return inspect_remote_skill.main(forwarded_args)
 
     if args.command == "smoke":
         forwarded_args = []

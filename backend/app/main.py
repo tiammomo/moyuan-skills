@@ -8,11 +8,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from .config import get_settings
+settings = get_settings()
+scripts_root = settings.repo_root / "scripts"
+if str(scripts_root) not in sys.path:
+    sys.path.insert(0, str(scripts_root))
+
+from remote_registry_utils import (
+    RemoteRegistryClient,
+    RemoteRegistryError,
+    build_remote_registry_profile,
+    inspect_remote_bundle_payload,
+    inspect_remote_skill_payload,
+)
 from .jobs import LocalJobStore, resolve_local_target_path
 from .repository import MarketRepository, VALID_CHANNELS
 
-
-settings = get_settings()
 repository = MarketRepository(settings)
 job_store = LocalJobStore(settings)
 
@@ -33,6 +43,16 @@ app.add_middleware(
 
 def _not_found(kind: str, identifier: str) -> HTTPException:
     return HTTPException(status_code=404, detail=f"{kind} not found: {identifier}")
+
+
+def _remote_registry_error(error: RemoteRegistryError) -> HTTPException:
+    detail = str(error)
+    lowered = detail.lower()
+    if "could not find remote skill" in lowered or "could not find remote bundle" in lowered:
+        return HTTPException(status_code=404, detail=detail)
+    if "unable to fetch remote" in lowered or "http " in lowered or "timed out" in lowered:
+        return HTTPException(status_code=502, detail=detail)
+    return HTTPException(status_code=400, detail=detail)
 
 
 class LocalSkillInstallRequest(BaseModel):
@@ -252,6 +272,39 @@ class LocalDocsActionRunRequest(BaseModel):
     scope: str = Field(default="docs-action-execution", description="UI scope label for the docs action execution.")
 
 
+class AuthorSubmissionBuildRequest(BaseModel):
+    skill: str = Field(..., min_length=1, description="Skill directory name or repo-relative path.")
+    output_dir: str | None = Field(default="dist/submissions", description="Output directory for built submission artifacts.")
+    market_dir: str | None = Field(default="dist/market", description="Market artifact directory used by build-submission.")
+    release_notes: str | None = Field(default=None, description="Optional inline release notes text.")
+    release_notes_file: str | None = Field(default=None, description="Optional repo-relative release notes file.")
+
+
+class AuthorSubmissionUploadRequest(BaseModel):
+    path: str = Field(..., min_length=5, description="Repo-relative path to submission.json.")
+    inbox_dir: str | None = Field(default="incoming/submissions", description="Inbox directory receiving uploaded submissions.")
+    force: bool = Field(default=False, description="Replace an existing uploaded submission directory.")
+
+
+class AuthorSubmissionReviewRequest(BaseModel):
+    path: str = Field(..., min_length=5, description="Repo-relative path to an uploaded submission.json file.")
+    review_status: str = Field(default="approved", description="Review outcome to record.")
+    reviewer: str | None = Field(default="Market Maintainer", description="Reviewer label recorded in review.json.")
+    summary: str | None = Field(default=None, description="Short review summary.")
+    findings: list[str] = Field(default_factory=list, description="Optional findings using severity:message[:path] form.")
+    review_path: str | None = Field(default=None, description="Optional explicit review.json path.")
+    run_checker: bool = Field(default=False, description="Run the uploaded checker command before writing review.json.")
+    force: bool = Field(default=False, description="Replace an existing review.json file.")
+
+
+class AuthorSubmissionIngestRequest(BaseModel):
+    path: str = Field(..., min_length=5, description="Repo-relative path to an uploaded submission.json file.")
+    review_path: str | None = Field(default=None, description="Optional explicit review.json path.")
+    skills_dir: str | None = Field(default="dist/backend-author-ingested/skills", description="Destination root for ingested skills.")
+    docs_dir: str | None = Field(default="dist/backend-author-ingested/docs", description="Destination root for ingested docs.")
+    force: bool = Field(default=False, description="Replace existing ingest targets when needed.")
+
+
 def _create_local_job(
     *,
     kind: str,
@@ -359,6 +412,233 @@ def bundle_detail(bundle_id: str) -> dict:
     if not payload:
         raise _not_found("bundle", bundle_id)
     return payload
+
+
+@app.get("/api/v1/registry/remote/index")
+def remote_registry_index(registry_url: str = Query(..., min_length=8)) -> dict:
+    try:
+        client = RemoteRegistryClient(registry_url)
+        index_payload, index_url = client.load_index_document()
+    except RemoteRegistryError as error:
+        raise _remote_registry_error(error) from error
+    return {
+        "registry": build_remote_registry_profile(client),
+        "index_url": index_url,
+        "index": index_payload,
+    }
+
+
+@app.get("/api/v1/registry/remote/channels/{channel}")
+def remote_registry_channel(channel: str, registry_url: str = Query(..., min_length=8)) -> dict:
+    try:
+        client = RemoteRegistryClient(registry_url)
+        channel_payload, channel_url = client.load_channel_index_document(channel)
+    except RemoteRegistryError as error:
+        raise _remote_registry_error(error) from error
+    return {
+        "registry": build_remote_registry_profile(client),
+        "channel": channel,
+        "channel_url": channel_url,
+        "channel_index": channel_payload,
+        "count": len(channel_payload.get("skills", [])) if isinstance(channel_payload.get("skills", []), list) else 0,
+    }
+
+
+@app.get("/api/v1/registry/remote/skills/{skill_id}")
+def remote_registry_skill(
+    skill_id: str,
+    registry_url: str = Query(..., min_length=8),
+    channel: str = Query(default="", min_length=0),
+) -> dict:
+    try:
+        return inspect_remote_skill_payload(
+            RemoteRegistryClient(registry_url),
+            skill_id,
+            channel=channel.strip(),
+        )
+    except RemoteRegistryError as error:
+        raise _remote_registry_error(error) from error
+
+
+@app.get("/api/v1/registry/remote/bundles/{bundle_id}")
+def remote_registry_bundle(bundle_id: str, registry_url: str = Query(..., min_length=8)) -> dict:
+    try:
+        return inspect_remote_bundle_payload(RemoteRegistryClient(registry_url), bundle_id)
+    except RemoteRegistryError as error:
+        raise _remote_registry_error(error) from error
+
+
+@app.get("/api/v1/author/overview")
+def author_overview(
+    submissions_root: str | None = None,
+    built_root: Annotated[str | None, Query(include_in_schema=False)] = None,
+    inbox_root: str | None = None,
+) -> dict:
+    author_built_root = submissions_root or built_root
+    resolved_built_root = resolve_local_target_path(settings.repo_root, author_built_root, "dist/submissions")
+    resolved_inbox_root = resolve_local_target_path(settings.repo_root, inbox_root, "incoming/submissions")
+    payload = repository.get_author_overview(
+        built_root=resolved_built_root,
+        inbox_root=resolved_inbox_root,
+    )
+    payload["recent_jobs"] = job_store.list_jobs(kind_prefix="author-submission-")[:5]
+    return payload
+
+
+@app.get("/api/v1/author/submissions")
+def author_submissions(
+    submissions_root: str | None = None,
+    built_root: Annotated[str | None, Query(include_in_schema=False)] = None,
+    inbox_root: str | None = None,
+) -> dict:
+    author_built_root = submissions_root or built_root
+    resolved_built_root = resolve_local_target_path(settings.repo_root, author_built_root, "dist/submissions")
+    resolved_inbox_root = resolve_local_target_path(settings.repo_root, inbox_root, "incoming/submissions")
+    payload = repository.get_author_submissions(
+        built_root=resolved_built_root,
+        inbox_root=resolved_inbox_root,
+    )
+    payload["recent_jobs"] = job_store.list_jobs(kind_prefix="author-submission-")[:10]
+    return payload
+
+
+@app.post("/api/v1/author/submissions/build", status_code=202)
+def author_submission_build(request: AuthorSubmissionBuildRequest) -> dict:
+    output_dir = resolve_local_target_path(settings.repo_root, request.output_dir, "dist/submissions")
+    market_dir = resolve_local_target_path(settings.repo_root, request.market_dir, "dist/market")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "build_skill_submission.py"),
+        request.skill,
+        "--output-dir",
+        str(output_dir),
+        "--market-dir",
+        str(market_dir),
+    ]
+    if request.release_notes:
+        command.extend(["--release-notes", request.release_notes])
+    if request.release_notes_file:
+        release_notes_file = resolve_local_target_path(settings.repo_root, request.release_notes_file, request.release_notes_file)
+        command.extend(["--release-notes-file", str(release_notes_file)])
+
+    return _create_local_job(
+        kind="author-submission-build",
+        command=command,
+        summary={
+            "skill": request.skill,
+            "mode": "build-submission",
+        },
+        artifacts={
+            "output_dir": str(output_dir),
+            "market_dir": str(market_dir),
+        },
+        request_payload=request.model_dump(),
+    )
+
+
+@app.post("/api/v1/author/submissions/upload", status_code=202)
+def author_submission_upload(request: AuthorSubmissionUploadRequest) -> dict:
+    submission_path = resolve_local_target_path(settings.repo_root, request.path, request.path)
+    inbox_dir = resolve_local_target_path(settings.repo_root, request.inbox_dir, "incoming/submissions")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "upload_skill_submission.py"),
+        str(submission_path),
+        "--inbox-dir",
+        str(inbox_dir),
+    ]
+    if request.force:
+        command.append("--force")
+
+    return _create_local_job(
+        kind="author-submission-upload",
+        command=command,
+        summary={
+            "path": request.path,
+            "mode": "upload-submission",
+        },
+        artifacts={
+            "submission_path": str(submission_path),
+            "inbox_dir": str(inbox_dir),
+        },
+        request_payload=request.model_dump(),
+    )
+
+
+@app.post("/api/v1/author/submissions/review", status_code=202)
+def author_submission_review(request: AuthorSubmissionReviewRequest) -> dict:
+    submission_path = resolve_local_target_path(settings.repo_root, request.path, request.path)
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "review_skill_submission.py"),
+        str(submission_path),
+        "--review-status",
+        request.review_status,
+    ]
+    if request.reviewer:
+        command.extend(["--reviewer", request.reviewer])
+    if request.summary:
+        command.extend(["--summary", request.summary])
+    if request.review_path:
+        review_path = resolve_local_target_path(settings.repo_root, request.review_path, request.review_path)
+        command.extend(["--review-path", str(review_path)])
+    for finding in request.findings:
+        command.extend(["--finding", finding])
+    if request.run_checker:
+        command.append("--run-checker")
+    if request.force:
+        command.append("--force")
+
+    return _create_local_job(
+        kind="author-submission-review",
+        command=command,
+        summary={
+            "path": request.path,
+            "review_status": request.review_status,
+            "mode": "review-submission",
+        },
+        artifacts={
+            "submission_path": str(submission_path),
+            "review_path": request.review_path or "",
+        },
+        request_payload=request.model_dump(),
+    )
+
+
+@app.post("/api/v1/author/submissions/ingest", status_code=202)
+def author_submission_ingest(request: AuthorSubmissionIngestRequest) -> dict:
+    submission_path = resolve_local_target_path(settings.repo_root, request.path, request.path)
+    skills_dir = resolve_local_target_path(settings.repo_root, request.skills_dir, "dist/backend-author-ingested/skills")
+    docs_dir = resolve_local_target_path(settings.repo_root, request.docs_dir, "dist/backend-author-ingested/docs")
+    command = [
+        sys.executable,
+        str(settings.repo_root / "scripts" / "ingest_skill_submission.py"),
+        str(submission_path),
+        "--skills-dir",
+        str(skills_dir),
+        "--docs-dir",
+        str(docs_dir),
+    ]
+    if request.review_path:
+        review_path = resolve_local_target_path(settings.repo_root, request.review_path, request.review_path)
+        command.extend(["--review-path", str(review_path)])
+    if request.force:
+        command.append("--force")
+
+    return _create_local_job(
+        kind="author-submission-ingest",
+        command=command,
+        summary={
+            "path": request.path,
+            "mode": "ingest-submission",
+        },
+        artifacts={
+            "submission_path": str(submission_path),
+            "skills_dir": str(skills_dir),
+            "docs_dir": str(docs_dir),
+        },
+        request_payload=request.model_dump(),
+    )
 
 
 @app.post("/api/v1/local/skills/install", status_code=202)

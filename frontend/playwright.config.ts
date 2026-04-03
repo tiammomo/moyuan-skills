@@ -1,12 +1,22 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
 const frontendRoot = __dirname;
 const repoRoot = path.resolve(frontendRoot, '..');
+const pythonCandidates = [
+  process.env.PYTHON,
+  path.join(repoRoot, '.venv', 'bin', 'python'),
+  path.join(repoRoot, '.venv', 'Scripts', 'python.exe'),
+  'python',
+].filter((candidate): candidate is string => Boolean(candidate));
+const pythonCommand =
+  pythonCandidates.find((candidate) => candidate === 'python' || fs.existsSync(candidate)) ?? 'python';
 
 export default defineConfig({
   testDir: path.join(frontendRoot, 'tests', 'e2e'),
   fullyParallel: false,
+  workers: 1,
   reporter: [['list'], ['html', { outputFolder: path.join(frontendRoot, 'playwright-report') }]],
   use: {
     baseURL: 'http://127.0.0.1:33003',
@@ -20,7 +30,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083',
+      command: `${pythonCommand} -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083`,
       cwd: repoRoot,
       url: 'http://127.0.0.1:38083/health',
       reuseExistingServer: false,
@@ -33,7 +43,7 @@ export default defineConfig({
     },
     {
       command:
-        'python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean',
+        `${pythonCommand} scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean`,
       cwd: repoRoot,
       url: 'http://127.0.0.1:38765/registry.json',
       reuseExistingServer: false,

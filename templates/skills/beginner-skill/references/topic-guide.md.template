@@ -1,0 +1,13 @@
+# Topic Guide
+
+## Workflow
+
+Describe the one task this skill should handle well.
+
+## Inputs
+
+List the minimum source inputs that must be present before the skill starts.
+
+## Review Boundary
+
+Explain what should be checked by a human before the output is reused or published.

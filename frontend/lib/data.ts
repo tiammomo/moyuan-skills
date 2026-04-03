@@ -1,6 +1,10 @@
 import fs from 'fs/promises';
+import type { Dirent } from 'fs';
 import path from 'path';
 import type {
+  AuthorStudioOverview,
+  AuthorSubmissionsPayload,
+  AuthorSubmissionRecord,
   BundleDetailPayload,
   BundleSummary,
   Channel,
@@ -68,6 +72,11 @@ type PublisherProfile = {
   trust_level?: string;
 };
 
+interface AuthorWorkspaceOptions {
+  submissionsRoot?: string;
+  inboxRoot?: string;
+}
+
 export function getRepoRoot(): string {
   return DATA_ROOT;
 }
@@ -76,9 +85,57 @@ function isApiMode(): boolean {
   return Boolean(API_BASE_URL);
 }
 
+function normalizeWorkspaceRoot(value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function buildAuthorWorkspaceQuery(options?: AuthorWorkspaceOptions): string {
+  const params = new URLSearchParams();
+  const submissionsRoot = normalizeWorkspaceRoot(options?.submissionsRoot);
+  const inboxRoot = normalizeWorkspaceRoot(options?.inboxRoot);
+
+  if (submissionsRoot) {
+    params.set('submissions_root', submissionsRoot);
+  }
+  if (inboxRoot) {
+    params.set('inbox_root', inboxRoot);
+  }
+
+  const query = params.toString();
+  return query ? `?${query}` : '';
+}
+
+function resolveWorkspaceRoot(root: string | undefined, defaultRelative: string): string {
+  const normalized = normalizeWorkspaceRoot(root);
+  if (!normalized) {
+    return path.join(DATA_ROOT, defaultRelative);
+  }
+  return path.isAbsolute(normalized) ? normalized : path.join(DATA_ROOT, normalized);
+}
+
+function displayRepoOrAbsolutePath(filePath: string): string {
+  const relative = path.relative(DATA_ROOT, filePath);
+  if (!relative) {
+    return '.';
+  }
+  if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+    return relative.replace(/\\/g, '/');
+  }
+  return filePath.replace(/\\/g, '/');
+}
+
 export async function readJson<T>(filePath: string): Promise<T> {
   const content = await fs.readFile(filePath, 'utf-8');
   return JSON.parse(content) as T;
+}
+
+async function readJsonIfExists<T>(filePath: string): Promise<T | null> {
+  try {
+    return await readJson<T>(filePath);
+  } catch {
+    return null;
+  }
 }
 
 export async function fileExists(filePath: string): Promise<boolean> {
@@ -142,6 +199,144 @@ async function hasPackagedProvenance(skillName: string, version: string): Promis
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function toRepoPath(filePath: string): string {
+  return displayRepoOrAbsolutePath(filePath);
+}
+
+async function listSubmissionFiles(rootDir: string): Promise<string[]> {
+  const result: string[] = [];
+  let publishers: Dirent[] = [];
+  try {
+    publishers = await fs.readdir(rootDir, { withFileTypes: true });
+  } catch {
+    return result;
+  }
+
+  for (const publisherEntry of publishers) {
+    if (!publisherEntry.isDirectory()) {
+      continue;
+    }
+    const publisherDir = path.join(rootDir, publisherEntry.name);
+    const skillEntries = await fs.readdir(publisherDir, { withFileTypes: true }).catch(() => []);
+    for (const skillEntry of skillEntries) {
+      if (!skillEntry.isDirectory()) {
+        continue;
+      }
+      const skillDir = path.join(publisherDir, skillEntry.name);
+      const versionEntries = await fs.readdir(skillDir, { withFileTypes: true }).catch(() => []);
+      for (const versionEntry of versionEntries) {
+        if (!versionEntry.isDirectory()) {
+          continue;
+        }
+        const submissionPath = path.join(skillDir, versionEntry.name, 'submission.json');
+        if (await fileExists(submissionPath)) {
+          result.push(submissionPath);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+async function readAuthorSubmissionRecord(
+  submissionPath: string,
+  stage: AuthorSubmissionRecord['stage']
+): Promise<AuthorSubmissionRecord | null> {
+  const payload = await readJsonIfExists<Record<string, unknown>>(submissionPath);
+  if (!payload) {
+    return null;
+  }
+
+  const reviewPath = path.join(path.dirname(submissionPath), 'review.json');
+  const ingestPath = path.join(path.dirname(submissionPath), 'ingest.json');
+  const reviewPayload = await readJsonIfExists<Record<string, unknown>>(reviewPath);
+  const ingestPayload = await readJsonIfExists<Record<string, unknown>>(ingestPath);
+  const findings = Array.isArray(reviewPayload?.findings) ? reviewPayload.findings : [];
+
+  return {
+    submission_id: String(payload.submission_id ?? ''),
+    publisher: String(payload.publisher ?? ''),
+    skill_id: String(payload.skill_id ?? ''),
+    skill_name: String(payload.skill_name ?? ''),
+    version: String(payload.version ?? ''),
+    channel: String(payload.channel ?? 'internal') as Channel,
+    created_at: String(payload.created_at ?? ''),
+    stage,
+    submission_path: toRepoPath(submissionPath),
+    payload_archive_path: String(payload.payload_archive_path ?? ''),
+    source_dir: String(payload.source_dir ?? ''),
+    docs_path: String(payload.docs_path ?? ''),
+    manifest_path: String(payload.manifest_path ?? ''),
+    install_spec_path: String(payload.install_spec_path ?? ''),
+    provenance_path: String(payload.provenance_path ?? ''),
+    package_path: String(payload.package_path ?? ''),
+    release_notes: String(payload.release_notes ?? ''),
+    review: reviewPayload
+      ? {
+          path: toRepoPath(reviewPath),
+          review_status: String(reviewPayload.review_status ?? ''),
+          reviewer: String(reviewPayload.reviewer ?? ''),
+          reviewed_at: String(reviewPayload.reviewed_at ?? ''),
+          summary: String(reviewPayload.summary ?? ''),
+          findings_count: findings.length,
+        }
+      : null,
+    ingest: ingestPayload
+      ? {
+          path: toRepoPath(ingestPath),
+          status: String(ingestPayload.status ?? ''),
+          ingested_at: String(ingestPayload.ingested_at ?? ''),
+          ingested_by: String(ingestPayload.ingested_by ?? ''),
+          target_source_dir: String(ingestPayload.target_source_dir ?? ''),
+          target_docs_path: String(ingestPayload.target_docs_path ?? ''),
+          target_manifest_path: String(ingestPayload.target_manifest_path ?? ''),
+        }
+      : null,
+  };
+}
+
+async function getLocalAuthorSubmissions(options?: AuthorWorkspaceOptions): Promise<AuthorSubmissionsPayload> {
+  const submissionsRoot = resolveWorkspaceRoot(options?.submissionsRoot, 'dist/submissions');
+  const inboxRoot = resolveWorkspaceRoot(options?.inboxRoot, 'incoming/submissions');
+
+  const [builtPaths, inboxPaths] = await Promise.all([
+    listSubmissionFiles(submissionsRoot),
+    listSubmissionFiles(inboxRoot),
+  ]);
+  const [built, inbox] = await Promise.all([
+    Promise.all(builtPaths.map((filePath) => readAuthorSubmissionRecord(filePath, 'built'))),
+    Promise.all(inboxPaths.map((filePath) => readAuthorSubmissionRecord(filePath, 'inbox'))),
+  ]);
+
+  const builtRecords = built.filter((record): record is AuthorSubmissionRecord => Boolean(record));
+  const inboxRecords = inbox.filter((record): record is AuthorSubmissionRecord => Boolean(record));
+  const sortRecords = (left: AuthorSubmissionRecord, right: AuthorSubmissionRecord) =>
+    right.created_at.localeCompare(left.created_at) || right.submission_id.localeCompare(left.submission_id);
+
+  builtRecords.sort(sortRecords);
+  inboxRecords.sort(sortRecords);
+
+  return {
+    workspace: {
+      submissions_root: displayRepoOrAbsolutePath(submissionsRoot),
+      inbox_root: displayRepoOrAbsolutePath(inboxRoot),
+      skills_root: 'skills',
+      docs_root: 'docs',
+    },
+    counts: {
+      built: builtRecords.length,
+      inbox: inboxRecords.length,
+      reviewed: inboxRecords.filter((record) => Boolean(record.review)).length,
+      approved: inboxRecords.filter((record) => record.review?.review_status === 'approved').length,
+      ingested: inboxRecords.filter((record) => Boolean(record.ingest)).length,
+    },
+    built: builtRecords,
+    inbox: inboxRecords,
+    recent_jobs: [],
+  };
 }
 
 function buildSkillPolicyGate({
@@ -480,7 +675,7 @@ export async function getBundleRemoteTrustSummary(
   };
 }
 
-async function fetchJson<T>(pathname: string): Promise<T> {
+async function fetchJson<T>(pathname: string, cacheMode: 'revalidate' | 'no-store' = 'revalidate'): Promise<T> {
   if (!API_BASE_URL) {
     throw new Error('SKILLS_MARKET_API_BASE_URL is not configured.');
   }
@@ -489,9 +684,13 @@ async function fetchJson<T>(pathname: string): Promise<T> {
     headers: {
       accept: 'application/json',
     },
-    next: {
-      revalidate: REVALIDATE_SECONDS,
-    },
+    ...(cacheMode === 'no-store'
+      ? { cache: 'no-store' as const }
+      : {
+          next: {
+            revalidate: REVALIDATE_SECONDS,
+          },
+        }),
   });
 
   if (!response.ok) {
@@ -911,6 +1110,49 @@ export async function getBundleDetail(bundleId: string): Promise<BundleDetailPay
     bundle,
     skills: bundle.skill_summaries,
     install_specs: installSpecs,
+  };
+}
+
+export async function getAuthorSubmissions(options?: AuthorWorkspaceOptions): Promise<AuthorSubmissionsPayload> {
+  const workspaceQuery = buildAuthorWorkspaceQuery(options);
+  if (isApiMode()) {
+    return fetchJson<AuthorSubmissionsPayload>(`/api/v1/author/submissions${workspaceQuery}`, 'no-store');
+  }
+  return getLocalAuthorSubmissions(options);
+}
+
+export async function getAuthorStudioOverview(options?: AuthorWorkspaceOptions): Promise<AuthorStudioOverview> {
+  const workspaceQuery = buildAuthorWorkspaceQuery(options);
+  if (isApiMode()) {
+    return fetchJson<AuthorStudioOverview>(`/api/v1/author/overview${workspaceQuery}`, 'no-store');
+  }
+
+  const submissions = await getLocalAuthorSubmissions(options);
+  const skillManifestFiles = await fs
+    .readdir(path.join(DATA_ROOT, 'skills'), { withFileTypes: true })
+    .then(async (entries) => {
+      let count = 0;
+      for (const entry of entries) {
+        if (!entry.isDirectory()) {
+          continue;
+        }
+        if (await fileExists(path.join(DATA_ROOT, 'skills', entry.name, 'market', 'skill.json'))) {
+          count += 1;
+        }
+      }
+      return count;
+    })
+    .catch(() => 0);
+
+  return {
+    workspace: submissions.workspace,
+    counts: {
+      ...submissions.counts,
+      skill_manifests: skillManifestFiles,
+    },
+    recent_built: submissions.built.slice(0, 5),
+    recent_inbox: submissions.inbox.slice(0, 5),
+    recent_jobs: [],
   };
 }
 

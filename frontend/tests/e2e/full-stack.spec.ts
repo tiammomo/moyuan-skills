@@ -1,11 +1,20 @@
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
+import fsSync from 'node:fs';
 import * as path from 'node:path';
 import { promisify } from 'node:util';
 import { expect, test } from '@playwright/test';
 
 const repoRoot = path.resolve(process.cwd(), '..');
 const execFileAsync = promisify(execFile);
+const pythonCandidates = [
+  process.env.PYTHON,
+  path.join(repoRoot, '.venv', 'bin', 'python'),
+  path.join(repoRoot, '.venv', 'Scripts', 'python.exe'),
+  'python',
+].filter((candidate): candidate is string => Boolean(candidate));
+const pythonCommand =
+  pythonCandidates.find((candidate) => candidate === 'python' || fsSync.existsSync(candidate)) ?? 'python';
 
 test.setTimeout(120_000);
 
@@ -259,7 +268,7 @@ test('frontend works against the Python backend across core market flows', async
   });
 
   await execFileAsync(
-    'python',
+    pythonCommand,
     [
       'scripts/execute_source_reconcile_gate_waiver_apply.py',
       baselineHistoryPath,
@@ -277,7 +286,7 @@ test('frontend works against the Python backend across core market flows', async
     }
   );
   await execFileAsync(
-    'python',
+    pythonCommand,
     [
       'scripts/verify_source_reconcile_gate_waiver_apply.py',
       baselineHistoryPath,
@@ -296,7 +305,7 @@ test('frontend works against the Python backend across core market flows', async
     }
   );
   await execFileAsync(
-    'python',
+    pythonCommand,
     [
       'scripts/report_source_reconcile_gate_waiver_apply.py',
       baselineHistoryPath,

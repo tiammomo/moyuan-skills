@@ -1,0 +1,48 @@
+{
+  "id": {{skill_id_json}},
+  "publisher": {{publisher_json}},
+  "name": {{skill_name_json}},
+  "title": {{skill_title_json}},
+  "version": {{version_json}},
+  "channel": {{channel_json}},
+  "summary": {{market_summary_json}},
+  "description": {{market_description_json}},
+  "categories": {{categories_json}},
+  "tags": {{tags_json}},
+  "compatibility": {
+    "codex_min_version": "1.0.0",
+    "python": ">=3.11",
+    "platforms": ["windows", "macos", "linux"]
+  },
+  "permissions": {
+    "workspace": "read",
+    "network": "none",
+    "shell": "limited",
+    "secrets": "none",
+    "human_review_required": true
+  },
+  "quality": {
+    "checker": {{checker_command_json}},
+    "eval": {{eval_command_json}},
+    "review_status": "draft"
+  },
+  "lifecycle": {
+    "status": "active",
+    "replacement_skill_id": "",
+    "sunset_at": "",
+    "notes": {{lifecycle_notes_json}}
+  },
+  "artifacts": {
+    "source_dir": {{source_dir_json}},
+    "entrypoint": {{entrypoint_json}},
+    "docs": {{docs_path_json}}
+  },
+  "search": {
+    "keywords": {{keywords_json}},
+    "related_skills": []
+  },
+  "distribution": {
+    "capabilities": {{capabilities_json}},
+    "starter_bundle_ids": {{starter_bundle_ids_json}}
+  }
+}

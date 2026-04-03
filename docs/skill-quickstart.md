@@ -4,6 +4,8 @@
 
 如果你想先通过现有飞书和语雀 skill 学会“怎么看 skill、怎么照着做”，先读 [skill-learning-guide.md](./skill-learning-guide.md)；如果你想看完整制作流程，请读 [skill-authoring.md](./skill-authoring.md)；如果你想核对结构规范，请读 [skill-spec.md](./skill-spec.md)。
 
+下面命令默认你已经按 [dev-setup.md](./dev-setup.md) 把当前 `.venv` 里的解释器放进 `PATH`，也就是当前 shell 里的 `python` 会指向仓库虚拟环境。
+
 ## 5 分钟目标
 
 完成后，你会得到一个最小但符合本仓库渐进式规范的 skill：
@@ -34,13 +36,13 @@ skills/my-skill/
 在仓库根目录执行：
 
 ```text
-python <CODEX_HOME>/skills/.system/skill-creator/scripts/init_skill.py my-skill --path skills --interface display_name="My Skill" --interface short_description="Short UI summary." --interface default_prompt="Use $my-skill to handle the target workflow."
+python scripts/skills_market.py scaffold-skill my-skill --template beginner
 ```
 
-如果你已经知道后面会用到参考资料或脚本，也可以一次性把目录建出来：
+如果你已经知道这个 skill 很快就要进入 market 校验、打包和发布链，建议直接起 `market-ready` 骨架：
 
 ```text
-python <CODEX_HOME>/skills/.system/skill-creator/scripts/init_skill.py my-skill --path skills --resources scripts,references,assets --interface display_name="My Skill" --interface short_description="Short UI summary." --interface default_prompt="Use $my-skill to handle the target workflow."
+python scripts/skills_market.py scaffold-skill my-skill --template market-ready
 ```
 
 ## 步骤 3：把 `SKILL.md` 改成渐进式最小版本
@@ -105,7 +107,7 @@ interface:
 在仓库根目录执行：
 
 ```text
-python <CODEX_HOME>/skills/.system/skill-creator/scripts/quick_validate.py skills/my-skill
+python scripts/skills_market.py doctor-skill skills/my-skill
 python scripts/check_progressive_skills.py
 ```
 
@@ -114,6 +116,27 @@ python scripts/check_progressive_skills.py
 - 命名合法
 - frontmatter 合法
 - skill 符合仓库级渐进式结构要求
+
+如果你用的是 `market-ready` 模板，再补一条：
+
+```text
+python scripts/skills_market.py validate skills/my-skill/market/skill.json
+```
+
+这样可以尽早发现 metadata、权限、lifecycle、docs 路径和 checker 命令的问题。
+
+如果这个 skill 已经准备进入 market 打包预览，再继续跑：
+
+```text
+python scripts/skills_market.py package skills/my-skill
+python scripts/skills_market.py provenance-check dist/market/install/my-skill-0.1.0.json
+```
+
+如果你把 skill scaffold 在仓库里的其他目录做预演，也可以直接按路径打包：
+
+```text
+python scripts/skills_market.py package dist/authoring-smoke/my-skill
+```
 
 ## 什么时候再加 `scripts/`、`references/`、`assets/`
 

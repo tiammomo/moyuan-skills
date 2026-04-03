@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/skill-submission.schema.json",
+  "title": "Skill Submission",
+  "type": "object",
+  "required": [
+    "submission_format",
+    "submission_id",
+    "publisher",
+    "skill_id",
+    "skill_name",
+    "version",
+    "channel",
+    "created_at",
+    "source_dir",
+    "docs_path",
+    "manifest_path",
+    "install_spec_path",
+    "provenance_path",
+    "package_path",
+    "payload_archive_path",
+    "payload_archive_sha256",
+    "checker_command",
+    "eval_command",
+    "release_notes"
+  ],
+  "properties": {
+    "submission_format": {
+      "type": "string",
+      "const": "moyuan-skill-submission@v1"
+    },
+    "submission_id": { "type": "string", "minLength": 5 },
+    "publisher": { "type": "string", "minLength": 2 },
+    "skill_id": { "type": "string", "minLength": 3 },
+    "skill_name": { "type": "string", "minLength": 2 },
+    "version": { "type": "string", "minLength": 3 },
+    "channel": { "type": "string", "enum": ["stable", "beta", "internal"] },
+    "created_at": { "type": "string", "minLength": 10 },
+    "source_dir": { "type": "string", "minLength": 5 },
+    "docs_path": { "type": "string", "minLength": 5 },
+    "manifest_path": { "type": "string", "minLength": 5 },
+    "install_spec_path": { "type": "string", "minLength": 5 },
+    "provenance_path": { "type": "string", "minLength": 5 },
+    "package_path": { "type": "string", "minLength": 5 },
+    "payload_archive_path": { "type": "string", "minLength": 5 },
+    "payload_archive_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "checker_command": { "type": "string", "minLength": 5 },
+    "eval_command": { "type": "string", "minLength": 5 },
+    "release_notes": { "type": "string", "minLength": 3 }
+  },
+  "additionalProperties": false
+}

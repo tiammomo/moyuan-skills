@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://moyuan.dev/schemas/skill-submission-review.schema.json",
+  "title": "Skill Submission Review",
+  "type": "object",
+  "required": [
+    "review_format",
+    "submission_id",
+    "review_status",
+    "reviewer",
+    "reviewed_at",
+    "summary",
+    "findings"
+  ],
+  "properties": {
+    "review_format": {
+      "type": "string",
+      "const": "moyuan-skill-submission-review@v1"
+    },
+    "submission_id": { "type": "string", "minLength": 5 },
+    "review_status": {
+      "type": "string",
+      "enum": ["pending", "approved", "rejected", "needs-changes"]
+    },
+    "reviewer": { "type": "string", "minLength": 2 },
+    "reviewed_at": { "type": "string", "minLength": 10 },
+    "summary": { "type": "string", "minLength": 5 },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "message"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low", "info"]
+          },
+          "message": { "type": "string", "minLength": 3 },
+          "path": { "type": "string", "minLength": 3 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

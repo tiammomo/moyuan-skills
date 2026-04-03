@@ -1,0 +1,4 @@
+interface:
+  display_name: "{{skill_title}}"
+  short_description: "Explain the skill in one UI-facing sentence."
+  default_prompt: "Use ${{skill_name}} to handle the structured workflow described by this skill."

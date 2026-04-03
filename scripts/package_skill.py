@@ -24,14 +24,39 @@ DEFAULT_OUTPUT = ROOT / "dist" / "market"
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Package a skill and emit a local install spec.")
-    parser.add_argument("skill", nargs="?", help="Skill directory name, for example release-note-writer.")
+    parser.add_argument("skill", nargs="?", help="Skill directory name or path, for example release-note-writer.")
     parser.add_argument("--all", action="store_true", help="Package every skill that has a market manifest.")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT, help="Output directory for package and install artifacts.")
     return parser
 
 
-def package_one_skill(skill_name: str, output_dir: Path) -> int:
-    skill_dir = ROOT / "skills" / skill_name
+def resolve_skill_dir(token: str) -> Path:
+    candidate = Path(token)
+    options: list[Path] = []
+    if candidate.is_absolute():
+        options.append(candidate)
+    else:
+        options.append((ROOT / candidate).resolve())
+        options.append((ROOT / "skills" / token).resolve())
+
+    for option in options:
+        if not option.is_dir():
+            continue
+        try:
+            option.relative_to(ROOT)
+        except ValueError:
+            continue
+        return option
+    raise ValueError(f"could not resolve skill directory from '{token}'")
+
+
+def package_one_skill(skill_token: str, output_dir: Path) -> int:
+    try:
+        skill_dir = resolve_skill_dir(skill_token)
+    except ValueError as error:
+        print(f"ERROR: {error}")
+        return 1
+
     manifest_path = skill_dir / "market" / "skill.json"
     if not skill_dir.is_dir():
         print(f"ERROR: missing skill directory {skill_dir}")
@@ -55,7 +80,7 @@ def package_one_skill(skill_name: str, output_dir: Path) -> int:
     with zipfile.ZipFile(package_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for file_path in sorted(skill_dir.rglob("*")):
             if file_path.is_file() and "__pycache__" not in file_path.parts:
-                archive.write(file_path, arcname=file_path.relative_to(skill_dir.parent))
+                archive.write(file_path, arcname=Path(manifest["name"]) / file_path.relative_to(skill_dir))
 
     checksum = sha256_for_file(package_path)
     provenance_payload = build_provenance_payload(manifest, package_path, checksum)

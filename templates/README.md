@@ -11,6 +11,7 @@
 
 - `skills/beginner-skill/`
 - `skills/advanced-skill/`
+- `skills/market-ready-skill/`
 - `harness/harness-ready/`
 
 ## 使用原则
@@ -19,3 +20,6 @@
 - 复制后优先删除不需要的部分
 - 如果模板已经稳定复用，再把经验沉淀回 `docs/` 或 `skills/`
 - `harness-ready/` 现在除了 tool contract / safety / automation，也包含 runtime blueprint 模板
+- `python scripts/skills_market.py scaffold-skill <name> --template market-ready` 会直接使用仓库内的 market-ready 模板包
+- `market-ready` 模板默认服务这条作者链：
+  `scaffold -> doctor-skill -> validate -> package -> provenance-check`

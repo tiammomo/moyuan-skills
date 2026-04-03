@@ -1,223 +1,129 @@
 # 仓库常用命令
 
-这份文档汇总这个仓库最常用的开发与验证命令。
+这份文档只保留当前主线开发最常用的命令。
 
-现在 docs 详情页里的 action panel 已经能对 allowlist 命令直接发起 backend job，并保留 recent runs / last-success、recent runs compare / filter、run diff summary、inline diff excerpts、section diff 状态、quick-open handoff，以及 artifact、stdout、stderr drilldown；但这里仍然是完整命令参考的权威来源，适合手动执行、排错和批量串联。
+更细的单点脚本说明，应该回写到对应权威文档，不再把所有一次性命令无限堆在这里。
 
-## 新人先跑哪几条
+## 1. 最小基线检查
 
-如果你只是第一次进入仓库，不需要把所有命令都跑一遍。
-
-先跑这三条就够了：
+第一次进入仓库，先跑这 4 条：
 
 ```text
 python scripts/check_progressive_skills.py
-python skills/release-note-writer/scripts/check_release_note_writer.py
-python scripts/run_eval_harness.py --skills release-note-writer
-```
-
-这样你能先确认：
-
-- 仓库结构没坏
-- 至少一个业务案例能跑通
-- eval harness 不是空概念
-
-## 仓库级结构检查
-
-检查所有 skill 的渐进式结构、reference 可达性，以及 `agents/openai.yaml` 一致性：
-
-```text
-python scripts/check_progressive_skills.py
-```
-
-检查 README、docs、teaching、templates 的相对链接是否仍然有效：
-
-```text
 python scripts/check_docs_links.py
+python scripts/skills_market.py smoke
+python scripts/check_python_market_backend.py
 ```
 
-检查 harness prototype 的 schema、example 和模板包：
+这组命令覆盖：
+
+- skill 结构
+- docs 链接
+- market 主链路
+- backend 基本可用性
+
+## 2. 作者链
+
+创建一个新 skill：
 
 ```text
-python scripts/check_harness_prototypes.py
+python scripts/skills_market.py scaffold-skill my-skill --template market-ready
 ```
 
-## 教学型 Skill 检查
+检查一个 skill：
 
 ```text
-python skills/build-skills/scripts/check_build_skills.py
-python skills/progressive-disclosure/scripts/check_progressive_disclosure.py
-python skills/harness-engineering/scripts/check_harness_engineering.py
+python scripts/skills_market.py doctor-skill skills/my-skill
+python scripts/skills_market.py validate skills/my-skill/market/skill.json
 ```
 
-## 业务 Skill 检查
+打包与校验：
+
+```text
+python scripts/skills_market.py package my-skill
+python scripts/skills_market.py provenance-check dist/market/install/my-skill-0.1.0.json
+```
+
+如果你正在做发布前交接，再补：
+
+```text
+python scripts/skills_market.py build-submission my-skill
+python scripts/skills_market.py validate-submission dist/submissions/moyuan/my-skill/0.1.0/submission.json
+python scripts/skills_market.py upload-submission dist/submissions/moyuan/my-skill/0.1.0/submission.json --inbox-dir incoming/submissions
+python scripts/skills_market.py review-submission incoming/submissions/moyuan/my-skill/0.1.0/submission.json --reviewer "Market Maintainer" --summary "Submission passed inbox review."
+python scripts/skills_market.py ingest-submission incoming/submissions/moyuan/my-skill/0.1.0/submission.json
+```
+
+## 3. Market 构建与远端安装
+
+```text
+python scripts/skills_market.py index
+python scripts/skills_market.py catalog
+python scripts/skills_market.py recommend
+python scripts/skills_market.py federation-feed
+python scripts/skills_market.py registry
+python scripts/skills_market.py search --query release
+python scripts/skills_market.py search --registry http://127.0.0.1:8765 --query release
+python scripts/skills_market.py catalog --registry http://127.0.0.1:8765
+python scripts/skills_market.py inspect-remote-skill moyuan.release-note-writer --registry http://127.0.0.1:8765
+python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --dry-run
+python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
+python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
+```
+
+## 4. Frontend / Backend 联调
+
+启动 backend：
+
+```text
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
+```
+
+启动 frontend：
+
+```text
+SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083 npm run dev:local --prefix frontend
+```
+
+构建与端到端验证：
+
+```text
+npm run build --prefix frontend
+npm run e2e --prefix frontend
+```
+
+如果你要手动验证 remote registry UI，再补：
+
+```text
+python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean
+```
+
+## 5. Installed-State 运维
+
+```text
+python scripts/skills_market.py doctor-installed --target-root dist/installed-skills --strict
+python scripts/skills_market.py repair-installed --target-root dist/installed-skills --dry-run
+python scripts/skills_market.py snapshot-installed --target-root dist/installed-skills --output-path dist/installed-skills/snapshots/latest.json --markdown-path dist/installed-skills/snapshots/latest.md
+python scripts/skills_market.py verify-installed dist/installed-skills/snapshots/baseline.json --target-root dist/installed-skills --output-dir dist/installed-skills/verification --strict
+```
+
+## 6. 业务与案例回归
+
+如果你改动的是 skill 内容或案例逻辑，再补这组：
 
 ```text
 python skills/release-note-writer/scripts/check_release_note_writer.py
 python skills/issue-triage-report/scripts/check_issue_triage_report.py
 python skills/incident-postmortem-writer/scripts/check_incident_postmortem_writer.py
 python skills/api-change-risk-review/scripts/check_api_change_risk_review.py
-```
-
-## 生成发布说明
-
-```text
-python skills/release-note-writer/scripts/release_note_writer.py draft skills/release-note-writer/assets/sample-release-input.json out/release-notes.md
-```
-
-## 校验发布说明
-
-```text
-python skills/release-note-writer/scripts/release_note_writer.py lint out/release-notes.md
-```
-
-## 运行 Eval Harness
-
-```text
 python scripts/run_eval_harness.py --baseline examples/eval-harness/baseline.json
 ```
 
-如果你改动了 case 或输出逻辑，重写 baseline：
+## 7. 维护规则
 
-```text
-python scripts/run_eval_harness.py --write-baseline examples/eval-harness/baseline.json
-```
-
-## 运行 Harness Prototype Stub
-
-```text
-python scripts/run_harness_stub.py tool-contract examples/harness-prototypes/tool-contracts/release-note-writer.yaml
-python scripts/run_harness_stub.py gate examples/harness-prototypes/safety-gates/publication-review.yaml --check "script lint passes" --artifact "generated draft" --artifact "review note" --artifact "approval record"
-python scripts/run_harness_stub.py automation examples/harness-prototypes/automation/weekly-triage-digest.toml
-```
-
-## 运行 Harness Runtime
-
-```text
-python scripts/run_harness_runtime.py examples/harness-prototypes/runtime-blueprints/release-note-publication.yaml
-```
-
-## Frontend / Backend 联调验证
-
-```text
-python scripts/check_python_market_backend.py
-npm run build --prefix frontend
-npm run e2e --prefix frontend
-npm run capture:readme-screenshots --prefix frontend
-```
-
-其中 `npm run e2e --prefix frontend` 会通过 Playwright 同时拉起 FastAPI backend、Next.js frontend 和一个临时 hosted registry fixture，验证首页、skills、bundle、docs 搜索/筛选、teaching、project docs，以及详情页 related navigation、context panel、ordered action panel、prerequisites、expected outcome、artifact 提示、本地 backend execution、installed-state lifecycle 和远端 registry install 这几条核心前后端链路。
-`npm run capture:readme-screenshots --prefix frontend` 会额外生成一组 README 用的真实流程截图，输出到 `docs/assets/readme/`。
-
-标准本地端口约定：
-
-- frontend: `33003`
-- backend: `38083`
-
-本地联调可直接用：
-
-```text
-python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 38083
-set SKILLS_MARKET_API_BASE_URL=http://127.0.0.1:38083
-npm run dev:local --prefix frontend
-```
-
-如果你还要手动验证前端里的远端 registry install UI，再补一条：
-
-```text
-python scripts/serve_market_registry_fixture.py --host 127.0.0.1 --port 38765 --output-dir dist/playwright-registry --clean
-```
-
-## Skills Market 草案脚本
-
-验证所有 `skills/*/market/skill.json`：
-
-```text
-python scripts/skills_market.py validate
-python scripts/skills_market.py governance-check
-python scripts/skills_market.py index
-python scripts/skills_market.py org-index governance/orgs/moyuan-internal.json
-python scripts/skills_market.py catalog
-python scripts/skills_market.py catalog --org-policy governance/orgs/moyuan-internal.json
-python scripts/skills_market.py recommend
-python scripts/skills_market.py recommend --org-policy governance/orgs/moyuan-internal.json
-python scripts/skills_market.py federation-feed
-python scripts/skills_market.py federation-feed --org-policy governance/orgs/moyuan-internal.json
-python scripts/skills_market.py search --query release
-python scripts/skills_market.py package --all
-python scripts/skills_market.py provenance-check dist/market/install/release-note-writer-0.1.0.json
-python scripts/skills_market.py registry
-python scripts/skills_market.py install dist/market/install/release-note-writer-0.1.0.json --dry-run
-python scripts/skills_market.py install moyuan.release-note-writer --registry http://127.0.0.1:8765 --dry-run
-python scripts/skills_market.py install-bundle release-engineering-starter --registry http://127.0.0.1:8765 --target-root dist/installed-remote-bundles
-python scripts/cleanup_remote_install.py --target-root dist/frontend-remote-execution/skills/release-note-writer --cache-root dist/frontend-remote-execution/cache
-python scripts/skills_market.py smoke
-```
-
-```text
-python scripts/validate_market_manifest.py
-```
-
-```text
-python scripts/check_market_governance.py
-```
-
-构建 market index：
-
-```text
-python scripts/build_market_index.py
-```
-
-```text
-python scripts/build_org_market_index.py governance/orgs/moyuan-internal.json
-```
-
-```text
-python scripts/build_market_catalog.py
-python scripts/build_market_catalog.py --org-policy governance/orgs/moyuan-internal.json
-```
-
-```text
-python scripts/build_market_recommendations.py
-python scripts/build_market_recommendations.py --org-policy governance/orgs/moyuan-internal.json
-```
-
-```text
-python scripts/build_federation_feed.py
-python scripts/build_federation_feed.py --org-policy governance/orgs/moyuan-internal.json
-```
-
-搜索 market 中的 skill：
-
-```text
-python scripts/search_skills.py --query release
-python scripts/search_skills.py --category release-engineering --channel stable
-```
-
-为某个 skill 打包并生成 install spec：
-
-```text
-python scripts/package_skill.py release-note-writer
-python scripts/package_skill.py --all
-```
-
-根据 install spec 做 dry-run 安装：
-
-```text
-python scripts/install_skill.py dist/market/install/release-note-writer-0.1.0.json --dry-run
-```
-
-```text
-python scripts/verify_market_provenance.py dist/market/install/release-note-writer-0.1.0.json
-```
-
-```text
-python scripts/build_market_registry.py
-```
-
-```text
-python scripts/check_market_pipeline.py
-```
+- 这里只保留主线开发经常使用的命令。
+- 某个能力线如果已经有专属文档，应在专属文档里维护详细命令。
+- 一次性验证命令不要继续追加到这份文档。
 
 ## Skills Market Client Lifecycle
 
@@ -406,4 +312,3 @@ python scripts/skills_market.py smoke
 python scripts/skills_market.py catalog
 python scripts/skills_market.py governance-check
 ```
-

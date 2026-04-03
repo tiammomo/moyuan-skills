@@ -28,6 +28,8 @@
    market 会导出 metadata-only feed 给下游 aggregator / marketplace 消费
 8. `hosted registry`
    仓库可以直接生成一份适合静态托管的 registry 输出目录
+9. `remote browse`
+   用户只知道 registry URL 时，也能先搜索、看 bundle、inspect skill，再决定要不要安装
 
 ## 关键产物
 
@@ -151,6 +153,16 @@ dist/market-registry/
 - 顶层 `registry.json`
 
 `registry.json` 负责把 public 和 org 输出组织成一个可托管、可被程序消费的目录。
+
+当前 browse 侧已经直接复用这份 hosted 输出：
+
+```text
+python scripts/skills_market.py search --registry http://127.0.0.1:8765 --query release
+python scripts/skills_market.py catalog --registry http://127.0.0.1:8765
+python scripts/skills_market.py inspect-remote-skill moyuan.release-note-writer --registry http://127.0.0.1:8765
+```
+
+也就是说，hosted registry 现在不只是“安装下载源”，也是远端查询入口。
 
 ## 目录结构
 

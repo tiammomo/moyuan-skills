@@ -23,6 +23,14 @@ def _stringify_command(command: list[str]) -> str:
     return " ".join(command)
 
 
+def _resolve_subprocess_command(command: list[str]) -> list[str]:
+    if not command:
+        return command
+    if Path(command[0]).name.lower().startswith("python"):
+        return [sys.executable, *command[1:]]
+    return command
+
+
 class LocalJobStore:
     def __init__(self, settings: Settings) -> None:
         self._settings = settings
@@ -115,10 +123,11 @@ class LocalJobStore:
 
         env = os.environ.copy()
         env.setdefault("MOYUAN_SKILLS_REPO_ROOT", str(self._settings.repo_root))
+        resolved_command = _resolve_subprocess_command(command)
 
         try:
             completed = subprocess.run(
-                command,
+                resolved_command,
                 cwd=self._settings.repo_root,
                 capture_output=True,
                 text=True,

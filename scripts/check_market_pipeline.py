@@ -90,6 +90,12 @@ def main(argv: list[str] | None = None) -> int:
     output_root = (args.output_root if args.output_root.is_absolute() else (ROOT / args.output_root)).resolve()
     market_root = output_root / "market"
     registry_root = output_root / "registry"
+    submission_root = output_root / "submissions"
+    submission_inbox_root = output_root / "incoming-submissions"
+    ingested_source_root = output_root / "ingested-source"
+    ingested_skills_root = ingested_source_root / "skills"
+    ingested_docs_root = ingested_source_root / "docs"
+    ingested_market_root = output_root / "ingested-market"
     install_root = output_root / "installed"
     remote_install_root = output_root / "remote-installed"
     remote_bundle_install_root = output_root / "remote-bundle-installed"
@@ -165,8 +171,139 @@ def main(argv: list[str] | None = None) -> int:
         "build hosted registry",
         ["scripts/build_market_registry.py", "--output-dir", repo_relative_path(registry_root)],
     )
+    require_success(
+        "build release-note-writer submission",
+        [
+            "scripts/build_skill_submission.py",
+            "release-note-writer",
+            "--market-dir",
+            repo_relative_path(market_root),
+            "--output-dir",
+            repo_relative_path(submission_root),
+        ],
+    )
+    release_submission_path = submission_root / "moyuan" / "release-note-writer" / "0.1.0" / "submission.json"
+    require_success(
+        "validate release-note-writer submission",
+        [
+            "scripts/validate_skill_submission.py",
+            repo_relative_path(release_submission_path),
+        ],
+    )
+    require_success(
+        "upload release-note-writer submission",
+        [
+            "scripts/upload_skill_submission.py",
+            repo_relative_path(release_submission_path),
+            "--inbox-dir",
+            repo_relative_path(submission_inbox_root),
+        ],
+    )
+    uploaded_submission_path = submission_inbox_root / "moyuan" / "release-note-writer" / "0.1.0" / "submission.json"
+    require_success(
+        "validate uploaded release-note-writer submission",
+        [
+            "scripts/validate_skill_submission.py",
+            repo_relative_path(uploaded_submission_path),
+        ],
+    )
+    require_success(
+        "review uploaded release-note-writer submission",
+        [
+            "scripts/review_skill_submission.py",
+            repo_relative_path(uploaded_submission_path),
+            "--status",
+            "approved",
+            "--summary",
+            "Uploaded submission passed smoke review.",
+            "--run-checker",
+            "--force",
+        ],
+    )
+    review_path = submission_inbox_root / "moyuan" / "release-note-writer" / "0.1.0" / "review.json"
+    if not review_path.is_file():
+        print(f"ERROR: expected review artifact {review_path} to exist")
+        return 1
+    require_success(
+        "ingest uploaded release-note-writer submission into staging roots",
+        [
+            "scripts/skills_market.py",
+            "ingest-submission",
+            repo_relative_path(uploaded_submission_path),
+            "--skills-dir",
+            repo_relative_path(ingested_skills_root),
+            "--docs-dir",
+            repo_relative_path(ingested_docs_root),
+            "--force",
+        ],
+    )
+    require_success(
+        "validate ingested release-note-writer manifest",
+        [
+            "scripts/validate_market_manifest.py",
+            repo_relative_path(ingested_skills_root / "release-note-writer" / "market" / "skill.json"),
+        ],
+    )
+    require_success(
+        "package ingested release-note-writer skill",
+        [
+            "scripts/package_skill.py",
+            repo_relative_path(ingested_skills_root / "release-note-writer"),
+            "--output-dir",
+            repo_relative_path(ingested_market_root),
+        ],
+    )
+    require_success(
+        "verify ingested release-note-writer provenance",
+        [
+            "scripts/verify_market_provenance.py",
+            repo_relative_path(ingested_market_root / "install" / "release-note-writer-0.1.0.json"),
+        ],
+    )
 
     with serve_directory(registry_root) as registry_url:
+        remote_search_output = require_success(
+            "search remote registry release skills",
+            [
+                "scripts/skills_market.py",
+                "search",
+                "--registry",
+                registry_url,
+                "--query",
+                "release",
+            ],
+        )
+        if "moyuan.release-note-writer" not in remote_search_output:
+            print("ERROR: remote registry search should list release-note-writer")
+            return 1
+
+        remote_catalog_output = require_success(
+            "browse remote registry catalog",
+            [
+                "scripts/skills_market.py",
+                "catalog",
+                "--registry",
+                registry_url,
+            ],
+        )
+        if "release-engineering-starter" not in remote_catalog_output:
+            print("ERROR: remote registry catalog should list starter bundles")
+            return 1
+
+        remote_inspect_output = require_success(
+            "inspect remote release-note-writer",
+            [
+                "scripts/skills_market.py",
+                "inspect-remote-skill",
+                "moyuan.release-note-writer",
+                "--registry",
+                registry_url,
+            ],
+        )
+        if "install spec url:" not in remote_inspect_output or "provenance url:" not in remote_inspect_output:
+            print("ERROR: remote skill inspection should expose install and provenance URLs")
+            return 1
+
         require_success(
             "dry-run remote install release-note-writer",
             [

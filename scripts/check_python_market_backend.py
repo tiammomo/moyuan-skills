@@ -211,6 +211,158 @@ def main() -> int:
     local_registry_root = ROOT / "dist" / "backend-api-check-registry"
     if local_registry_root.exists():
         shutil.rmtree(local_registry_root)
+    author_root = ROOT / "dist" / "backend-api-check-author"
+    if author_root.exists():
+        shutil.rmtree(author_root)
+    author_submission_root = author_root / "submissions"
+    author_inbox_root = author_root / "incoming"
+    author_stage_skills_root = author_root / "staged-skills"
+    author_stage_docs_root = author_root / "staged-docs"
+
+    author_query = {
+        "submissions_root": str(author_submission_root),
+        "inbox_root": str(author_inbox_root),
+    }
+
+    author_overview_response = client.get("/api/v1/author/overview", params=author_query)
+    if author_overview_response.status_code != 200:
+        print(f"ERROR: backend author overview should return 200, got {author_overview_response.status_code}")
+        return 1
+    author_overview = author_overview_response.json()
+    if "workspace" not in author_overview or "counts" not in author_overview:
+        print("ERROR: backend author overview should expose workspace and counts")
+        return 1
+    if author_overview.get("workspace", {}).get("submissions_root") != "dist/backend-api-check-author/submissions":
+        print("ERROR: backend author overview should honor custom submissions_root")
+        return 1
+    if author_overview.get("workspace", {}).get("inbox_root") != "dist/backend-api-check-author/incoming":
+        print("ERROR: backend author overview should honor custom inbox_root")
+        return 1
+
+    author_build_response = client.post(
+        "/api/v1/author/submissions/build",
+        json={
+            "skill": "release-note-writer",
+            "output_dir": str(author_submission_root),
+            "market_dir": "dist/market",
+            "release_notes": "Backend API smoke build for studio author workflow.",
+        },
+    )
+    if author_build_response.status_code != 202:
+        print(
+            "ERROR: backend author build-submission should return 202, "
+            f"got {author_build_response.status_code}"
+        )
+        return 1
+    author_build_job = wait_for_job(client, author_build_response.json()["job_id"])
+    if author_build_job.get("status") != "succeeded":
+        print("ERROR: backend author build-submission job should succeed")
+        print(author_build_job.get("stdout", ""))
+        print(author_build_job.get("stderr", ""))
+        return 1
+    author_submission_path = author_submission_root / "moyuan" / "release-note-writer" / "0.1.0" / "submission.json"
+    if not author_submission_path.is_file():
+        print(f"ERROR: expected author submission artifact is missing: {author_submission_path}")
+        return 1
+
+    author_list_response = client.get("/api/v1/author/submissions", params=author_query)
+    if author_list_response.status_code != 200:
+        print(f"ERROR: backend author submissions should return 200, got {author_list_response.status_code}")
+        return 1
+    author_list = author_list_response.json()
+    if author_list.get("workspace", {}).get("submissions_root") != "dist/backend-api-check-author/submissions":
+        print("ERROR: backend author submissions should expose the custom submissions_root")
+        return 1
+    if author_list.get("counts", {}).get("built", 0) < 1:
+        print("ERROR: backend author submissions should expose at least one built submission after build")
+        return 1
+
+    author_upload_response = client.post(
+        "/api/v1/author/submissions/upload",
+        json={
+            "path": str(author_submission_path),
+            "inbox_dir": str(author_inbox_root),
+        },
+    )
+    if author_upload_response.status_code != 202:
+        print(
+            "ERROR: backend author upload-submission should return 202, "
+            f"got {author_upload_response.status_code}"
+        )
+        return 1
+    author_upload_job = wait_for_job(client, author_upload_response.json()["job_id"])
+    if author_upload_job.get("status") != "succeeded":
+        print("ERROR: backend author upload-submission job should succeed")
+        print(author_upload_job.get("stdout", ""))
+        print(author_upload_job.get("stderr", ""))
+        return 1
+    author_inbox_submission_path = author_inbox_root / "moyuan" / "release-note-writer" / "0.1.0" / "submission.json"
+    if not author_inbox_submission_path.is_file():
+        print(f"ERROR: expected uploaded author submission is missing: {author_inbox_submission_path}")
+        return 1
+
+    author_review_response = client.post(
+        "/api/v1/author/submissions/review",
+        json={
+            "path": str(author_inbox_submission_path),
+            "review_status": "approved",
+            "reviewer": "backend-smoke",
+            "summary": "Approved via backend API smoke.",
+            "run_checker": True,
+        },
+    )
+    if author_review_response.status_code != 202:
+        print(
+            "ERROR: backend author review-submission should return 202, "
+            f"got {author_review_response.status_code}"
+        )
+        return 1
+    author_review_job = wait_for_job(client, author_review_response.json()["job_id"])
+    if author_review_job.get("status") != "succeeded":
+        print("ERROR: backend author review-submission job should succeed")
+        print(author_review_job.get("stdout", ""))
+        print(author_review_job.get("stderr", ""))
+        return 1
+    author_review_path = author_inbox_submission_path.with_name("review.json")
+    if not author_review_path.is_file():
+        print(f"ERROR: expected author review artifact is missing: {author_review_path}")
+        return 1
+
+    author_ingest_response = client.post(
+        "/api/v1/author/submissions/ingest",
+        json={
+            "path": str(author_inbox_submission_path),
+            "skills_dir": str(author_stage_skills_root),
+            "docs_dir": str(author_stage_docs_root),
+        },
+    )
+    if author_ingest_response.status_code != 202:
+        print(
+            "ERROR: backend author ingest-submission should return 202, "
+            f"got {author_ingest_response.status_code}"
+        )
+        return 1
+    author_ingest_job = wait_for_job(client, author_ingest_response.json()["job_id"])
+    if author_ingest_job.get("status") != "succeeded":
+        print("ERROR: backend author ingest-submission job should succeed")
+        print(author_ingest_job.get("stdout", ""))
+        print(author_ingest_job.get("stderr", ""))
+        return 1
+    author_ingest_manifest = author_stage_skills_root / "release-note-writer" / "market" / "skill.json"
+    if not author_ingest_manifest.is_file():
+        print(f"ERROR: expected ingested staged manifest is missing: {author_ingest_manifest}")
+        return 1
+    if not (author_stage_docs_root / "release-note-writer.md").is_file():
+        print("ERROR: expected ingested staged doc is missing")
+        return 1
+
+    author_list_after = client.get("/api/v1/author/submissions", params=author_query).json()
+    if author_list_after.get("counts", {}).get("approved", 0) < 1:
+        print("ERROR: backend author submissions should expose approved inbox reviews after review")
+        return 1
+    if author_list_after.get("counts", {}).get("ingested", 0) < 1:
+        print("ERROR: backend author submissions should expose ingested inbox records after ingest")
+        return 1
 
     skill_response = client.post(
         "/api/v1/local/skills/install",
@@ -651,6 +803,72 @@ def main() -> int:
 
     run_python(["scripts/build_market_registry.py", "--output-dir", "dist/backend-api-check-registry"])
     with serve_directory(local_registry_root) as registry_url:
+        remote_index_response = client.get(
+            "/api/v1/registry/remote/index",
+            params={"registry_url": registry_url},
+        )
+        if remote_index_response.status_code != 200:
+            print(
+                "ERROR: backend remote registry index should return 200, "
+                f"got {remote_index_response.status_code}"
+            )
+            return 1
+        remote_index = remote_index_response.json()
+        if remote_index.get("registry", {}).get("registry_url") != registry_url:
+            print("ERROR: backend remote registry index should echo the requested registry URL")
+            return 1
+        if remote_index.get("index", {}).get("skill_count", 0) < 1:
+            print("ERROR: backend remote registry index should expose skill_count")
+            return 1
+
+        remote_channel_response = client.get(
+            "/api/v1/registry/remote/channels/stable",
+            params={"registry_url": registry_url},
+        )
+        if remote_channel_response.status_code != 200:
+            print(
+                "ERROR: backend remote registry channel should return 200, "
+                f"got {remote_channel_response.status_code}"
+            )
+            return 1
+        remote_channel = remote_channel_response.json()
+        if remote_channel.get("count", 0) < 1:
+            print("ERROR: backend remote registry channel should expose remote skills")
+            return 1
+
+        remote_skill_detail_response = client.get(
+            "/api/v1/registry/remote/skills/moyuan.release-note-writer",
+            params={"registry_url": registry_url},
+        )
+        if remote_skill_detail_response.status_code != 200:
+            print(
+                "ERROR: backend remote registry skill detail should return 200, "
+                f"got {remote_skill_detail_response.status_code}"
+            )
+            return 1
+        remote_skill_detail = remote_skill_detail_response.json()
+        if remote_skill_detail.get("skill", {}).get("id") != "moyuan.release-note-writer":
+            print("ERROR: backend remote registry skill detail should resolve the requested skill")
+            return 1
+        if not remote_skill_detail.get("install_spec_url") or not remote_skill_detail.get("provenance_url"):
+            print("ERROR: backend remote registry skill detail should expose install/provenance URLs")
+            return 1
+
+        remote_bundle_detail_response = client.get(
+            "/api/v1/registry/remote/bundles/release-engineering-starter",
+            params={"registry_url": registry_url},
+        )
+        if remote_bundle_detail_response.status_code != 200:
+            print(
+                "ERROR: backend remote registry bundle detail should return 200, "
+                f"got {remote_bundle_detail_response.status_code}"
+            )
+            return 1
+        remote_bundle_detail = remote_bundle_detail_response.json()
+        if remote_bundle_detail.get("bundle", {}).get("id") != "release-engineering-starter":
+            print("ERROR: backend remote registry bundle detail should resolve the requested bundle")
+            return 1
+
         remote_skill_response = client.post(
             "/api/v1/registry/skills/install",
             json={
@@ -837,13 +1055,14 @@ def main() -> int:
 
     shutil.rmtree(local_target_root, ignore_errors=True)
     shutil.rmtree(local_registry_root, ignore_errors=True)
+    shutil.rmtree(author_root, ignore_errors=True)
 
     print(
         "Python market backend check passed for "
         f"{len(repository.get_all_skills())} skill summary record(s), "
         f"{len(bundles)} bundle(s), and "
         f"{len(docs_catalog.get('skill_docs', []))} skill doc record(s), "
-        "plus local, remote, doctor, repair, baseline, governance, waiver/apply handoff, and cleanup lifecycle jobs."
+        "plus author submission, local, remote, doctor, repair, baseline, governance, waiver/apply handoff, and cleanup lifecycle jobs."
     )
     return 0
 

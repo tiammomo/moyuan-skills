@@ -18,6 +18,13 @@
 - 模板或样例沉到了 `assets/`
 - 留下了最小可回归的检查入口
 
+如果这个 skill 计划继续进入 market 链路，还应该能顺着作者链跑到：
+
+- `doctor-skill`
+- `validate`
+- `package`
+- `provenance-check`
+
 ## 推荐制作流程
 
 ### 1. 先收窄边界
@@ -107,7 +114,32 @@ python scripts/check_progressive_skills.py
 python skills/<skill-name>/scripts/check_<skill_name>.py
 ```
 
-### 7. 提前为 harness 留接口
+### 7. 把 market 打包链接进作者流程
+
+如果这个 skill 已经有 `market/skill.json`，不要把作者链停在 checker。
+
+推荐继续跑到：
+
+```text
+python scripts/skills_market.py doctor-skill skills/<skill-name> --run-checker
+python scripts/skills_market.py validate skills/<skill-name>/market/skill.json
+python scripts/skills_market.py package skills/<skill-name>
+python scripts/skills_market.py provenance-check dist/market/install/<skill-name>-<version>.json
+```
+
+如果你只是把 skill 先 scaffold 到 `dist/authoring-smoke/` 这种预演目录，也可以直接按路径打包：
+
+```text
+python scripts/skills_market.py package dist/authoring-smoke/<skill-name>
+```
+
+这一步的意义是：
+
+- 提前暴露 manifest、artifact 路径和 provenance 问题
+- 让作者在真正提交流程前先看到 install spec 长什么样
+- 把后续 submission 流程建立在已验证的 package 上
+
+### 8. 提前为 harness 留接口
 
 这一步不是强制实现，而是强制思考。
 
@@ -125,6 +157,7 @@ python skills/<skill-name>/scripts/check_<skill_name>.py
 - 参考资料拆很多，但没有明确路由
 - reference 再套 reference，形成深层迷宫
 - 已经有复杂脚本，却没有统一检查入口
+- manifest 已经写了，但从来没跑过 package / provenance-check
 - skill 明明已经在承担 orchestration 和 safety gate，却还没有 harness 视角
 
 ## 交付前快速自查
@@ -135,5 +168,5 @@ python skills/<skill-name>/scripts/check_<skill_name>.py
 - 是否已经把重复逻辑沉到 `scripts/`？
 - 是否已经把模板和样例沉到 `assets/`？
 - 是否已经留下可回归命令？
+- 如果要进入 market，是否已经跑过 package / provenance-check？
 - 是否已经考虑哪些东西未来应该进入 harness？
-

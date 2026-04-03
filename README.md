@@ -43,7 +43,7 @@
 - 契约与页面映射见 [docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
 - skill / bundle 详情页支持真实 backend 本地执行与远端 registry install
 - docs 详情页现在会把 repo 命令、安全执行状态、recent runs、compare / filter、run diff summary、inline diff excerpts、section diff 状态、quick-open handoff、last-success、artifact/stdout/stderr drilldown、顺序提示、前置条件、预期结果和产物提示一起展示，并为 allowlist 动作提供页内执行入口
-- Playwright 已覆盖首页、skills、bundles、docs 与详情页的端到端联调
+- Playwright 已覆盖首页、skills、bundles、docs、`/studio` 以及详情页的端到端联调
 
 ## 中文 Skills 教学入口
 
@@ -106,7 +106,10 @@ npm run dev:local --prefix frontend
 - market 治理：[docs/market-governance.md](./docs/market-governance.md)
 - registry / federation：[docs/market-registry.md](./docs/market-registry.md)
 - 前后端集成：[docs/frontend-backend-integration.md](./docs/frontend-backend-integration.md)
-- 交互与远端安装路线图：[docs/interaction-and-remote-install-roadmap.md](./docs/interaction-and-remote-install-roadmap.md)
+- 后续开发主线：[docs/market-pull-author-publish-plan.md](./docs/market-pull-author-publish-plan.md)
+- 按周开发排期：[docs/market-weekly-delivery-plan.md](./docs/market-weekly-delivery-plan.md)
+- 开发环境准备：[docs/dev-setup.md](./docs/dev-setup.md)
+- 常用验证命令：[docs/repo-commands.md](./docs/repo-commands.md)
 
 ## 仓库结构
 

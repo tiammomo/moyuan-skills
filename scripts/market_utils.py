@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import shlex
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +27,7 @@ REVIEW_STATUSES = {"draft", "reviewed", "deprecated"}
 TRUST_LEVELS = {"community", "verified", "official"}
 LIFECYCLE_STATUSES = {"active", "deprecated", "blocked", "archived"}
 BUNDLE_STATUSES = {"draft", "published"}
+SUBMISSION_REVIEW_STATUSES = {"pending", "approved", "rejected", "needs-changes"}
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -87,6 +89,33 @@ def repo_relative_path(path: Path) -> str:
         return resolved.relative_to(ROOT).as_posix()
     except ValueError as exc:
         raise ValueError(f"path must stay inside repository root: {resolved}") from exc
+
+
+def rewrite_command_paths(command: str, replacements: list[tuple[str, str]]) -> str:
+    if not command:
+        return command
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return command
+
+    normalized = sorted(
+        [(old.rstrip("/"), new.rstrip("/")) for old, new in replacements if old and new],
+        key=lambda item: len(item[0]),
+        reverse=True,
+    )
+    rewritten: list[str] = []
+    for token in tokens:
+        updated = token
+        for old_prefix, new_prefix in normalized:
+            if token == old_prefix:
+                updated = new_prefix
+                break
+            if token.startswith(f"{old_prefix}/"):
+                updated = f"{new_prefix}{token[len(old_prefix):]}"
+                break
+        rewritten.append(updated)
+    return shlex.join(rewritten)
 
 
 def resolve_target_root(target_root: Path) -> Path:
@@ -485,6 +514,103 @@ def validate_provenance_payload(payload: dict, label: str, *, require_local_path
                 errors.append(f"{label}:files[{index}]: 'sha256' must be a lowercase 64-character SHA256 digest")
             if require_local_paths and file_path and not (ROOT / file_path).is_file():
                 errors.append(f"{label}:files[{index}]: missing source file '{file_path}'")
+
+    return errors
+
+
+def validate_skill_submission_payload(payload: dict, label: str) -> list[str]:
+    errors: list[str] = []
+
+    submission_format = required_string(payload, "submission_format", errors, label, min_length=10)
+    submission_id = required_string(payload, "submission_id", errors, label, min_length=5)
+    required_string(payload, "publisher", errors, label, min_length=2)
+    skill_id = required_string(payload, "skill_id", errors, label, min_length=3)
+    required_string(payload, "skill_name", errors, label, min_length=2)
+    version = required_string(payload, "version", errors, label, min_length=3)
+    channel = required_string(payload, "channel", errors, label, min_length=4)
+    required_string(payload, "created_at", errors, label, min_length=10)
+    source_dir = required_string(payload, "source_dir", errors, label, min_length=5)
+    docs_path = required_string(payload, "docs_path", errors, label, min_length=5)
+    manifest_path = required_string(payload, "manifest_path", errors, label, min_length=5)
+    install_spec_path = required_string(payload, "install_spec_path", errors, label, min_length=5)
+    provenance_path = required_string(payload, "provenance_path", errors, label, min_length=5)
+    package_path = required_string(payload, "package_path", errors, label, min_length=5)
+    payload_archive_path = required_string(payload, "payload_archive_path", errors, label, min_length=5)
+    payload_archive_sha256 = required_string(payload, "payload_archive_sha256", errors, label, min_length=64)
+    required_string(payload, "checker_command", errors, label, min_length=5)
+    required_string(payload, "eval_command", errors, label, min_length=5)
+    required_string(payload, "release_notes", errors, label, min_length=3)
+
+    if submission_format and submission_format != "moyuan-skill-submission@v1":
+        errors.append(f"{label}: unsupported submission_format '{submission_format}'")
+    if submission_id and skill_id and version and submission_id != f"{skill_id}@{version}":
+        errors.append(f"{label}: 'submission_id' must match '<skill_id>@<version>'")
+    if channel and channel not in MARKET_CHANNELS:
+        errors.append(f"{label}: unsupported channel '{channel}'")
+    if payload_archive_sha256 and not SHA256_RE.match(payload_archive_sha256):
+        errors.append(f"{label}: 'payload_archive_sha256' must be a lowercase 64-character SHA256 digest")
+
+    for key, raw_path in (
+        ("source_dir", source_dir),
+        ("docs_path", docs_path),
+        ("manifest_path", manifest_path),
+        ("install_spec_path", install_spec_path),
+        ("provenance_path", provenance_path),
+        ("package_path", package_path),
+        ("payload_archive_path", payload_archive_path),
+    ):
+        if not raw_path:
+            continue
+        path_obj = Path(raw_path)
+        if path_obj.is_absolute():
+            errors.append(f"{label}: '{key}' must use a repo-relative path")
+            continue
+        resolved = (ROOT / path_obj).resolve()
+        try:
+            resolved.relative_to(ROOT)
+        except ValueError:
+            errors.append(f"{label}: '{key}' must stay inside the repository root")
+            continue
+        if not resolved.exists():
+            errors.append(f"{label}: '{key}' points to missing path '{raw_path}'")
+            continue
+        if key in {"source_dir"} and not resolved.is_dir():
+            errors.append(f"{label}: '{key}' must point to a directory")
+        if key not in {"source_dir"} and not resolved.is_file():
+            errors.append(f"{label}: '{key}' must point to a file")
+
+    return errors
+
+
+def validate_skill_submission_review_payload(payload: dict, label: str) -> list[str]:
+    errors: list[str] = []
+
+    review_format = required_string(payload, "review_format", errors, label, min_length=10)
+    required_string(payload, "submission_id", errors, label, min_length=5)
+    review_status = required_string(payload, "review_status", errors, label, min_length=6)
+    required_string(payload, "reviewer", errors, label, min_length=2)
+    required_string(payload, "reviewed_at", errors, label, min_length=10)
+    required_string(payload, "summary", errors, label, min_length=5)
+
+    findings = payload.get("findings", [])
+    if not isinstance(findings, list):
+        errors.append(f"{label}: 'findings' must be a list")
+    else:
+        for index, finding in enumerate(findings, start=1):
+            item_label = f"{label}:findings[{index}]"
+            if not isinstance(finding, dict):
+                errors.append(f"{item_label} must be an object")
+                continue
+            severity = required_string(finding, "severity", errors, item_label, min_length=3)
+            required_string(finding, "message", errors, item_label, min_length=3)
+            optional_string(finding, "path", errors, item_label, min_length=3)
+            if severity and severity not in {"critical", "high", "medium", "low", "info"}:
+                errors.append(f"{item_label}: unsupported severity '{severity}'")
+
+    if review_format and review_format != "moyuan-skill-submission-review@v1":
+        errors.append(f"{label}: unsupported review_format '{review_format}'")
+    if review_status and review_status not in SUBMISSION_REVIEW_STATUSES:
+        errors.append(f"{label}: unsupported review_status '{review_status}'")
 
     return errors
 

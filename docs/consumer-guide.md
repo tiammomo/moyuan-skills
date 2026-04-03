@@ -24,6 +24,14 @@ python scripts/skills_market.py catalog
 python scripts/skills_market.py recommend
 ```
 
+如果你只有 hosted registry URL，也可以直接先 browse 远端：
+
+```text
+python scripts/skills_market.py search --registry http://127.0.0.1:8765 --query release
+python scripts/skills_market.py catalog --registry http://127.0.0.1:8765
+python scripts/skills_market.py inspect-remote-skill moyuan.release-note-writer --registry http://127.0.0.1:8765
+```
+
 当前搜索会利用：
 
 - 名称
@@ -81,6 +89,8 @@ python scripts/skills_market.py install moyuan.release-note-writer --registry ht
 ```
 
 这条链路会先把 install spec、package 和 provenance 下载到 `dist/remote-registry-cache/`，然后复用现有本地 installer 落地安装。
+
+更稳妥的顺序是先 `search / catalog / inspect-remote-skill`，确认 summary、bundle 关联、review status、lifecycle 和 provenance 信号，再决定是否执行远端安装。
 
 真正安装后，当前本地 client 还支持继续做这几件事：
 

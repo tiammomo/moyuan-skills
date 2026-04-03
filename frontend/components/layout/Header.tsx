@@ -10,6 +10,7 @@ const navItems = [
   { href: '/channels', label: '频道' },
   { href: '/bundles', label: '套餐' },
   { href: '/docs', label: '文档' },
+  { href: '/studio', label: '工作台' },
 ];
 
 export function Header() {

@@ -7,6 +7,9 @@
 当前这条集成链已经覆盖：
 
 - skills / bundles / docs 的 repo-backed 浏览
+- author studio 的 repo-backed overview / submissions 浏览
+- author submission 的 `build / upload / review / ingest` backend job 执行
+- remote registry 的 index / channel / skill / bundle 查询
 - 本地 install / update / remove
 - installed-state doctor / repair / baseline / governance
 - waiver / apply handoff 的 `prepare / stage / verify`
@@ -25,6 +28,7 @@
 
 它还负责把 skill / bundle / docs 数据整理成前端真正需要的结构，例如：
 
+- author studio overview、submissions 列表、recent jobs
 - docs 上下文面板
 - action panel 的命令、执行模式、顺序、前置条件、预期产物、result summary、recent runs compare / filter、run diff summary、inline diff excerpts、section diff 状态、quick-open handoff、last-success，以及 artifact / stdout / stderr 钻取状态
 - remote execution 的 trust summary、policy gate、approval 文案
@@ -35,6 +39,9 @@
 
 当前已经覆盖：
 
+- author overview / submissions 代理
+- author submission 执行代理
+- remote registry browse 查询
 - local lifecycle
 - installed-state lifecycle
 - remote registry lifecycle
@@ -44,6 +51,12 @@
 
 waiver / apply 相关代理包括：
 
+- `/api/author/overview`
+- `/api/author/submissions`
+- `/api/author/submissions/build`
+- `/api/author/submissions/upload`
+- `/api/author/submissions/review`
+- `/api/author/submissions/ingest`
 - `/api/local/state/governance/waiver-apply`
 - `/api/local/state/governance/waiver-apply/approval`
 - `/api/local/state/governance/waiver-apply/prepare`
@@ -52,6 +65,13 @@ waiver / apply 相关代理包括：
 - `/api/local/docs/actions/history`
 - `/api/local/docs/actions/run`
 
+remote registry browse 相关 backend API 包括：
+
+- `GET /api/v1/registry/remote/index`
+- `GET /api/v1/registry/remote/channels/{channel}`
+- `GET /api/v1/registry/remote/skills/{skill_id}`
+- `GET /api/v1/registry/remote/bundles/{bundle_id}`
+
 ### 3. Python backend
 
 `backend/app/main.py` 负责把真实脚本封装成 job API。
@@ -59,6 +79,16 @@ waiver / apply 相关代理包括：
 当前和页面执行链直接相关的接口是：
 
 ```text
+GET /api/v1/author/overview
+GET /api/v1/author/submissions
+POST /api/v1/author/submissions/build
+POST /api/v1/author/submissions/upload
+POST /api/v1/author/submissions/review
+POST /api/v1/author/submissions/ingest
+GET /api/v1/registry/remote/index
+GET /api/v1/registry/remote/channels/{channel}
+GET /api/v1/registry/remote/skills/{skill_id}
+GET /api/v1/registry/remote/bundles/{bundle_id}
 GET /api/v1/local/state/governance
 POST /api/v1/local/state/governance/refresh
 GET /api/v1/local/state/governance/waiver-apply
@@ -70,6 +100,41 @@ GET /api/v1/local/docs/actions/history
 POST /api/v1/local/docs/actions/run
 GET /api/v1/local/jobs/{job_id}
 ```
+
+## Author Studio 当前语义
+
+页面现在已经能跑通一条作者到 maintainer 的 submission 骨架链路：
+
+1. `/studio`
+   展示 author workspace、构建 / inbox / approval / ingest 计数，以及最近 built / inbox records 和 recent jobs。
+2. `/studio/new`
+   通过 backend author API 触发 `build-submission`，把当前 skill 打成标准 `submission.json + payload.tgz` 交接物。
+3. `/studio/submissions`
+   集中查看 `dist/submissions/` 和 `incoming/submissions/`，并从页面触发 `upload / review / ingest`。
+
+需要特别说明：
+
+- 页面触发执行仍然依赖 Python backend；如果没配置 `SKILLS_MARKET_API_BASE_URL`，前端只会退回到 repo-backed 读取，不会直接在浏览器里执行 CLI。
+- `/studio/submissions` 默认把 ingest 写到 `dist/backend-author-ingested/skills` 和 `dist/backend-author-ingested/docs`，确认后再改成 canonical `skills/` 和 `docs/`。
+- 这轮先把 author API 和页面骨架接通，还没有做更细的权限、凭证和 hosted publish UI。
+
+## Remote Registry Browse 当前语义
+
+后端现在已经能把 hosted registry 当成“可查询数据源”，不再只是 install 下载源：
+
+1. `GET /api/v1/registry/remote/index`
+   返回远端 registry profile 和 index payload。
+2. `GET /api/v1/registry/remote/channels/{channel}`
+   返回远端 channel skills 列表。
+3. `GET /api/v1/registry/remote/skills/{skill_id}`
+   返回一个远端 skill 的 summary、install spec、provenance 和对应 URL。
+4. `GET /api/v1/registry/remote/bundles/{bundle_id}`
+   返回一个远端 starter bundle。
+
+需要特别说明：
+
+- 这轮只补到了 backend browse API 和 CLI browse 命令，前端 `/registries/*` 页面会在下一周再接。
+- 当前远端 skill 详情仍然基于 registry 里可公开获取的 `channel summary + install spec + provenance`，不假设远端一定额外托管完整 docs 或 source manifest。
 
 ## Waiver / Apply 当前语义
 
@@ -106,6 +171,7 @@ GET /api/v1/local/jobs/{job_id}
 - `approval persisted -> audit trail visible -> restage invalidates old approval -> post-write evidence refreshed`
 - remote registry install 的 approval / retry / cleanup / rollback
 - docs 页面搜索、详情页 action panel、context panel、相关文档跳转、project doc allowlist action 真执行，以及 docs action history / inline diff excerpts / quick-open / last-success 回看
+- `/studio` 的 isolated author flow：自定义 `submissions_root / inbox_root` 下的 `build -> upload -> review -> ingest -> overview refresh`
 
 ## 本地联调
 

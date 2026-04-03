@@ -21,6 +21,7 @@
 - installed-state 的 `doctor / repair / baseline / governance`
 - waiver / apply handoff 的 `prepare / stage / verify`
 - governance write handoff 的 eligibility、approval guidance、audit trail、evidence pack 与工件交接
+- remote registry browse 的 `index / channel / skill / bundle` 查询
 - remote registry install 的 trust / approval / retry / cleanup / rollback
 
 这些能力都应该直接复用 `scripts/` 里的真实逻辑，而不是在前端重写一套。
@@ -65,6 +66,16 @@ GET /api/v1/market/categories
 GET /api/v1/market/tags
 GET /api/v1/market/bundles
 GET /api/v1/market/bundles/{bundle_id}
+GET /api/v1/author/overview
+GET /api/v1/author/submissions
+POST /api/v1/author/submissions/build
+POST /api/v1/author/submissions/upload
+POST /api/v1/author/submissions/review
+POST /api/v1/author/submissions/ingest
+GET /api/v1/registry/remote/index
+GET /api/v1/registry/remote/channels/{channel}
+GET /api/v1/registry/remote/skills/{skill_id}
+GET /api/v1/registry/remote/bundles/{bundle_id}
 POST /api/v1/local/skills/install
 POST /api/v1/local/skills/update
 POST /api/v1/local/skills/remove
@@ -99,10 +110,12 @@ GET /api/v1/docs/project/{doc_id}
 
 后端现在已经稳定支撑这些页面动作：
 
+- author studio 的 `build / upload / review / ingest` submission 流程
 - 本地 skill / bundle lifecycle
 - installed-state doctor、低风险 repair、baseline history、governance summary
 - waiver / apply handoff 的 `prepare / safe stage / refresh verify`
 - governance write handoff 的状态说明、阻断原因、命令包、approval guidance、approval audit、evidence pack 与 checklist
+- remote registry browse 的 `index / channel / skill / bundle` 查询
 - remote registry install 的审批、失败恢复、staged cache cleanup、限定目标 rollback
 - docs action panel 的 allowlist `run / copy / prerequisite state / result summary / recent runs / last-success`
 
@@ -122,6 +135,7 @@ GET /api/v1/docs/project/{doc_id}
 - 前端所有 mutation 都通过 Next.js API route 代理到这里
 - mutation 返回 `job_id`
 - 页面通过 `GET /api/v1/local/jobs/{job_id}` 轮询 job 完成状态
+- `/studio`、`/studio/new`、`/studio/submissions` 通过 author API 暴露 submission workflow，并默认把 ingest 指向 `dist/backend-author-ingested/*` staging 目录
 - docs catalog 同时返回按类型分组的数组和统一的 `all_docs`
 - docs 详情页通过 `POST /api/v1/local/docs/actions/run` 触发安全 allowlist 命令，而不是把任意命令字符串直接交给后端
 - docs 详情页通过 `GET /api/v1/local/docs/actions/history` 回看当前 backend 会话里的 recent runs 与 last-success

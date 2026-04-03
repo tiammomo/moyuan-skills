@@ -1,9 +1,9 @@
 ---
-name: your-skill-name
+name: {{skill_name}}
 description: Briefly explain what the skill does and when it should trigger. Use when Codex needs to solve a narrow task family with repeatable routing and safety guidance.
 ---
 
-# Your Skill Title
+# {{skill_title}}
 
 Use this skill to solve one narrow task family well.
 
@@ -41,5 +41,5 @@ Use this skill to solve one narrow task family well.
 
 ## Bundled Resources
 
-- `scripts/check_your_skill.py`: local smoke checker.
+- `scripts/check_{{skill_name_py}}.py`: local smoke checker.
 - `assets/output-template.md`: reusable output scaffold.
